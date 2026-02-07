@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Signal Drift</title>
+    <style>
+      @import url("https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap");
+      :root {
+        color-scheme: light;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: radial-gradient(circle at top, #111827, #0b1120 55%, #070b16);
+        color: #f8fafc;
+        font-family: "Space Grotesk", "Work Sans", system-ui, sans-serif;
+      }
+      .shell {
+        width: min(1100px, 92vw);
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+        text-align: center;
+      }
+      h1 {
+        margin: 0;
+        font-weight: 700;
+        letter-spacing: -0.02em;
+      }
+      p {
+        margin: 0;
+        color: #cbd5f5;
+      }
+      .panel {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+        border-radius: 24px;
+        background: rgba(255, 255, 255, 0.08);
+        border: 1px solid rgba(255, 255, 255, 0.18);
+        box-shadow: 0 24px 60px rgba(5, 8, 18, 0.45);
+      }
+      canvas {
+        border-radius: 18px;
+      }
+      .controls {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 12px 18px;
+        font-size: 0.95rem;
+        color: #d7ddf7;
+      }
+      #start-btn {
+        appearance: none;
+        border: 1px solid rgba(255, 255, 255, 0.4);
+        background: rgba(255, 255, 255, 0.16);
+        color: #f8fafc;
+        padding: 8px 18px;
+        border-radius: 999px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: transform 0.2s ease, background 0.2s ease;
+      }
+      #start-btn:hover {
+        transform: translateY(-1px);
+        background: rgba(255, 255, 255, 0.28);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="shell">
+      <div>
+        <h1>Signal Drift</h1>
+        <p>Collect 20 orbs, stay ahead of the drones, and keep your core stable.</p>
+      </div>
+      <div class="panel">
+        <canvas id="game" width="960" height="540"></canvas>
+      </div>
+      <div class="controls">
+        <button id="start-btn" type="button">Start / Focus</button>
+        <span>Move: WASD / Arrows</span>
+        <span>Dash: Space</span>
+        <span>Pause: P</span>
+        <span>Fullscreen: F</span>
+      </div>
+    </div>
+    <script src="game.js"></script>
+  </body>
+</html>

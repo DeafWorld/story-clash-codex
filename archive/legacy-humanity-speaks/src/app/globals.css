@@ -1,0 +1,135 @@
+@import "tailwindcss";
+
+:root {
+  --ink: #06050d;
+  --storm: #121425;
+  --pulse: #ffb347;
+  --pulse-2: #ff6b88;
+  --aqua: #4be1ff;
+  --pearl: #f7f5ff;
+  --mist: #a6a2bf;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  font-family: var(--font-space), system-ui, sans-serif;
+}
+
+body {
+  background: radial-gradient(circle at 10% 10%, #2b1a38 0%, transparent 40%),
+    radial-gradient(circle at 90% 5%, #1b304a 0%, transparent 45%),
+    radial-gradient(circle at 50% 80%, #1d3d4e 0%, transparent 50%),
+    var(--ink);
+  color: var(--pearl);
+}
+
+h1,
+h2,
+h3,
+h4 {
+  font-family: var(--font-fraunces), serif;
+}
+
+::selection {
+  background: rgba(255, 179, 71, 0.4);
+  color: #09090f;
+}
+
+.bg-grid {
+  background-image: radial-gradient(rgba(255, 255, 255, 0.08) 1px, transparent 0);
+  background-size: 32px 32px;
+  opacity: 0.35;
+}
+
+.glass {
+  background: rgba(14, 16, 32, 0.82);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(12px);
+}
+
+.card {
+  border-radius: 22px;
+  padding: 24px;
+}
+
+.badge {
+  padding: 6px 14px;
+  border-radius: 999px;
+  font-size: 12px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border-radius: 999px;
+  padding: 12px 20px;
+  font-size: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  color: var(--pearl);
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border 0.2s ease;
+}
+
+.btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.3);
+  border-color: rgba(255, 255, 255, 0.35);
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, var(--pulse), var(--pulse-2));
+  color: #1b0f14;
+  border: none;
+  font-weight: 600;
+}
+
+.input {
+  width: 100%;
+  border-radius: 16px;
+  padding: 12px 14px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(18, 20, 37, 0.9);
+  color: var(--pearl);
+  font-size: 14px;
+  outline: none;
+  transition: border 0.2s ease;
+}
+
+.input:focus {
+  border-color: rgba(255, 179, 71, 0.7);
+}
+
+.muted {
+  color: var(--mist);
+}
+
+.section-title {
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  font-size: 12px;
+  color: var(--mist);
+}
+
+.fade-in {
+  animation: fadeIn 0.4s ease forwards;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
