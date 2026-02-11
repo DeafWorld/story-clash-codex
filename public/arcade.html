@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Signal Sprint</title>
+    <style>
+      @import url("https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700&family=Space+Grotesk:wght@400;600;700&display=swap");
+
+      :root {
+        --bg-a: #08101f;
+        --bg-b: #051322;
+        --panel: rgba(10, 24, 44, 0.75);
+        --line: rgba(160, 212, 255, 0.3);
+        --text: #e8f4ff;
+        --muted: #afc7df;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background:
+          radial-gradient(circle at 20% 15%, rgba(86, 162, 255, 0.25), transparent 38%),
+          radial-gradient(circle at 85% 90%, rgba(95, 245, 220, 0.2), transparent 36%),
+          linear-gradient(160deg, var(--bg-a), var(--bg-b));
+        color: var(--text);
+        font-family: "Sora", "Space Grotesk", sans-serif;
+        padding: 22px;
+      }
+
+      .shell {
+        width: min(1120px, 96vw);
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+      }
+
+      .header {
+        text-align: center;
+      }
+
+      .header h1 {
+        margin: 0;
+        font-size: clamp(2rem, 4.3vw, 3.2rem);
+        letter-spacing: -0.02em;
+      }
+
+      .header p {
+        margin: 8px 0 0;
+        color: var(--muted);
+      }
+
+      .panel {
+        border: 1px solid var(--line);
+        background: var(--panel);
+        border-radius: 22px;
+        padding: 18px;
+        box-shadow: 0 24px 70px rgba(2, 8, 18, 0.5);
+        display: flex;
+        justify-content: center;
+      }
+
+      canvas {
+        width: min(960px, 100%);
+        height: auto;
+        border-radius: 14px;
+        outline: none;
+      }
+
+      .controls {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 9px 16px;
+        color: var(--muted);
+        font-size: 0.95rem;
+      }
+
+      #start-btn {
+        border: 1px solid rgba(170, 220, 255, 0.48);
+        background: rgba(120, 214, 255, 0.12);
+        color: var(--text);
+        border-radius: 999px;
+        font: 600 0.95rem "Space Grotesk", sans-serif;
+        padding: 8px 16px;
+        cursor: pointer;
+      }
+
+      #start-btn:hover {
+        background: rgba(120, 214, 255, 0.24);
+      }
+
+      @media (max-width: 740px) {
+        body {
+          padding: 10px;
+        }
+
+        .panel {
+          padding: 9px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="shell">
+      <header class="header">
+        <h1>Signal Sprint</h1>
+        <p>Collect shards, clear drones, grab the key, and reach the gate before timeout.</p>
+      </header>
+      <div class="panel" id="canvas-wrap">
+        <canvas id="game" width="960" height="540" tabindex="0" aria-label="Signal Sprint game canvas"></canvas>
+      </div>
+      <div class="controls">
+        <button id="start-btn" type="button">Start / Restart</button>
+        <span>Move: Arrows or WASD</span>
+        <span>Dash: Space</span>
+        <span>Shoot: Enter or Left Click</span>
+        <span>Pause: P or B</span>
+        <span>Fullscreen: F</span>
+      </div>
+    </div>
+    <script src="/arcade.js"></script>
+  </body>
+</html>

@@ -4,6 +4,7 @@ import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { getSocketClient } from "../../../lib/socket-client";
+import { apiFetch } from "../../../lib/api-client";
 import Typewriter from "../../../components/typewriter";
 import { getDemoEndingText, getDemoSession, initDemoRoom } from "../../../lib/demo-session";
 import { soundManager } from "../../../lib/soundManager";
@@ -110,13 +111,14 @@ function RealtimeRecap({ code, playerId }: RealtimeRecapProps) {
   const [showTimeline, setShowTimeline] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
+  const [shareUrl, setShareUrl] = useState<string>("");
 
   useEffect(() => {
     let mounted = true;
 
     async function loadRecap() {
       try {
-        const response = await fetch(`/api/recap/${code}`);
+        const response = await apiFetch(`/api/recap/${code}`);
         const data = (await response.json()) as RecapPayload | { error: string };
         if (!response.ok || "error" in data) {
           throw new Error("error" in data ? data.error : "Recap unavailable");
@@ -158,6 +160,7 @@ function RealtimeRecap({ code, playerId }: RealtimeRecapProps) {
 
   useEffect(() => {
     const socket = getSocketClient();
+    socket.emit("join_room", { code, playerId });
     socket.on("session_restarted", () => {
       router.push(`/lobby/${code}?player=${playerId}`);
     });
@@ -178,11 +181,39 @@ function RealtimeRecap({ code, playerId }: RealtimeRecapProps) {
     if (!recap) {
       return "";
     }
-    return `We just played Story Clash!\nStory: ${recap.storyTitle}\nEnding: ${endingLabel(recap.endingType)}\nMVP: ${recap.mvp.player}\nJoin us: https://apps.apple.com`;
+    return `We just played Story Clash!\nStory: ${recap.storyTitle}\nEnding: ${endingLabel(recap.endingType)}\nMVP: ${recap.mvp.player}`;
   }, [recap]);
 
+  useEffect(() => {
+    if (!recap) {
+      return;
+    }
+    let mounted = true;
+
+    async function loadShareUrl() {
+      try {
+        const response = await apiFetch(`/api/share/recap/${code}`);
+        const data = (await response.json()) as { shareUrl?: string };
+        if (!response.ok || !data.shareUrl) {
+          return;
+        }
+        if (mounted) {
+          setShareUrl(data.shareUrl);
+        }
+      } catch {
+        // Share URL can fail safely; button falls back to local URL.
+      }
+    }
+
+    void loadShareUrl();
+    return () => {
+      mounted = false;
+    };
+  }, [code, recap]);
+
   async function copyShare() {
-    await navigator.clipboard.writeText(shareText);
+    const url = shareUrl || window.location.href;
+    await navigator.clipboard.writeText(`${shareText}\n${url}`);
     setToast("Copied! Share with friends");
   }
 

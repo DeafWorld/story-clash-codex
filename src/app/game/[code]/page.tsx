@@ -4,6 +4,7 @@ import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import clsx from "clsx";
 import { getSocketClient } from "../../../lib/socket-client";
+import { apiFetch } from "../../../lib/api-client";
 import Typewriter from "../../../components/typewriter";
 import RoomCodeCard from "../../../components/room-code-card";
 import {
@@ -192,6 +193,7 @@ function RealtimeGame({ code, playerId }: RealtimeGameProps) {
   const [room, setRoom] = useState<RoomView | null>(null);
   const [freeText, setFreeText] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [toast, setToast] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [remainingMs, setRemainingMs] = useState(30000);
   const [timeoutNotice, setTimeoutNotice] = useState<string | null>(null);
@@ -214,7 +216,7 @@ function RealtimeGame({ code, playerId }: RealtimeGameProps) {
 
     async function loadState() {
       try {
-        const response = await fetch(`/api/game/${code}`);
+        const response = await apiFetch(`/api/game/${code}`);
         const data = (await response.json()) as RoomView | { error: string };
         if (!response.ok || "error" in data) {
           throw new Error("error" in data ? data.error : "Game not found");
@@ -280,7 +282,14 @@ function RealtimeGame({ code, playerId }: RealtimeGameProps) {
     });
 
     socket.on("server_error", (payload: { message: string }) => {
-      setError(payload.message);
+      const message = payload.message || "Server error";
+      // Don't hard-fail the game UI for transient WS errors; allow reconnect.
+      if (/realtime|connect/i.test(message)) {
+        setToast(message);
+        setSubmitting(false);
+        return;
+      }
+      setError(message);
       setSubmitting(false);
     });
 
@@ -294,6 +303,14 @@ function RealtimeGame({ code, playerId }: RealtimeGameProps) {
       socket.off("server_error");
     };
   }, [code, playerId, room?.activePlayerId, room?.players, router]);
+
+  useEffect(() => {
+    if (!toast) {
+      return;
+    }
+    const timer = window.setTimeout(() => setToast(null), 2200);
+    return () => window.clearTimeout(timer);
+  }, [toast]);
 
   useEffect(() => {
     if (!room?.turnDeadline || room.phase !== "game") {
@@ -391,6 +408,7 @@ function RealtimeGame({ code, playerId }: RealtimeGameProps) {
 
       <div className="content-wrap space-y-4">
         {timeoutNotice ? <p className="text-sm text-yellow-300">{timeoutNotice}</p> : null}
+        {toast ? <p className="text-sm text-cyan-300">{toast}</p> : null}
         <RoomCodeCard
           code={code}
           title="Live Room"

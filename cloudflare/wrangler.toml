@@ -1,0 +1,23 @@
+name = "story-clash-api"
+main = "src/worker.ts"
+compatibility_date = "2025-12-01"
+workers_dev = true
+
+[vars]
+# Comma-separated list for CORS allow-list.
+# Example:
+# ALLOWED_ORIGINS = "https://story-clash.vercel.app,http://localhost:3000"
+ALLOWED_ORIGINS = ""
+# Optional frontend app URL. When set, GET / redirects there.
+# Example:
+# FRONTEND_URL = "https://story-clash.vercel.app"
+FRONTEND_URL = ""
+
+[durable_objects]
+bindings = [
+  { name = "ROOM_DO", class_name = "RoomDurableObject" }
+]
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["RoomDurableObject"]

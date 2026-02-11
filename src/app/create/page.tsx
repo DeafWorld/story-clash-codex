@@ -2,6 +2,7 @@
 
 import { FormEvent, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { apiFetch } from "../../lib/api-client";
 import { initDemoRoom } from "../../lib/demo-session";
 
 export default function CreateRoomPage() {
@@ -23,7 +24,7 @@ export default function CreateRoomPage() {
     setLoading(true);
 
     try {
-      const response = await fetch("/api/rooms/create", {
+      const response = await apiFetch("/api/rooms/create", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name: name.trim().slice(0, 12) }),

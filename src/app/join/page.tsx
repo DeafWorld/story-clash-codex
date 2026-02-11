@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { FormEvent, useMemo, useState } from "react";
+import { apiFetch } from "../../lib/api-client";
 import { initDemoRoom } from "../../lib/demo-session";
 
 const CODE_REGEX = /^[A-HJ-NP-Z]{4}$/;
@@ -34,7 +35,7 @@ export default function JoinRoomPage() {
     setLoading(true);
 
     try {
-      const response = await fetch("/api/rooms/join", {
+      const response = await apiFetch("/api/rooms/join", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ code: realCode, name: name.trim().slice(0, 12) }),

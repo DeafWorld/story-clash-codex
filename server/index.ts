@@ -1,6 +1,8 @@
 import { createServer } from "node:http";
-import next from "next";
 import { Server } from "socket.io";
+import { loadEnvConfig } from "@next/env";
+import { logger } from "../src/lib/logger";
+import { trackEvent } from "../src/lib/analytics";
 import {
   getPlayerByCodeAndId,
   getRoomView,
@@ -20,7 +22,19 @@ const dev = process.env.NODE_ENV !== "production";
 const hostname = "0.0.0.0";
 const port = Number(process.env.PORT ?? 3000);
 
+// When using a custom Next server, Next won't always load `.env*` files automatically
+// the way `next dev` does. Ensure client/server env vars are available.
+loadEnvConfig(process.cwd(), dev);
+logger.info("server.env", {
+  realtimeTransport: process.env.NEXT_PUBLIC_REALTIME_TRANSPORT ?? null,
+  apiBaseUrl: process.env.NEXT_PUBLIC_API_BASE_URL ?? null,
+  wsBaseUrl: process.env.NEXT_PUBLIC_WS_BASE_URL ?? null,
+});
+
 async function bootstrap() {
+  // Import `next` after `.env*` loading so NEXT_PUBLIC_* values are available
+  // during Next's compilation step when using a custom server.
+  const { default: next } = await import("next");
   const app = next({ dev });
   const handle = app.getRequestHandler();
   await app.prepare();
@@ -136,7 +150,7 @@ async function bootstrap() {
     socket.on("join_room", (payload: { code: string; playerId: string }) => {
       try {
         const code = payload.code.toUpperCase();
-        console.log("join_room", code, payload.playerId);
+        logger.info("socket.join_room", { code, playerId: payload.playerId });
         socket.join(code);
         registerSocket(socket.id, code, payload.playerId);
         markPlayerConnection(code, payload.playerId, true);
@@ -149,6 +163,7 @@ async function bootstrap() {
         io.to(code).emit("room_updated", room);
         socket.emit("reconnect_state", room);
       } catch (error) {
+        logger.warn("socket.join_room.failed", { payload, error });
         socket.emit("server_error", { message: error instanceof Error ? error.message : "Join failed" });
       }
     });
@@ -156,26 +171,29 @@ async function bootstrap() {
     socket.on("leave_room", (payload: { code: string; playerId: string }) => {
       try {
         const code = payload.code.toUpperCase();
-        console.log("leave_room", code, payload.playerId);
+        logger.info("socket.leave_room", { code, playerId: payload.playerId });
         markPlayerConnection(code, payload.playerId, false);
         socket.leave(code);
         io.to(code).emit("player_left", { playerId: payload.playerId });
         io.to(code).emit("room_updated", getRoomView(code));
       } catch {
         // Ignore stale leave events.
+        logger.warn("socket.leave_room.stale", { payload });
       }
     });
 
     socket.on("start_game", (payload: { code: string; playerId: string }) => {
       try {
         const code = payload.code.toUpperCase();
-        console.log("start_game", code, payload.playerId);
+        logger.info("socket.start_game", { code, playerId: payload.playerId });
         clearTurnTimer(code);
         const started = startGame(code, payload.playerId);
+        trackEvent("game_started", { code });
         io.to(code).emit("game_started", { code });
         io.to(code).emit("minigame_start", { startAt: started.startAt });
         io.to(code).emit("room_updated", getRoomView(code));
       } catch (error) {
+        logger.warn("socket.start_game.failed", { payload, error });
         socket.emit("server_error", { message: error instanceof Error ? error.message : "Unable to start" });
       }
     });
@@ -185,13 +203,20 @@ async function bootstrap() {
       (payload: { code: string; playerId: string; round: number; score: number; accuracy: number }) => {
         try {
           const code = payload.code.toUpperCase();
-          console.log("minigame_score", code, payload.playerId, payload.round, payload.score);
+          logger.debug("socket.minigame_score", {
+            code,
+            playerId: payload.playerId,
+            round: payload.round,
+            score: payload.score,
+          });
           const result = recordMinigameScore(code, payload.playerId, payload.round, payload.score);
+          trackEvent("minigame_score_submitted", { code, round: payload.round });
           io.to(code).emit("room_updated", getRoomView(code));
           if (result.ready) {
             io.to(code).emit("minigame_complete", { players: result.leaderboard });
           }
         } catch (error) {
+          logger.warn("socket.minigame_score.failed", { payload, error });
           socket.emit("server_error", {
             message: error instanceof Error ? error.message : "Failed to submit minigame score",
           });
@@ -202,8 +227,9 @@ async function bootstrap() {
     socket.on("genre_selected", (payload: { code: string; playerId: string; genre: GenreId }) => {
       try {
         const code = payload.code.toUpperCase();
-        console.log("genre_selected", code, payload.playerId, payload.genre);
+        logger.info("socket.genre_selected", { code, playerId: payload.playerId, genre: payload.genre });
         const selection = selectGenre(code, payload.playerId, payload.genre);
+        trackEvent("genre_selected", { code, genre: payload.genre });
         io.to(code).emit("genre_selected", {
           genre: selection.genre,
           genreName: getRoomView(code).storyTitle,
@@ -211,6 +237,7 @@ async function bootstrap() {
         io.to(code).emit("scene_update", getRoomView(code));
         scheduleTurnTimer(code);
       } catch (error) {
+        logger.warn("socket.genre_selected.failed", { payload, error });
         socket.emit("server_error", { message: error instanceof Error ? error.message : "Genre selection failed" });
       }
     });
@@ -218,15 +245,22 @@ async function bootstrap() {
     socket.on("submit_choice", (payload: { code: string; playerId: string; choiceId?: string; freeText?: string }) => {
       try {
         const code = payload.code.toUpperCase();
-        console.log("submit_choice", code, payload.playerId, payload.choiceId ?? payload.freeText ?? "none");
+        logger.info("socket.submit_choice", {
+          code,
+          playerId: payload.playerId,
+          choiceId: payload.choiceId ?? null,
+          hasFreeText: Boolean(payload.freeText),
+        });
         const acquired = withRoomLock(code, () => {
           const result = submitChoice(code, payload.playerId, {
             choiceId: payload.choiceId,
             freeText: payload.freeText,
           });
+          trackEvent("choice_submitted", { code, ended: result.ended });
 
           if (result.ended) {
             clearTurnTimer(code);
+            trackEvent("game_completed", { code, ending: result.endingType });
             io.to(code).emit("game_end", result);
             io.to(code).emit("room_updated", getRoomView(code));
             return;
@@ -240,6 +274,7 @@ async function bootstrap() {
           socket.emit("server_error", { message: "Turn update in progress. Try again." });
         }
       } catch (error) {
+        logger.warn("socket.submit_choice.failed", { payload, error });
         socket.emit("server_error", { message: error instanceof Error ? error.message : "Choice failed" });
       }
     });
@@ -247,10 +282,11 @@ async function bootstrap() {
     socket.on("choice_timeout", (payload: { code: string; playerId: string }) => {
       try {
         const code = payload.code.toUpperCase();
-        console.log("choice_timeout", code, payload.playerId);
+        logger.info("socket.choice_timeout", { code, playerId: payload.playerId });
         const timedOutPlayerId = getRoomView(code).activePlayerId ?? "";
         const acquired = withRoomLock(code, () => {
           const result = timeoutChoice(code);
+          trackEvent("turn_timed_out", { code });
           io.to(code).emit("turn_timeout", {
             playerId: timedOutPlayerId,
             message: "Random choice made due to timeout.",
@@ -258,6 +294,7 @@ async function bootstrap() {
 
           if (result.ended) {
             clearTurnTimer(code);
+            trackEvent("game_completed", { code, ending: result.endingType });
             io.to(code).emit("game_end", result);
             io.to(code).emit("room_updated", getRoomView(code));
             return;
@@ -271,6 +308,7 @@ async function bootstrap() {
           socket.emit("server_error", { message: "Turn update in progress. Try again." });
         }
       } catch (error) {
+        logger.warn("socket.choice_timeout.failed", { payload, error });
         socket.emit("server_error", { message: error instanceof Error ? error.message : "Timeout handling failed" });
       }
     });
@@ -278,12 +316,14 @@ async function bootstrap() {
     socket.on("restart_session", (payload: { code: string; playerId: string }) => {
       try {
         const code = payload.code.toUpperCase();
-        console.log("restart_session", code, payload.playerId);
+        logger.info("socket.restart_session", { code, playerId: payload.playerId });
         clearTurnTimer(code);
         restartSession(code);
+        trackEvent("session_restarted", { code });
         io.to(code).emit("session_restarted");
         io.to(code).emit("room_updated", getRoomView(code));
       } catch (error) {
+        logger.warn("socket.restart_session.failed", { payload, error });
         socket.emit("server_error", { message: error instanceof Error ? error.message : "Restart failed" });
       }
     });
@@ -294,7 +334,7 @@ async function bootstrap() {
         return;
       }
 
-      console.log("disconnect", mapping.code, mapping.playerId);
+      logger.info("socket.disconnect", { code: mapping.code, playerId: mapping.playerId });
 
       try {
         markPlayerConnection(mapping.code, mapping.playerId, false);
@@ -309,8 +349,10 @@ async function bootstrap() {
               const player = getPlayerByCodeAndId(mapping.code, mapping.playerId);
               if (latest.phase === "game" && latest.activePlayerId === mapping.playerId && player && !player.connected) {
                 const result = timeoutChoice(mapping.code);
+                trackEvent("turn_timed_out", { code: mapping.code, source: "disconnect" });
                 if (result.ended) {
                   clearTurnTimer(mapping.code);
+                  trackEvent("game_completed", { code: mapping.code, ending: result.endingType });
                   io.to(mapping.code).emit("game_end", result);
                 } else {
                   io.to(mapping.code).emit("scene_update", getRoomView(mapping.code));
@@ -319,18 +361,27 @@ async function bootstrap() {
               }
             } catch {
               // Ignore stale room state after disconnect timeout.
+              logger.warn("socket.disconnect.timeout_cleanup_failed", { mapping });
             }
           }, 10_000);
         }
       } catch {
         // Ignore stale rooms after disconnect.
+        logger.warn("socket.disconnect.stale_room", { mapping });
       }
     });
   });
 
   httpServer.listen(port, hostname, () => {
-    console.log(`Story Clash server running on http://${hostname}:${port}`);
+    logger.info("server.started", {
+      host: hostname,
+      port,
+      nodeEnv: process.env.NODE_ENV ?? "development",
+    });
   });
 }
 
-void bootstrap();
+bootstrap().catch((error) => {
+  logger.error("server.bootstrap.failed", { error });
+  process.exit(1);
+});

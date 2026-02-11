@@ -175,6 +175,7 @@ function RealtimeMinigame({ code, playerId }: RealtimeProps) {
   const [leaderboard, setLeaderboard] = useState<Player[]>([]);
   const [genreReveal, setGenreReveal] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [toast, setToast] = useState<string | null>(null);
   const [tapFlash, setTapFlash] = useState(false);
 
   const submittedRef = useRef(false);
@@ -218,7 +219,13 @@ function RealtimeMinigame({ code, playerId }: RealtimeProps) {
     });
 
     socket.on("server_error", (payload: { message: string }) => {
-      setError(payload.message);
+      const message = payload.message || "Server error";
+      // Don't hard-fail the minigame for transient WS errors; allow reconnect.
+      if (/realtime|connect/i.test(message)) {
+        setToast(message);
+        return;
+      }
+      setError(message);
     });
 
     return () => {
@@ -229,6 +236,14 @@ function RealtimeMinigame({ code, playerId }: RealtimeProps) {
       socket.off("server_error");
     };
   }, [code, playerId, router]);
+
+  useEffect(() => {
+    if (!toast) {
+      return;
+    }
+    const timer = window.setTimeout(() => setToast(null), 2200);
+    return () => window.clearTimeout(timer);
+  }, [toast]);
 
   useEffect(() => {
     if (phase !== "countdown") {
@@ -383,6 +398,7 @@ function RealtimeMinigame({ code, playerId }: RealtimeProps) {
       <div className="suspense-wash" aria-hidden />
       <div className="content-wrap flex min-h-dvh flex-col items-center justify-center gap-7">
         <h1 className="text-3xl font-bold">Reflex Roulette</h1>
+        {toast ? <p className="text-sm text-cyan-300">{toast}</p> : null}
         {phase === "playing" ? (
           <div
             className={clsx(

@@ -1,0 +1,13 @@
+services:
+  app:
+    image: node:20-alpine
+    working_dir: /workspace
+    command: sh -c "npm ci && npm run dev"
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./:/workspace
+    env_file:
+      - .env
+    environment:
+      - PORT=3000

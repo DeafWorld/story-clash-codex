@@ -52,6 +52,12 @@ export default function HomePage() {
             <Link href="/join" className="btn btn-secondary w-full py-4 text-lg font-semibold">
               Join Room
             </Link>
+            <Link
+              href="/arcade.html"
+              className="btn w-full border-cyan-300/70 bg-cyan-500/10 py-3 text-base font-semibold text-cyan-100 hover:bg-cyan-500/20"
+            >
+              Open Signal Sprint (Canvas Arcade)
+            </Link>
           </div>
           <div className="flex items-center justify-center gap-4 text-sm">
             <button type="button" className="text-cyan-300 underline" onClick={reopenTutorial}>

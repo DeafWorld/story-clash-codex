@@ -1,13 +1,30 @@
 import { NextResponse } from "next/server";
+import { z } from "zod";
+import { logger } from "@/lib/logger";
 import { getRoomView } from "../../../../lib/store";
 
+const paramsSchema = z.object({
+  code: z
+    .string()
+    .trim()
+    .min(4)
+    .max(8)
+    .regex(/^[A-Za-z0-9]+$/),
+});
+
 export async function GET(_: Request, context: { params: Promise<{ code: string }> }) {
+  const parsed = paramsSchema.safeParse(await context.params);
+  if (!parsed.success) {
+    return NextResponse.json({ error: "Invalid room code" }, { status: 400 });
+  }
+
+  const code = parsed.data.code.toUpperCase();
   try {
-    const { code } = await context.params;
-    const room = getRoomView(code.toUpperCase());
+    const room = getRoomView(code);
     return NextResponse.json(room);
   } catch (error) {
     const message = error instanceof Error ? error.message : "Room not found";
+    logger.warn("api.rooms.get.failed", { code, error });
     return NextResponse.json({ error: message }, { status: 404 });
   }
 }

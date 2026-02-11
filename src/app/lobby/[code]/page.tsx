@@ -4,6 +4,7 @@ import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { getSocketClient } from "../../../lib/socket-client";
+import { apiFetch } from "../../../lib/api-client";
 import { getDemoSession, initDemoRoom } from "../../../lib/demo-session";
 import { soundManager } from "../../../lib/soundManager";
 import RoomCodeCard from "../../../components/room-code-card";
@@ -58,7 +59,7 @@ export default function LobbyPage() {
 
     async function loadRoom() {
       try {
-        const response = await fetch(`/api/rooms/${code}`);
+        const response = await apiFetch(`/api/rooms/${code}`);
         const data = (await response.json()) as RoomView | { error: string };
         if (!response.ok || "error" in data) {
           throw new Error("error" in data ? data.error : "Room not found");
@@ -101,7 +102,23 @@ export default function LobbyPage() {
     };
 
     const onError = (payload: { message: string }) => {
-      setError(payload.message);
+      const message = payload.message || "Server error";
+      // Treat realtime connectivity issues as non-fatal so the UI can recover via auto-reconnect.
+      if (/realtime|connect/i.test(message)) {
+        setToast(message);
+        setStarting(false);
+        // Best-effort snapshot refresh for cases where realtime reconnect takes a moment.
+        void apiFetch(`/api/rooms/${code}`)
+          .then(async (response) => (response.ok ? ((await response.json()) as RoomView) : null))
+          .then((nextRoom) => {
+            if (nextRoom) {
+              setRoom(nextRoom);
+            }
+          })
+          .catch(() => {});
+        return;
+      }
+      setError(message);
       setStarting(false);
     };
 

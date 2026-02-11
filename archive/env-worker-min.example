@@ -1,0 +1,16 @@
+# Optional socket URL override. Leave empty to use same-origin socket endpoint.
+NEXT_PUBLIC_SOCKET_URL=
+
+# Realtime transport mode:
+# - socketio: use existing Socket.io server (local/dev fallback)
+# - ws: use Cloudflare Worker native WebSocket endpoint
+NEXT_PUBLIC_REALTIME_TRANSPORT=socketio
+
+# Optional Cloudflare Worker HTTP API base URL (e.g. https://story-clash-api.workers.dev)
+NEXT_PUBLIC_API_BASE_URL=
+
+# Optional Cloudflare Worker WS base URL (e.g. wss://story-clash-api.workers.dev)
+NEXT_PUBLIC_WS_BASE_URL=
+
+# Optional production port for custom server
+PORT=3000
