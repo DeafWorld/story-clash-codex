@@ -5,6 +5,7 @@ export type AnalyticsEventName =
   | "room_joined"
   | "game_started"
   | "minigame_score_submitted"
+  | "minigame_spin_resolved"
   | "genre_selected"
   | "choice_submitted"
   | "turn_timed_out"

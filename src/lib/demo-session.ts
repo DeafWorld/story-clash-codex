@@ -3,6 +3,11 @@ import alienSource from "../data/stories/alien.json";
 import hauntedSource from "../data/stories/haunted.json";
 import { generateNarrationLine } from "./narrator";
 import {
+  applyEvolutionStep,
+  createInitialWorldState,
+  ensurePlayerProfiles,
+} from "./evolution-engine";
+import {
   applyGenrePowerShift,
   computeChaosLevel,
   createInitialGenrePower,
@@ -15,12 +20,16 @@ import {
   getStoryStartNode,
 } from "./story-utils";
 import type {
+  Choice,
   GenreId,
   GenrePower,
+  NarrativeThread,
   NarrationLine,
+  PlayerProfile,
   Player,
   RiftEventRecord,
   StoryTree,
+  WorldState,
 } from "../types/game";
 
 export type DemoPlayer = Player;
@@ -55,6 +64,10 @@ export type DemoSessionState = {
   activeRiftEvent: RiftEventRecord | null;
   latestNarration: NarrationLine | null;
   narrationLog: NarrationLine[];
+  worldState: WorldState;
+  playerProfiles: Record<string, PlayerProfile>;
+  narrativeThreads: NarrativeThread[];
+  activeThreadId: string | null;
 };
 
 const storyTrees: Record<GenreId, StoryTree> = {
@@ -89,6 +102,10 @@ function createSession(): DemoSessionState {
     activeRiftEvent: null,
     latestNarration: null,
     narrationLog: [],
+    worldState: createInitialWorldState(),
+    playerProfiles: ensurePlayerProfiles(DEMO_PLAYERS, {}),
+    narrativeThreads: [],
+    activeThreadId: null,
   };
 }
 
@@ -188,6 +205,10 @@ export function setDemoMinigameOrder(order: string[], genre: GenreId = "zombie")
   });
   session.riftHistory = [];
   session.activeRiftEvent = null;
+  session.worldState = createInitialWorldState();
+  session.playerProfiles = ensurePlayerProfiles(session.players, session.playerProfiles);
+  session.narrativeThreads = [];
+  session.activeThreadId = null;
   session.status = "story";
   session.currentPlayerId = order[0] ?? "demo-host";
   appendNarration("scene_enter", { playerId: session.currentPlayerId, sceneId: session.currentNodeId });
@@ -200,6 +221,13 @@ export function advanceDemoStoryChoice(choiceId: string) {
     return session;
   }
   const sceneChoices = scene.choices;
+  const choicesForEvolution: Choice[] = sceneChoices.map((entry) => ({
+    id: entry.id,
+    label: entry.label,
+    text: entry.label,
+    nextId: entry.nextId,
+    next: entry.nextId,
+  }));
 
   let nextNodeId = getNextNodeIdFromChoice(scene, choiceId);
   if (!nextNodeId) {
@@ -246,9 +274,39 @@ export function advanceDemoStoryChoice(choiceId: string) {
     choiceLabel: choice.label,
   });
 
+  const nextScene = getNodeById(storyTree, nextNodeId);
+  const evolution = applyEvolutionStep({
+    roomCode: session.roomCode,
+    players: session.players,
+    worldState: session.worldState,
+    playerProfiles: session.playerProfiles,
+    narrativeThreads: session.narrativeThreads,
+    actorPlayerId: session.currentPlayerId,
+    genre: session.storyId,
+    scene: {
+      id: scene.id,
+      text: scene.text,
+      tensionLevel: scene.tensionLevel,
+      choices: choicesForEvolution,
+      ending: scene.ending,
+      endingType: scene.endingType,
+    },
+    choiceId: choice.id,
+    choiceLabel: choice.label,
+    choices: choicesForEvolution,
+    tensionLevel: scene.tensionLevel,
+    chaosLevel: session.chaosLevel,
+    historyLength: session.history.length,
+    endingType: nextScene?.ending ? nextScene.endingType ?? "doom" : null,
+  });
+  session.worldState = evolution.worldState;
+  session.playerProfiles = evolution.playerProfiles;
+  session.narrativeThreads = evolution.narrativeThreads;
+  session.activeThreadId = evolution.activeThreadId;
+  session.chaosLevel = evolution.chaosLevel;
+
   session.currentNodeId = nextNodeId;
   markStoryOrRecap(nextNodeId);
-  const nextScene = getNodeById(storyTree, nextNodeId);
   if (nextScene?.ending) {
     appendNarration("ending", { sceneId: nextScene.id, playerId: session.currentPlayerId });
   }

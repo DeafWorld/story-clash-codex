@@ -5,6 +5,13 @@ export type NarrationTone = "calm" | "uneasy" | "urgent" | "desperate" | "hopefu
 export type NarrationTrigger = "scene_enter" | "choice_submitted" | "turn_timeout" | "ending";
 export type RiftEventType = "genre_surge" | "scene_twist";
 
+export type MinigameOutcome = {
+  winningGenre: GenreId;
+  contenders: string[];
+  winnerId: string;
+  tieBreak: boolean;
+};
+
 export type NarrationLine = {
   id: string;
   text: string;

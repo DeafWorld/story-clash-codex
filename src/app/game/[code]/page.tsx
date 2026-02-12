@@ -10,6 +10,7 @@ import Typewriter from "../../../components/typewriter";
 import RoomCodeCard from "../../../components/room-code-card";
 import NarratorBanner from "../../../components/narrator-banner";
 import RiftStatusCard from "../../../components/rift-status-card";
+import WorldEventTimeline from "../../../components/world-event-timeline";
 import {
   advanceDemoStoryChoice,
   getDemoSession,
@@ -55,6 +56,7 @@ function DemoGame({ code, playerId }: DemoGameProps) {
   const tensionHigh = tensionLevel >= 4;
   const tensionMedium = tensionLevel === 3;
   const narration = session.latestNarration ?? null;
+  const worldEvents = session.worldState.timeline ?? [];
 
   function choose(choiceId: string) {
     advanceDemoStoryChoice(choiceId);
@@ -159,6 +161,7 @@ function DemoGame({ code, playerId }: DemoGameProps) {
           </div>
 
           <p className="mt-4 text-xs text-zinc-400">Step {session.history.length + 1} - branching demo story</p>
+          <WorldEventTimeline events={worldEvents} compact />
         </aside>
       </div>
       </div>
@@ -182,6 +185,7 @@ function RealtimeGame({ code, playerId }: RealtimeGameProps) {
   const [timeoutNotice, setTimeoutNotice] = useState<string | null>(null);
   const [narration, setNarration] = useState<NarrationLine | null>(null);
   const lastNarrationIdRef = useRef<string | null>(null);
+  const roomRef = useRef<RoomView | null>(null);
 
   const activePlayer = useMemo(
     () => room?.players.find((player) => player.id === room.activePlayerId) ?? null,
@@ -195,6 +199,11 @@ function RealtimeGame({ code, playerId }: RealtimeGameProps) {
   const seconds = Math.max(0, Math.ceil(remainingMs / 1000));
   const timerColor = seconds > 15 ? "#39ff14" : seconds > 10 ? "#ffd166" : "#ff3b3b";
   const tensionHigh = seconds <= 10;
+  const worldEvents = room?.worldState?.timeline ?? [];
+
+  useEffect(() => {
+    roomRef.current = room;
+  }, [room]);
 
   useEffect(() => {
     let mounted = true;
@@ -228,55 +237,55 @@ function RealtimeGame({ code, playerId }: RealtimeGameProps) {
     const socket = getSocketClient();
     socket.emit("join_room", { code, playerId });
 
-    socket.on("scene_update", (payload: RoomView) => {
+    const onSceneUpdate = (payload: RoomView) => {
       setRoom(payload);
       setNarration(payload.latestNarration ?? null);
       setSubmitting(false);
       if (payload.turnDeadline) {
         setRemainingMs(Math.max(0, payload.turnDeadline - Date.now()));
       }
-    });
+    };
 
-    socket.on("room_updated", (payload: RoomView) => {
+    const onRoomUpdated = (payload: RoomView) => {
       setRoom(payload);
       setNarration(payload.latestNarration ?? null);
       if (payload.turnDeadline) {
         setRemainingMs(Math.max(0, payload.turnDeadline - Date.now()));
       }
-    });
+    };
 
-    socket.on("reconnect_state", (payload: RoomView) => {
+    const onReconnectState = (payload: RoomView) => {
       setRoom(payload);
       setNarration(payload.latestNarration ?? null);
       if (payload.turnDeadline) {
         setRemainingMs(Math.max(0, payload.turnDeadline - Date.now()));
       }
-    });
+    };
 
-    socket.on("narrator_update", (payload: NarratorUpdatePayload) => {
+    const onNarratorUpdate = (payload: NarratorUpdatePayload) => {
       if (!payload?.line) {
         return;
       }
       setNarration(payload.line);
-    });
+    };
 
-    socket.on("turn_timer", (payload: { playerId: string; remainingMs: number }) => {
-      if (payload.playerId === room?.activePlayerId) {
+    const onTurnTimer = (payload: { playerId: string; remainingMs: number }) => {
+      if (payload.playerId === roomRef.current?.activePlayerId) {
         setRemainingMs(payload.remainingMs);
       }
-    });
+    };
 
-    socket.on("turn_timeout", (payload: { playerId: string }) => {
-      const player = room?.players.find((entry) => entry.id === payload.playerId);
+    const onTurnTimeout = (payload: { playerId: string }) => {
+      const player = roomRef.current?.players.find((entry) => entry.id === payload.playerId);
       setTimeoutNotice(`${player?.name ?? "A player"} took too long. Random choice made.`);
       window.setTimeout(() => setTimeoutNotice(null), 2200);
-    });
+    };
 
-    socket.on("game_end", () => {
+    const onGameEnd = () => {
       router.push(`/recap/${code}?player=${playerId}`);
-    });
+    };
 
-    socket.on("server_error", (payload: { message: string }) => {
+    const onServerError = (payload: { message: string }) => {
       const message = payload.message || "Server error";
       // Don't hard-fail the game UI for transient WS errors; allow reconnect.
       if (/realtime|connect/i.test(message)) {
@@ -284,21 +293,43 @@ function RealtimeGame({ code, playerId }: RealtimeGameProps) {
         setSubmitting(false);
         return;
       }
+      if (/not your turn|turn update|invalid player session/i.test(message)) {
+        setToast(message);
+        setSubmitting(false);
+        void apiFetch(`/api/game/${code}`)
+          .then(async (response) => (response.ok ? ((await response.json()) as RoomView) : null))
+          .then((snapshot) => {
+            if (snapshot) {
+              setRoom(snapshot);
+            }
+          })
+          .catch(() => {});
+        return;
+      }
       setError(message);
       setSubmitting(false);
-    });
+    };
+
+    socket.on("scene_update", onSceneUpdate);
+    socket.on("room_updated", onRoomUpdated);
+    socket.on("reconnect_state", onReconnectState);
+    socket.on("narrator_update", onNarratorUpdate);
+    socket.on("turn_timer", onTurnTimer);
+    socket.on("turn_timeout", onTurnTimeout);
+    socket.on("game_end", onGameEnd);
+    socket.on("server_error", onServerError);
 
     return () => {
-      socket.off("scene_update");
-      socket.off("room_updated");
-      socket.off("reconnect_state");
-      socket.off("turn_timer");
-      socket.off("turn_timeout");
-      socket.off("game_end");
-      socket.off("narrator_update");
-      socket.off("server_error");
+      socket.off("scene_update", onSceneUpdate);
+      socket.off("room_updated", onRoomUpdated);
+      socket.off("reconnect_state", onReconnectState);
+      socket.off("narrator_update", onNarratorUpdate);
+      socket.off("turn_timer", onTurnTimer);
+      socket.off("turn_timeout", onTurnTimeout);
+      socket.off("game_end", onGameEnd);
+      socket.off("server_error", onServerError);
     };
-  }, [code, playerId, room?.activePlayerId, room?.players, router]);
+  }, [code, playerId, router]);
 
   useEffect(() => {
     if (!toast) {
@@ -338,7 +369,6 @@ function RealtimeGame({ code, playerId }: RealtimeGameProps) {
       return;
     }
     setSubmitting(true);
-    // TODO(multiplayer): Route through authoritative turn validation service when enabled.
     getSocketClient().emit("submit_choice", { code, playerId, choiceId });
     navigator.vibrate?.(28);
   }
@@ -427,7 +457,6 @@ function RealtimeGame({ code, playerId }: RealtimeGameProps) {
         <section className="panel flex flex-col gap-5 p-5">
           <header className="flex flex-wrap items-center justify-between gap-3">
             <p className="text-sm uppercase tracking-[0.2em] text-zinc-400">{room.storyTitle}</p>
-            {/* TODO(multiplayer): Replace local gate with shared turn-state reconciliation across clients. */}
             <p className="rounded-full border border-white/20 px-3 py-1 text-sm">
               {isActivePlayer ? `Your Turn, ${activePlayer?.name ?? "Player"}` : `Waiting for ${activePlayer?.name ?? "Player"}`}
             </p>
@@ -489,6 +518,7 @@ function RealtimeGame({ code, playerId }: RealtimeGameProps) {
               );
             })}
           </div>
+          <WorldEventTimeline events={worldEvents} compact />
         </aside>
       </div>
       </div>

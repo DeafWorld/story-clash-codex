@@ -9,7 +9,7 @@ import { generateNarrationLine } from "../../../lib/narrator";
 import { setDemoMinigameOrder } from "../../../lib/demo-session";
 import NarratorBanner from "../../../components/narrator-banner";
 import SessionTopBar from "../../../components/session-top-bar";
-import type { GenreId, NarrationLine, Player } from "../../../types/game";
+import type { GenreId, MinigameOutcome, NarrationLine, Player } from "../../../types/game";
 import type { NarratorUpdatePayload } from "../../../types/realtime";
 
 type Phase =
@@ -71,24 +71,6 @@ function seededChoice<T>(items: T[], seed: string): T {
   return items[index] ?? items[0];
 }
 
-function orderWinnerFirst(players: Player[], winnerId: string): Player[] {
-  const sorted = [...players].sort((a, b) => (a.orderIndex ?? 0) - (b.orderIndex ?? 0));
-  const winner = sorted.find((player) => player.id === winnerId);
-  if (!winner) {
-    return sorted;
-  }
-  return [winner, ...sorted.filter((player) => player.id !== winnerId)];
-}
-
-function scriptedScore(rank: number, round: 2 | 3): number {
-  const roundTwo = [940, 760, 670, 610, 560, 520];
-  const roundThree = [360, 300, 260, 230, 205, 180];
-  if (round === 2) {
-    return roundTwo[rank] ?? Math.max(420, 540 - rank * 40);
-  }
-  return roundThree[rank] ?? Math.max(110, 180 - rank * 18);
-}
-
 function spinOutcome(players: Player[], picks: Record<string, GenreId>, seedKey: string): SpinOutcome {
   const genresWithContenders = GENRES.map((genre) => genre.id).filter((id) =>
     players.some((player) => picks[player.id] === id)
@@ -105,6 +87,24 @@ function spinOutcome(players: Player[], picks: Record<string, GenreId>, seedKey:
     contenders: contenderPool,
     winnerId,
     tieBreak: contenderPool.length > 1,
+  };
+}
+
+function fallbackOutcomeFromLeaderboard(players: Player[]): SpinOutcome | null {
+  const winner = players[0];
+  if (!winner) {
+    return null;
+  }
+  const winningGenre = decodePick(winner.rounds?.[0]) ?? "zombie";
+  const contenderIds = players
+    .filter((player) => decodePick(player.rounds?.[0]) === winningGenre)
+    .map((player) => player.id);
+  const contenders = contenderIds.length ? contenderIds : [winner.id];
+  return {
+    winningGenre,
+    contenders,
+    winnerId: winner.id,
+    tieBreak: contenders.length > 1,
   };
 }
 
@@ -445,9 +445,9 @@ function RealtimeMinigame({ code, playerId }: RealtimeProps) {
   const [genreReveal, setGenreReveal] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
+  const [spinRequested, setSpinRequested] = useState(false);
   const [narration, setNarration] = useState<NarrationLine | null>(null);
 
-  const spinSubmittedRef = useRef(false);
   const autoGenreRef = useRef(false);
   const outcomeRef = useRef<SpinOutcome | null>(null);
 
@@ -482,50 +482,15 @@ function RealtimeMinigame({ code, playerId }: RealtimeProps) {
     [code]
   );
 
-  const finalizeSpin = useCallback(
-    (resolved: SpinOutcome) => {
-      if (spinSubmittedRef.current) {
-        return;
-      }
-      spinSubmittedRef.current = true;
-
-      const socket = getSocketClient();
-      const ordered = orderWinnerFirst(players, resolved.winnerId);
-
-      ordered.forEach((player, rank) => {
-        socket.emit("minigame_score", {
-          code,
-          playerId: player.id,
-          round: 2,
-          score: scriptedScore(rank, 2),
-          accuracy: 100,
-        });
-      });
-
-      ordered.forEach((player, rank) => {
-        socket.emit("minigame_score", {
-          code,
-          playerId: player.id,
-          round: 3,
-          score: scriptedScore(rank, 3),
-          accuracy: 100,
-        });
-      });
-
-      setNarration(buildNarration(code, selfPlayer?.name ?? "Host", "choice_submitted", 5));
-    },
-    [code, players, selfPlayer?.name]
-  );
-
   useEffect(() => {
     const socket = getSocketClient();
     socket.emit("join_room", { code, playerId });
 
-    socket.on("room_updated", (room: { players: Player[] }) => {
+    const onRoomUpdated = (room: { players: Player[] }) => {
       setPlayers(room.players);
-    });
+    };
 
-    socket.on("minigame_start", (payload: { startAt: number }) => {
+    const onMinigameStart = (payload: { startAt: number }) => {
       setStartAt(payload.startAt);
       setNowMs(Date.now());
       setPhase("countdown");
@@ -533,75 +498,71 @@ function RealtimeMinigame({ code, playerId }: RealtimeProps) {
       outcomeRef.current = null;
       setLeaderboard([]);
       setGenreReveal(null);
-      spinSubmittedRef.current = false;
       autoGenreRef.current = false;
-    });
+      setSpinRequested(false);
+    };
 
-    socket.on("minigame_complete", (payload: { players: Player[] }) => {
+    const onMinigameComplete = (payload: { players: Player[]; outcome?: MinigameOutcome }) => {
       setLeaderboard(payload.players);
-      setPhase("results");
+      setSpinRequested(false);
 
-      const winner = payload.players[0];
-      if (!winner) {
+      const resolved: SpinOutcome | null = payload.outcome
+        ? {
+            winningGenre: payload.outcome.winningGenre,
+            contenders: payload.outcome.contenders,
+            winnerId: payload.outcome.winnerId,
+            tieBreak: payload.outcome.tieBreak,
+          }
+        : fallbackOutcomeFromLeaderboard(payload.players);
+      if (!resolved) {
+        setPhase("results");
         return;
       }
-      const winnerPick = decodePick(winner.rounds?.[0]) ?? "zombie";
-      const contenderIds = payload.players
-        .filter((player) => decodePick(player.rounds?.[0]) === winnerPick)
-        .map((player) => player.id);
-      const resolved: SpinOutcome = {
-        winningGenre: winnerPick,
-        contenders: contenderIds.length ? contenderIds : [winner.id],
-        winnerId: winner.id,
-        tieBreak: contenderIds.length > 1,
-      };
-      setOutcome((current) => current ?? resolved);
-      outcomeRef.current = outcomeRef.current ?? resolved;
+      setOutcome(resolved);
+      outcomeRef.current = resolved;
+      applyResolvedOutcome(resolved);
+    };
 
-      if (isHost && !autoGenreRef.current) {
-        autoGenreRef.current = true;
-        window.setTimeout(() => {
-          getSocketClient().emit("genre_selected", {
-            code,
-            playerId: resolved.winnerId,
-            genre: resolved.winningGenre,
-          });
-        }, 1300);
-      }
-    });
-
-    socket.on("genre_selected", (payload: { genreName: string }) => {
+    const onGenreSelected = (payload: { genreName: string }) => {
       setGenreReveal(payload.genreName);
       setPhase("revealed");
       window.setTimeout(() => {
         router.push(`/game/${code}?player=${playerId}`);
       }, 1800);
-    });
+    };
 
-    socket.on("narrator_update", (payload: NarratorUpdatePayload) => {
+    const onNarratorUpdate = (payload: NarratorUpdatePayload) => {
       if (payload?.line) {
         setNarration(payload.line);
       }
-    });
+    };
 
-    socket.on("server_error", (payload: { message: string }) => {
+    const onServerError = (payload: { message: string }) => {
       const message = payload.message || "Server error";
       if (/realtime|connect/i.test(message)) {
         setToast(message);
         return;
       }
+      setSpinRequested(false);
       setError(message);
-    });
+    };
+
+    socket.on("room_updated", onRoomUpdated);
+    socket.on("minigame_start", onMinigameStart);
+    socket.on("minigame_complete", onMinigameComplete);
+    socket.on("genre_selected", onGenreSelected);
+    socket.on("narrator_update", onNarratorUpdate);
+    socket.on("server_error", onServerError);
 
     return () => {
-      socket.off("room_updated");
-      socket.off("minigame_start");
-      socket.off("minigame_complete");
-      socket.off("genre_selected");
-      socket.off("narrator_update");
-      socket.off("server_error");
+      socket.off("room_updated", onRoomUpdated);
+      socket.off("minigame_start", onMinigameStart);
+      socket.off("minigame_complete", onMinigameComplete);
+      socket.off("genre_selected", onGenreSelected);
+      socket.off("narrator_update", onNarratorUpdate);
+      socket.off("server_error", onServerError);
     };
-  }, [code, isHost, playerId, router]);
+  }, [applyResolvedOutcome, code, playerId, router]);
 
   useEffect(() => {
     if (!selfPlayer) {
@@ -639,11 +600,34 @@ function RealtimeMinigame({ code, playerId }: RealtimeProps) {
       return;
     }
     const resolved = outcomeRef.current;
-    if (!resolved || !isHost) {
+    if (!resolved) {
       return;
     }
-    finalizeSpin(resolved);
-  }, [finalizeSpin, isHost, phase]);
+    setNarration(buildNarration(code, selfPlayer?.name ?? "Host", "choice_submitted", 5, resolved.winningGenre));
+    const timer = window.setTimeout(() => {
+      setPhase("results");
+    }, 380);
+    return () => window.clearTimeout(timer);
+  }, [code, phase, selfPlayer?.name]);
+
+  useEffect(() => {
+    if (phase !== "results" || !isHost || autoGenreRef.current) {
+      return;
+    }
+    const resolved = outcomeRef.current;
+    if (!resolved) {
+      return;
+    }
+    autoGenreRef.current = true;
+    const timer = window.setTimeout(() => {
+      getSocketClient().emit("genre_selected", {
+        code,
+        playerId,
+        genre: resolved.winningGenre,
+      });
+    }, 1300);
+    return () => window.clearTimeout(timer);
+  }, [code, isHost, phase, playerId]);
 
   function choosePie(genre: GenreId) {
     if (!selfPlayer || picks[selfPlayer.id]) {
@@ -663,8 +647,14 @@ function RealtimeMinigame({ code, playerId }: RealtimeProps) {
     if (!isHost || !allPicked || !selfPlayer) {
       return;
     }
-    const resolved = spinOutcome(players, picks, `${code}:${Date.now()}:${selfPlayer.id}`);
-    applyResolvedOutcome(resolved);
+    if (spinRequested) {
+      return;
+    }
+    setSpinRequested(true);
+    getSocketClient().emit("minigame_spin", {
+      code,
+      playerId,
+    });
   }
 
   const winner = outcome ? players.find((player) => player.id === outcome.winnerId) : null;
@@ -736,8 +726,19 @@ function RealtimeMinigame({ code, playerId }: RealtimeProps) {
         )}
 
         {phase === "picking" ? (
-          <button type="button" className="btn btn-primary w-full max-w-3xl py-4 text-lg" onClick={spinGenreWheel} disabled={!isHost || !allPicked}>
-            {isHost ? (allPicked ? "Spin Genre Wheel" : "Waiting for all picks") : "Host spins after all picks"}
+          <button
+            type="button"
+            className="btn btn-primary w-full max-w-3xl py-4 text-lg"
+            onClick={spinGenreWheel}
+            disabled={!isHost || !allPicked || spinRequested}
+          >
+            {isHost
+              ? spinRequested
+                ? "Resolving Wheel..."
+                : allPicked
+                  ? "Spin Genre Wheel"
+                  : "Waiting for all picks"
+              : "Host spins after all picks"}
           </button>
         ) : null}
 

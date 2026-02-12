@@ -7,12 +7,14 @@ import { loadEnvConfig } from "@next/env";
 import { logger } from "../src/lib/logger";
 import { trackEvent } from "../src/lib/analytics";
 import {
+  getSocketPlayer,
   getPlayerByCodeAndId,
   getRoomView,
   markPlayerConnection,
   recordMinigameScore,
   registerSocket,
   removeSocket,
+  resolveMinigameSpin,
   restartSession,
   selectGenre,
   startGame,
@@ -202,6 +204,20 @@ async function bootstrap() {
     return true;
   };
 
+  const assertSocketSession = (socketId: string, code: string, claimedPlayerId?: string): string => {
+    const mapping = getSocketPlayer(socketId);
+    if (!mapping) {
+      throw new Error("Join room first");
+    }
+    if (mapping.code !== code) {
+      throw new Error("Socket is not joined to this room");
+    }
+    if (claimedPlayerId && mapping.playerId !== claimedPlayerId) {
+      throw new Error("Invalid player session");
+    }
+    return mapping.playerId;
+  };
+
   const emitNarration = (code: string, line?: NarrationLine | null) => {
     if (!line) {
       return;
@@ -325,9 +341,10 @@ async function bootstrap() {
     socket.on("start_game", (payload: { code: string; playerId: string }) => {
       try {
         const code = payload.code.toUpperCase();
-        logger.info("socket.start_game", { code, playerId: payload.playerId });
+        const playerId = assertSocketSession(socket.id, code, payload.playerId);
+        logger.info("socket.start_game", { code, playerId });
         clearTurnTimer(code);
-        const started = startGame(code, payload.playerId);
+        const started = startGame(code, playerId);
         trackEvent("game_started", { code });
         io.to(code).emit("game_started", { code });
         io.to(code).emit("minigame_start", { startAt: started.startAt });
@@ -343,17 +360,18 @@ async function bootstrap() {
       (payload: { code: string; playerId: string; round: number; score: number; accuracy: number }) => {
         try {
           const code = payload.code.toUpperCase();
+          const playerId = assertSocketSession(socket.id, code, payload.playerId);
           logger.debug("socket.minigame_score", {
             code,
-            playerId: payload.playerId,
+            playerId,
             round: payload.round,
             score: payload.score,
           });
-          const result = recordMinigameScore(code, payload.playerId, payload.round, payload.score);
+          const result = recordMinigameScore(code, playerId, payload.round, payload.score);
           trackEvent("minigame_score_submitted", { code, round: payload.round });
           io.to(code).emit("room_updated", getRoomView(code));
           if (result.ready) {
-            io.to(code).emit("minigame_complete", { players: result.leaderboard });
+            logger.debug("socket.minigame_ready", { code });
           }
         } catch (error) {
           logger.warn("socket.minigame_score.failed", { payload, error });
@@ -364,11 +382,37 @@ async function bootstrap() {
       }
     );
 
+    socket.on("minigame_spin", (payload: { code: string; playerId?: string }) => {
+      try {
+        const code = payload.code.toUpperCase();
+        const playerId = assertSocketSession(socket.id, code, payload.playerId);
+        const acquired = withRoomLock(code, () => {
+          const result = resolveMinigameSpin(code, playerId);
+          trackEvent("minigame_spin_resolved", { code, winnerId: result.outcome.winnerId, genre: result.outcome.winningGenre });
+          io.to(code).emit("room_updated", getRoomView(code));
+          io.to(code).emit("minigame_complete", {
+            players: result.leaderboard,
+            outcome: result.outcome,
+          });
+        });
+
+        if (!acquired) {
+          socket.emit("server_error", { message: "Minigame resolution in progress. Try again." });
+        }
+      } catch (error) {
+        logger.warn("socket.minigame_spin.failed", { payload, error });
+        socket.emit("server_error", {
+          message: error instanceof Error ? error.message : "Failed to resolve minigame",
+        });
+      }
+    });
+
     socket.on("genre_selected", (payload: { code: string; playerId: string; genre: GenreId }) => {
       try {
         const code = payload.code.toUpperCase();
-        logger.info("socket.genre_selected", { code, playerId: payload.playerId, genre: payload.genre });
-        const selection = selectGenre(code, payload.playerId, payload.genre);
+        const playerId = assertSocketSession(socket.id, code, payload.playerId);
+        logger.info("socket.genre_selected", { code, playerId, genre: payload.genre });
+        const selection = selectGenre(code, playerId, payload.genre);
         trackEvent("genre_selected", { code, genre: payload.genre });
         io.to(code).emit("genre_selected", {
           genre: selection.genre,
@@ -386,13 +430,14 @@ async function bootstrap() {
     socket.on("submit_choice", (payload: { code: string; playerId: string; choiceId?: string }) => {
       try {
         const code = payload.code.toUpperCase();
+        const playerId = assertSocketSession(socket.id, code, payload.playerId);
         logger.info("socket.submit_choice", {
           code,
-          playerId: payload.playerId,
+          playerId,
           choiceId: payload.choiceId ?? null,
         });
         const acquired = withRoomLock(code, () => {
-          const result = submitChoice(code, payload.playerId, {
+          const result = submitChoice(code, playerId, {
             choiceId: payload.choiceId,
           });
           trackEvent("choice_submitted", { code, ended: result.ended });
@@ -423,7 +468,8 @@ async function bootstrap() {
     socket.on("choice_timeout", (payload: { code: string; playerId: string }) => {
       try {
         const code = payload.code.toUpperCase();
-        logger.info("socket.choice_timeout", { code, playerId: payload.playerId });
+        const playerId = assertSocketSession(socket.id, code, payload.playerId);
+        logger.info("socket.choice_timeout", { code, playerId });
         const timedOutPlayerId = getRoomView(code).activePlayerId ?? "";
         const acquired = withRoomLock(code, () => {
           const result = timeoutChoice(code);
@@ -459,7 +505,8 @@ async function bootstrap() {
     socket.on("restart_session", (payload: { code: string; playerId: string }) => {
       try {
         const code = payload.code.toUpperCase();
-        logger.info("socket.restart_session", { code, playerId: payload.playerId });
+        const playerId = assertSocketSession(socket.id, code, payload.playerId);
+        logger.info("socket.restart_session", { code, playerId });
         clearTurnTimer(code);
         restartSession(code);
         trackEvent("session_restarted", { code });

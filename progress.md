@@ -156,3 +156,47 @@ Validation notes:
 - Data validation script run:
   - confirmed no `freeChoiceTargetId`/`freeChoiceKeywords` remain in story JSON.
   - confirmed all endings remain reachable via explicit choices in all three stories.
+
+---
+
+- Implemented multiplayer authority hardening for minigame + turn flow:
+  - Minigame is now server-authoritative: clients can only submit their own round-1 pie pick; host triggers authoritative wheel resolution.
+  - Added `resolveMinigameSpin` in `/Users/deafgod/Desktop/Codex/src/lib/store.ts` and `minigame_spin` socket event handling in `/Users/deafgod/Desktop/Codex/server/index.ts`.
+  - Added equivalent authoritative logic in `/Users/deafgod/Desktop/Codex/cloudflare/src/room-do.ts` (including deterministic genre/winner resolution and server-side round 2/3 scoring).
+  - Added `MinigameOutcome` type in shared models:
+    - `/Users/deafgod/Desktop/Codex/src/types/game.ts`
+    - `/Users/deafgod/Desktop/Codex/cloudflare/src/types.ts`
+  - Added realtime client event contract for `minigame_spin` in `/Users/deafgod/Desktop/Codex/src/types/realtime.ts`.
+- Added socket session guardrails against forged player payloads:
+  - Node socket server now verifies socket-to-player mapping (`assertSocketSession`) before sensitive events.
+  - Durable Object websocket handler now rejects mismatched `payload.playerId` vs bound socket player id.
+- Switched to handler-specific socket cleanup (no broad event listener wipe):
+  - `/Users/deafgod/Desktop/Codex/src/app/minigame/[code]/page.tsx`
+  - `/Users/deafgod/Desktop/Codex/src/app/game/[code]/page.tsx`
+  - `/Users/deafgod/Desktop/Codex/src/app/recap/[code]/page.tsx`
+- Closed turn-authority TODO path in game UI:
+  - removed local TODO markers and added mismatch reconciliation (on turn/session errors, refresh authoritative `/api/game/:code` snapshot).
+- Added anti-cheat + reconnect tests:
+  - `/Users/deafgod/Desktop/Codex/tests/store-flow.test.ts` now verifies non-authoritative minigame submits are rejected and only host can resolve spin.
+  - `/Users/deafgod/Desktop/Codex/tests/e2e/worker-ws.spec.ts` now checks forged player submissions are rejected over Worker WS.
+  - `/Users/deafgod/Desktop/Codex/tests/e2e/live-multiplayer.spec.ts` now includes disconnect/reconnect active-turn recovery scenario.
+- Added analytics event `minigame_spin_resolved` in `/Users/deafgod/Desktop/Codex/src/lib/analytics.ts`.
+
+Validation note:
+- In this shell environment, full `npm run lint`, `vitest`, and `npm run build` intermittently hang (even with timeout wrappers). I validated code paths and type wiring manually, but full gates need rerun in a clean shell/session once process saturation clears.
+
+- Integrated NEW FILE #2 "living rift" visibility layer into active gameplay and recap:
+  - Added `/Users/deafgod/Desktop/Codex/src/components/world-event-timeline.tsx` to render `worldState.timeline` events with severity styling.
+  - Wired world timeline into game sidebars (`/Users/deafgod/Desktop/Codex/src/app/game/[code]/page.tsx`) for both demo and live rooms.
+  - Wired world timeline into recap (`/Users/deafgod/Desktop/Codex/src/app/recap/[code]/page.tsx`) for both demo and live sessions.
+- Extended demo engine to use deterministic evolution systems (not just static branching):
+  - `/Users/deafgod/Desktop/Codex/src/lib/demo-session.ts` now tracks `worldState`, `playerProfiles`, `narrativeThreads`, and `activeThreadId`.
+  - Demo choice advancement now calls `applyEvolutionStep(...)` so demo mode accumulates world crises, archetype shifts, and thread progression.
+  - Demo recap now includes Living Rift snapshot + Player Archetypes panels based on evolved state.
+- Environment note: `eslint`/`vitest`/`next build` commands still intermittently stall in this shell despite stale-process cleanup. Build was re-attempted and reached `next build` start, then stalled with no compile output.
+
+TODO:
+- Run validation from a fresh terminal session (outside this saturated exec pool):
+  - `npm run lint`
+  - `npx vitest run tests/store-flow.test.ts tests/evolution-engine.test.ts`
+  - `npm run build`

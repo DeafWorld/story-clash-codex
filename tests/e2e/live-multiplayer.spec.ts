@@ -10,6 +10,15 @@ function roomCodeFromLobbyUrl(url: string): string {
   return match[1];
 }
 
+function playerIdFromUrl(url: string): string {
+  const parsed = new URL(url);
+  const playerId = parsed.searchParams.get("player");
+  if (!playerId) {
+    throw new Error(`Missing player id in url: ${url}`);
+  }
+  return playerId;
+}
+
 async function waitForActiveTurn(pages: Page[]) {
   const deadline = Date.now() + 20_000;
   while (Date.now() < deadline) {
@@ -119,6 +128,71 @@ test.describe("Live Multiplayer Flow (Cloudflare Worker)", () => {
 
     // Timeline fades in after a short delay; ensure recap page is actually populated.
     await expect(host.getByRole("heading", { name: "How your story unfolded" })).toBeVisible({ timeout: 30_000 });
+
+    await hostContext.close();
+    await p2Context.close();
+    await p3Context.close();
+  });
+
+  test("recovers active turn after temporary disconnect", async ({ browser }) => {
+    test.skip(!RUN_LIVE_E2E, "Set RUN_LIVE_E2E=1 to run the full live multiplayer flow.");
+
+    const hostContext = await browser.newContext();
+    const p2Context = await browser.newContext();
+    const p3Context = await browser.newContext();
+
+    const host = await hostContext.newPage();
+    const p2 = await p2Context.newPage();
+    const p3 = await p3Context.newPage();
+
+    await host.goto("/create");
+    await host.getByLabel("Display Name").fill("Host");
+    await host.getByRole("button", { name: "Create Live Room" }).click();
+    await host.waitForURL(/\/lobby\/[A-Z0-9]{4}\?player=/);
+    const code = roomCodeFromLobbyUrl(host.url());
+    const hostPlayerId = playerIdFromUrl(host.url());
+
+    await p2.goto("/join");
+    await p2.getByLabel("Room code").fill(code);
+    await p2.getByLabel("Display name").fill("Player 2");
+    await p2.getByRole("button", { name: "Join Room" }).click();
+    await p2.waitForURL(new RegExp(`/lobby/${code}\\?player=`));
+
+    await p3.goto("/join");
+    await p3.getByLabel("Room code").fill(code);
+    await p3.getByLabel("Display name").fill("Player 3");
+    await p3.getByRole("button", { name: "Join Room" }).click();
+    await p3.waitForURL(new RegExp(`/lobby/${code}\\?player=`));
+
+    await expect(host.getByText("Player 2")).toBeVisible({ timeout: 20_000 });
+    await expect(host.getByText("Player 3")).toBeVisible({ timeout: 20_000 });
+
+    await host.getByRole("button", { name: "Start Game" }).click();
+    await host.waitForURL(new RegExp(`/minigame/${code}`));
+    await p2.waitForURL(new RegExp(`/minigame/${code}`));
+    await p3.waitForURL(new RegExp(`/minigame/${code}`));
+
+    await host.getByRole("button", { name: /Pick Zombie Outbreak/i }).click();
+    await p2.getByRole("button", { name: /Pick Alien Invasion/i }).click();
+    await p3.getByRole("button", { name: /Pick Haunted Manor/i }).click();
+    await host.getByRole("button", { name: /^Spin Genre Wheel$/ }).click();
+
+    await host.waitForURL(new RegExp(`/game/${code}`), { timeout: 45_000 });
+    await p2.waitForURL(new RegExp(`/game/${code}`), { timeout: 45_000 });
+    await p3.waitForURL(new RegExp(`/game/${code}`), { timeout: 45_000 });
+
+    const pages: Page[] = [host, p2, p3];
+    const active = await waitForActiveTurn(pages);
+    const activePlayerId = playerIdFromUrl(active.url());
+    const activeContext = active.context();
+
+    await active.close();
+    await host.waitForTimeout(800);
+
+    const reconnectPage = await activeContext.newPage();
+    await reconnectPage.goto(`/game/${code}?player=${activePlayerId}`);
+    await expect(reconnectPage.getByText(/Your turn,/i)).toBeVisible({ timeout: 15_000 });
+    await reconnectPage.getByLabel(/Choose /i).first().click();
 
     await hostContext.close();
     await p2Context.close();

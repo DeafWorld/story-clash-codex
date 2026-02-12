@@ -4,6 +4,12 @@ import { generateRoomCode, validateRoomCode } from "./room-code";
 import { getScene, getStoryTitle } from "./stories";
 import { generateNarrationLine } from "./narrator";
 import {
+  applyEvolutionStep,
+  createInitialPlayerProfile,
+  createInitialWorldState,
+  ensurePlayerProfiles,
+} from "./evolution-engine";
+import {
   computeChaosLevel,
   createInitialGenrePower,
   deriveChoiceGenreShift,
@@ -14,6 +20,7 @@ import type {
   Choice,
   EndingType,
   GenreId,
+  MinigameOutcome,
   MVP,
   NarrationLine,
   NarrationTrigger,
@@ -31,6 +38,21 @@ const MAX_NARRATION_LOG = 30;
 const MAX_RIFT_HISTORY = 40;
 
 const AVATARS = ["circle-cyan", "diamond-red", "hex-green", "triangle-blue", "square-gold", "ring-white"];
+const ROUND_TWO_SCORES = [940, 760, 670, 610, 560, 520];
+const ROUND_THREE_SCORES = [360, 300, 260, 230, 205, 180];
+const MINIGAME_GENRES: GenreId[] = ["zombie", "alien", "haunted"];
+const MINIGAME_PICK_SCORE: Record<GenreId, number> = {
+  zombie: 11,
+  alien: 22,
+  haunted: 33,
+};
+const PICK_SCORE_TO_GENRE: Record<number, GenreId> = Object.entries(MINIGAME_PICK_SCORE).reduce(
+  (acc, [genre, score]) => {
+    acc[score] = genre as GenreId;
+    return acc;
+  },
+  {} as Record<number, GenreId>
+);
 
 type SocketPlayer = {
   code: string;
@@ -56,6 +78,46 @@ globalThis.__STORY_CLASH_STATE__ = state;
 
 function now() {
   return Date.now();
+}
+
+function stableHash(input: string): number {
+  let hash = 2166136261;
+  for (let index = 0; index < input.length; index += 1) {
+    hash ^= input.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
+  }
+  return hash >>> 0;
+}
+
+function seededChoice<T>(items: T[], seed: string): T {
+  const index = stableHash(seed) % items.length;
+  return items[index] ?? items[0];
+}
+
+function decodeMinigamePick(score: number | undefined): GenreId | null {
+  if (!Number.isFinite(score)) {
+    return null;
+  }
+  const rounded = Math.round(score ?? 0);
+  return PICK_SCORE_TO_GENRE[rounded] ?? null;
+}
+
+function scriptedScore(rank: number, round: 2 | 3): number {
+  if (round === 2) {
+    return ROUND_TWO_SCORES[rank] ?? Math.max(420, 540 - rank * 40);
+  }
+  return ROUND_THREE_SCORES[rank] ?? Math.max(110, 180 - rank * 18);
+}
+
+function playersByJoinOrder(room: RoomState): Player[] {
+  return [...room.players].sort((a, b) => {
+    const orderA = a.orderIndex ?? a.turnOrder ?? 0;
+    const orderB = b.orderIndex ?? b.turnOrder ?? 0;
+    if (orderA !== orderB) {
+      return orderA - orderB;
+    }
+    return a.id.localeCompare(b.id);
+  });
 }
 
 function notFound(message: string): never {
@@ -91,6 +153,10 @@ function ensureFreshRoom(code: string): RoomState {
   room.activeRiftEvent = room.activeRiftEvent ?? null;
   room.latestNarration = room.latestNarration ?? null;
   room.narrationLog = (room.narrationLog ?? []).slice(-MAX_NARRATION_LOG);
+  room.worldState = room.worldState ?? createInitialWorldState();
+  room.playerProfiles = ensurePlayerProfiles(room.players, room.playerProfiles ?? {});
+  room.narrativeThreads = room.narrativeThreads ?? [];
+  room.activeThreadId = room.activeThreadId ?? null;
   room.players = room.players.map((player, index) => ({
     ...player,
     orderIndex: player.orderIndex ?? player.turnOrder ?? index,
@@ -288,6 +354,12 @@ export function createRoom(hostName: string) {
     activeRiftEvent: null,
     latestNarration: null,
     narrationLog: [],
+    worldState: createInitialWorldState(),
+    playerProfiles: {
+      [host.id]: createInitialPlayerProfile(host.id),
+    },
+    narrativeThreads: [],
+    activeThreadId: null,
     turnDeadline: null,
     endingScene: null,
     endingType: null,
@@ -321,6 +393,7 @@ export function joinRoom(code: string, playerName: string) {
   room.players.push(player);
   room.turnOrder = room.players.map((entry) => entry.id);
   room.currentPlayerId = activePlayerId(room);
+  room.playerProfiles = ensurePlayerProfiles(room.players, room.playerProfiles ?? {});
   room.expiresAt = now() + ROOM_TTL_MS;
 
   return {
@@ -366,7 +439,9 @@ export function startGame(code: string, hostPlayerId: string) {
     player.score = 0;
     player.rounds = [];
   });
+  room.playerProfiles = ensurePlayerProfiles(room.players, room.playerProfiles ?? {});
   room.currentPlayerId = activePlayerId(room);
+  room.turnDeadline = null;
 
   return {
     startAt: now() + 1200,
@@ -384,39 +459,93 @@ export function recordMinigameScore(code: string, playerId: string, round: numbe
     throw new Error("Player not found");
   }
 
-  if (round < 1 || round > 3) {
-    throw new Error("Invalid round");
+  if (round !== 1) {
+    throw new Error("Round is server-controlled");
+  }
+
+  const rounded = Math.round(score);
+  if (!decodeMinigamePick(rounded)) {
+    throw new Error("Invalid pick");
   }
 
   const rounds = player.rounds ?? [];
-  rounds[round - 1] = Math.max(0, Math.round(score));
-  player.rounds = rounds;
-  player.score = rounds.reduce((sum, value) => sum + value, 0);
-
-  const completed = room.players.every(
-    (entry) => (entry.rounds?.length ?? 0) >= 3 && (entry.rounds ?? []).every((value) => Number.isFinite(value))
-  );
-
-  if (!completed) {
-    return {
-      ready: false,
-      leaderboard: [],
-    };
+  if (Number.isFinite(rounds[0])) {
+    throw new Error("Pick already locked");
   }
 
-  const leaderboard = [...room.players].sort((a, b) => b.score - a.score);
-  room.turnOrder = leaderboard.map((entry) => entry.id);
-  room.players = room.players.map((entry) => ({
-    ...entry,
-    orderIndex: room.turnOrder.indexOf(entry.id),
-    turnOrder: room.turnOrder.indexOf(entry.id),
-  }));
-  room.activePlayerIndex = 0;
-  room.currentPlayerId = activePlayerId(room);
+  rounds[0] = rounded;
+  player.rounds = rounds;
+  player.score = Math.max(0, rounded);
+
+  const ready = room.players.every((entry) => decodeMinigamePick(entry.rounds?.[0]) !== null);
+  room.expiresAt = now() + ROOM_TTL_MS;
 
   return {
-    ready: true,
-    leaderboard,
+    ready,
+    pick: decodeMinigamePick(rounded),
+  };
+}
+
+export function resolveMinigameSpin(code: string, hostPlayerId: string): { leaderboard: Player[]; outcome: MinigameOutcome } {
+  const room = ensureFreshRoom(code);
+  if (room.phase !== "minigame") {
+    throw new Error("Minigame not active");
+  }
+
+  const host = room.players.find((player) => player.isHost);
+  if (!host || host.id !== hostPlayerId) {
+    throw new Error("Only host can spin the wheel");
+  }
+
+  const orderedPlayers = playersByJoinOrder(room);
+  const missingPick = orderedPlayers.some((player) => decodeMinigamePick(player.rounds?.[0]) === null);
+  if (missingPick) {
+    throw new Error("Waiting for all picks");
+  }
+
+  const genrePool = MINIGAME_GENRES.filter((genre) =>
+    orderedPlayers.some((player) => decodeMinigamePick(player.rounds?.[0]) === genre)
+  );
+  const availableGenres = genrePool.length ? genrePool : MINIGAME_GENRES;
+  const seedBase = `${room.code}:${orderedPlayers.map((player) => `${player.id}:${Math.round(player.rounds?.[0] ?? 0)}`).join("|")}`;
+  const winningGenre = seededChoice(availableGenres, `${seedBase}:genre`);
+
+  const contendersByPick = orderedPlayers.filter((player) => decodeMinigamePick(player.rounds?.[0]) === winningGenre);
+  const contenders = contendersByPick.length ? contendersByPick : orderedPlayers;
+  const winner = seededChoice(contenders, `${seedBase}:winner`);
+
+  const leaderboard = [winner, ...orderedPlayers.filter((player) => player.id !== winner.id)];
+  leaderboard.forEach((player, rank) => {
+    const firstRound = Math.round(player.rounds?.[0] ?? MINIGAME_PICK_SCORE.zombie);
+    const rounds = [firstRound, scriptedScore(rank, 2), scriptedScore(rank, 3)];
+    player.rounds = rounds;
+    player.score = rounds.reduce((sum, value) => sum + value, 0);
+  });
+
+  room.turnOrder = leaderboard.map((player) => player.id);
+  room.players = room.players.map((entry) => {
+    const scored = leaderboard.find((player) => player.id === entry.id) ?? entry;
+    const rank = room.turnOrder.indexOf(entry.id);
+    return {
+      ...entry,
+      score: scored.score,
+      rounds: scored.rounds ?? [],
+      orderIndex: rank,
+      turnOrder: rank,
+    };
+  });
+  room.activePlayerIndex = 0;
+  room.currentPlayerId = activePlayerId(room);
+  room.expiresAt = now() + ROOM_TTL_MS;
+
+  return {
+    leaderboard: room.turnOrder.map((id) => room.players.find((player) => player.id === id) ?? notFound("Player not found")),
+    outcome: {
+      winningGenre,
+      contenders: contenders.map((player) => player.id),
+      winnerId: winner.id,
+      tieBreak: contenders.length > 1,
+    },
   };
 }
 
@@ -445,6 +574,17 @@ export function selectGenre(code: string, playerId: string, genre: GenreId) {
   room.endingType = null;
   room.activePlayerIndex = 0;
   room.turnDeadline = now() + TURN_DURATION_MS;
+  room.playerProfiles = ensurePlayerProfiles(room.players, room.playerProfiles ?? {});
+  room.worldState.meta.communityChoiceInfluence = Math.min(100, room.worldState.meta.communityChoiceInfluence + 2);
+  room.narrativeThreads = room.narrativeThreads.map((thread) => ({
+    ...thread,
+    status: thread.status === "dormant" ? "active" : thread.status,
+    metadata: {
+      ...thread.metadata,
+      scenesSinceMention: thread.metadata.scenesSinceMention + 1,
+    },
+  }));
+  room.activeThreadId = room.narrativeThreads.find((thread) => thread.status === "active")?.id ?? null;
 
   const scene = getCurrentScene(room);
   if (!scene) {
@@ -569,7 +709,7 @@ export function submitChoice(
     room.riftHistory = [...room.riftHistory, rift.event].slice(-MAX_RIFT_HISTORY);
   }
 
-  room.history.push({
+  const historyEntry = {
     sceneId: scene.id,
     sceneText: scene.text,
     playerId,
@@ -581,7 +721,8 @@ export function submitChoice(
     nextNodeId: nextSceneId,
     tensionLevel: scene.tensionLevel ?? 1,
     timestamp: now(),
-  });
+  };
+  room.history.push(historyEntry);
 
   const narration = appendNarration(room, payload.timeout ? "turn_timeout" : "choice_submitted", {
     sceneId: scene.id,
@@ -599,6 +740,30 @@ export function submitChoice(
   room.currentNodeId = nextScene.id;
   room.tensionLevel = nextScene.tensionLevel ?? 1;
   room.expiresAt = now() + ROOM_TTL_MS;
+
+  const evolution = applyEvolutionStep({
+    roomCode: room.code,
+    players: room.players,
+    worldState: room.worldState,
+    playerProfiles: room.playerProfiles,
+    narrativeThreads: room.narrativeThreads,
+    actorPlayerId: playerId,
+    genre,
+    scene,
+    choiceId: selectedChoiceId,
+    choiceLabel: resolvedChoiceText,
+    choices: sceneChoices,
+    tensionLevel: scene.tensionLevel ?? 1,
+    chaosLevel: room.chaosLevel,
+    timeout: payload.timeout,
+    historyLength: room.history.length,
+    endingType: nextScene.ending ? ((nextScene.endingType ?? "doom") as EndingType) : null,
+  });
+  room.worldState = evolution.worldState;
+  room.playerProfiles = evolution.playerProfiles;
+  room.narrativeThreads = evolution.narrativeThreads;
+  room.activeThreadId = evolution.activeThreadId;
+  room.chaosLevel = evolution.chaosLevel;
 
   if (nextScene.ending) {
     setRoomPhase(room, "recap");
@@ -671,6 +836,10 @@ export function getRecapState(code: string) {
     riftHistory: room.riftHistory,
     latestNarration: room.latestNarration ?? null,
     narrationLog: room.narrationLog ?? [],
+    worldState: room.worldState,
+    playerProfiles: room.playerProfiles,
+    narrativeThreads: room.narrativeThreads,
+    activeThreadId: room.activeThreadId,
   };
 }
 
@@ -691,6 +860,16 @@ export function restartSession(code: string) {
   room.narrationLog = [];
   room.endingScene = null;
   room.endingType = null;
+  room.worldState.meta.communityChoiceInfluence = Math.max(0, room.worldState.meta.communityChoiceInfluence - 1);
+  room.narrativeThreads = room.narrativeThreads.map((thread) => ({
+    ...thread,
+    status: thread.status === "active" ? "dormant" : thread.status,
+    metadata: {
+      ...thread.metadata,
+      scenesSinceMention: thread.metadata.scenesSinceMention + 1,
+    },
+  }));
+  room.activeThreadId = null;
   room.turnOrder = room.players.map((player) => player.id);
   room.players = room.players.map((player, index) => ({
     ...player,
@@ -709,6 +888,10 @@ export function restartSession(code: string) {
 
 export function registerSocket(socketId: string, code: string, playerId: string) {
   state.sockets.set(socketId, { code, playerId });
+}
+
+export function getSocketPlayer(socketId: string) {
+  return state.sockets.get(socketId) ?? null;
 }
 
 export function removeSocket(socketId: string) {

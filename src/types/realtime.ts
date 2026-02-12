@@ -5,6 +5,7 @@ export type ClientEventName =
   | "leave_room"
   | "start_game"
   | "minigame_score"
+  | "minigame_spin"
   | "genre_selected"
   | "submit_choice"
   | "restart_session";

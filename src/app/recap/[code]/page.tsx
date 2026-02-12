@@ -10,6 +10,7 @@ import Typewriter from "../../../components/typewriter";
 import NarratorBanner from "../../../components/narrator-banner";
 import RiftStatusCard from "../../../components/rift-status-card";
 import RiftEventTimeline from "../../../components/rift-event-timeline";
+import WorldEventTimeline from "../../../components/world-event-timeline";
 import { getDemoEndingText, getDemoSession, getDemoStoryTree, initDemoRoom } from "../../../lib/demo-session";
 import SessionTopBar from "../../../components/session-top-bar";
 import type { EndingType, RecapPayload } from "../../../types/game";
@@ -92,6 +93,42 @@ function DemoRecap({ code }: DemoRecapProps) {
             activeEvent={session.activeRiftEvent}
           />
           <RiftEventTimeline events={session.riftHistory} />
+          <WorldEventTimeline events={session.worldState.timeline} />
+        </section>
+
+        <section className="panel space-y-4 p-5">
+          <h2 className="text-xl font-semibold">Living Rift Snapshot</h2>
+          <div className="grid gap-2 sm:grid-cols-2">
+            {Object.entries(session.worldState.resources).map(([resource, state]) => (
+              <div key={resource} className="rounded-lg border border-white/15 bg-black/20 px-3 py-2 text-sm">
+                <p className="uppercase tracking-[0.16em] text-zinc-400">{resource}</p>
+                <p className="font-semibold">{state.amount}</p>
+                <p className="text-xs text-zinc-400">Trend: {state.trend}</p>
+              </div>
+            ))}
+          </div>
+          {session.activeThreadId ? (
+            <p className="text-sm text-cyan-300">Active narrative thread: {session.activeThreadId}</p>
+          ) : null}
+        </section>
+
+        <section className="panel space-y-3 p-5">
+          <h2 className="text-xl font-semibold">Player Archetypes</h2>
+          <div className="space-y-2">
+            {Object.entries(session.playerProfiles).map(([profileId, profile]) => {
+              const displayName = session.players.find((player) => player.id === profileId)?.name ?? profileId;
+              return (
+                <div key={profileId} className="rounded-xl border border-white/15 bg-black/20 p-3 text-sm">
+                  <p className="font-semibold">{displayName}</p>
+                  <p className="text-zinc-300">{profile.archetypes.primary}</p>
+                  <p className="text-xs text-zinc-500">
+                    Risk {Math.round(profile.traits.riskTaking)} | Coop {Math.round(profile.traits.cooperation)} | Morality{" "}
+                    {Math.round(profile.traits.morality)}
+                  </p>
+                </div>
+              );
+            })}
+          </div>
         </section>
 
         <section className="panel p-5">
@@ -128,6 +165,24 @@ function RealtimeRecap({ code, playerId }: RealtimeRecapProps) {
   const [shareUrl, setShareUrl] = useState<string>("");
   const [narrationText, setNarrationText] = useState<string>("");
 
+  const safeWorldState = recap?.worldState ?? {
+    resources: {
+      food: { amount: 0, trend: "stable" },
+      medicine: { amount: 0, trend: "stable" },
+      ammunition: { amount: 0, trend: "stable" },
+      fuel: { amount: 0, trend: "stable" },
+    },
+    tensions: {
+      food_shortage: 0,
+      faction_conflict: 0,
+      external_threat: 0,
+      morale_crisis: 0,
+      disease_outbreak: 0,
+    },
+  };
+  const safeProfiles = recap?.playerProfiles ?? {};
+  const safeActiveThreadId = recap?.activeThreadId ?? null;
+
   useEffect(() => {
     let mounted = true;
 
@@ -161,17 +216,22 @@ function RealtimeRecap({ code, playerId }: RealtimeRecapProps) {
   useEffect(() => {
     const socket = getSocketClient();
     socket.emit("join_room", { code, playerId });
-    socket.on("narrator_update", (payload: { line?: { text?: string } }) => {
+
+    const onNarratorUpdate = (payload: { line?: { text?: string } }) => {
       if (payload?.line?.text) {
         setNarrationText(payload.line.text);
       }
-    });
-    socket.on("session_restarted", () => {
+    };
+
+    const onSessionRestarted = () => {
       router.push(`/lobby/${code}?player=${playerId}`);
-    });
+    };
+
+    socket.on("narrator_update", onNarratorUpdate);
+    socket.on("session_restarted", onSessionRestarted);
     return () => {
-      socket.off("narrator_update");
-      socket.off("session_restarted");
+      socket.off("narrator_update", onNarratorUpdate);
+      socket.off("session_restarted", onSessionRestarted);
     };
   }, [code, playerId, router]);
 
@@ -362,6 +422,52 @@ function RealtimeRecap({ code, playerId }: RealtimeRecapProps) {
               activeEvent={recap.riftHistory.at(-1) ?? null}
             />
             <RiftEventTimeline events={recap.riftHistory} />
+            <WorldEventTimeline events={recap.worldState?.timeline ?? []} />
+
+            <section className="panel space-y-4 p-5">
+              <h2 className="text-xl font-semibold">Living Rift Snapshot</h2>
+              <div className="grid gap-2 sm:grid-cols-2">
+                {Object.entries(safeWorldState.resources).map(([resource, state]) => (
+                  <div key={resource} className="rounded-lg border border-white/15 bg-black/20 px-3 py-2 text-sm">
+                    <p className="uppercase tracking-[0.16em] text-zinc-400">{resource}</p>
+                    <p className="font-semibold">{state.amount}</p>
+                    <p className="text-xs text-zinc-400">Trend: {state.trend}</p>
+                  </div>
+                ))}
+              </div>
+              <div className="grid gap-2 sm:grid-cols-2">
+                {Object.entries(safeWorldState.tensions).map(([tension, value]) => (
+                  <div key={tension} className="rounded-lg border border-white/10 bg-black/15 px-3 py-2 text-xs text-zinc-300">
+                    {tension.replaceAll("_", " ")}: <strong>{value}</strong>
+                  </div>
+                ))}
+              </div>
+              {safeActiveThreadId ? (
+                <p className="text-sm text-cyan-300">Active narrative thread: {safeActiveThreadId}</p>
+              ) : null}
+            </section>
+
+            <section className="panel space-y-3 p-5">
+              <h2 className="text-xl font-semibold">Player Archetypes</h2>
+              <div className="space-y-2">
+                {Object.entries(safeProfiles).map(([playerEntryId, profile]) => {
+                  const displayName =
+                    recap.history.find((entry) => entry.playerId === playerEntryId)?.playerName ??
+                    recap.history.find((entry) => entry.playerId === playerEntryId)?.player ??
+                    playerEntryId;
+                  return (
+                    <div key={playerEntryId} className="rounded-xl border border-white/15 bg-black/20 p-3 text-sm">
+                      <p className="font-semibold">{displayName}</p>
+                      <p className="text-zinc-300">{profile.archetypes.primary}</p>
+                      <p className="text-xs text-zinc-500">
+                        Risk {Math.round(profile.traits.riskTaking)} | Coop {Math.round(profile.traits.cooperation)} | Morality{" "}
+                        {Math.round(profile.traits.morality)}
+                      </p>
+                    </div>
+                  );
+                })}
+              </div>
+            </section>
           </section>
         ) : null}
 

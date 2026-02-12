@@ -5,6 +5,7 @@ import {
   getRecapState,
   joinRoom,
   recordMinigameScore,
+  resolveMinigameSpin,
   restartSession,
   selectGenre,
   startGame,
@@ -32,32 +33,32 @@ describe("store multiplayer flow", () => {
       throw new Error("Test room players missing");
     }
 
-    // Deterministic leaderboard: Host first, Player2 second, Player3 third.
     const scoringPlan = [
-      [host.id, 95],
-      [p2.id, 70],
-      [p3.id, 30],
+      [host.id, 11],
+      [p2.id, 22],
+      [p3.id, 33],
     ] as const;
 
-    let finalResult:
+    let pickResult:
       | {
           ready: boolean;
-          leaderboard: Array<{ id: string }>;
+          pick: string | null;
         }
       | null = null;
-    for (let round = 1; round <= 3; round += 1) {
-      for (const [id, score] of scoringPlan) {
-        finalResult = recordMinigameScore(code, id, round, score);
-      }
+    for (const [id, score] of scoringPlan) {
+      pickResult = recordMinigameScore(code, id, 1, score);
     }
 
-    if (!finalResult) {
+    if (!pickResult) {
       throw new Error("Expected minigame result");
     }
-    expect(finalResult.ready).toBe(true);
-    expect(finalResult.leaderboard[0]?.id).toBe(host.id);
+    expect(pickResult.ready).toBe(true);
 
-    const selected = selectGenre(code, host.id, "zombie");
+    const spun = resolveMinigameSpin(code, created.playerId);
+    expect(spun.leaderboard.length).toBe(3);
+    expect(spun.outcome.winnerId).toBe(spun.leaderboard[0]?.id);
+
+    const selected = selectGenre(code, spun.outcome.winnerId, "zombie");
     expect(selected.genre).toBe("zombie");
     expect(selected.scene.id).toBe("start");
     expect(selected.narration?.trigger).toBe("scene_enter");
@@ -122,6 +123,9 @@ describe("store multiplayer flow", () => {
     expect(recap.riftHistory.length).toBeGreaterThan(0);
     expect(recap.latestNarration?.trigger).toBe("ending");
     expect(recap.narrationLog.length).toBeGreaterThan(0);
+    expect(recap.worldState.resources.food.amount).toBeGreaterThanOrEqual(0);
+    expect(Object.keys(recap.playerProfiles).length).toBeGreaterThanOrEqual(3);
+    expect(recap.narrativeThreads.length).toBeGreaterThanOrEqual(1);
 
     const restarted = restartSession(code);
     expect(restarted.phase).toBe("lobby");
@@ -131,5 +135,26 @@ describe("store multiplayer flow", () => {
     expect(restarted.riftHistory.length).toBe(0);
     expect(restarted.latestNarration).toBeNull();
     expect(restarted.narrationLog.length).toBe(0);
+    expect(restarted.worldState.meta.gamesPlayed).toBeGreaterThanOrEqual(1);
+    expect(Object.keys(restarted.playerProfiles).length).toBeGreaterThanOrEqual(3);
+  });
+
+  it("blocks non-authoritative and duplicate minigame submissions", () => {
+    const created = createRoom("Host");
+    const code = created.code;
+    const joinTwo = joinRoom(code, "Player2");
+    const joinThree = joinRoom(code, "Player3");
+
+    startGame(code, created.playerId);
+
+    expect(() => recordMinigameScore(code, created.playerId, 2, 940)).toThrow(/server-controlled/i);
+
+    recordMinigameScore(code, created.playerId, 1, 11);
+    expect(() => recordMinigameScore(code, created.playerId, 1, 22)).toThrow(/already locked/i);
+
+    recordMinigameScore(code, joinTwo.playerId, 1, 22);
+    recordMinigameScore(code, joinThree.playerId, 1, 33);
+
+    expect(() => resolveMinigameSpin(code, joinTwo.playerId)).toThrow(/only host/i);
   });
 });

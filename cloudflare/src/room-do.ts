@@ -17,6 +17,7 @@ import type {
   ClientEnvelope,
   EndingType,
   GenreId,
+  MinigameOutcome,
   MVP,
   NarrationLine,
   Player,
@@ -40,6 +41,21 @@ const MAX_RIFT_HISTORY = 40;
 const DISCONNECT_TIMEOUT_MS = 10_000;
 
 const AVATARS = ["circle-cyan", "diamond-red", "hex-green", "triangle-blue", "square-gold", "ring-white"];
+const ROUND_TWO_SCORES = [940, 760, 670, 610, 560, 520];
+const ROUND_THREE_SCORES = [360, 300, 260, 230, 205, 180];
+const MINIGAME_GENRES: GenreId[] = ["zombie", "alien", "haunted"];
+const MINIGAME_PICK_SCORE: Record<GenreId, number> = {
+  zombie: 11,
+  alien: 22,
+  haunted: 33,
+};
+const PICK_SCORE_TO_GENRE: Record<number, GenreId> = Object.entries(MINIGAME_PICK_SCORE).reduce(
+  (acc, [genre, score]) => {
+    acc[score] = genre as GenreId;
+    return acc;
+  },
+  {} as Record<number, GenreId>
+);
 
 function now(): number {
   return Date.now();
@@ -76,6 +92,35 @@ function parseEnvelope(input: string): ClientEnvelope | null {
 function sceneChoiceLabel(scene: Scene, choiceId: string): string {
   const choice = scene.choices?.find((entry) => entry.id === choiceId) ?? scene.choices?.[0];
   return choice?.text ?? choice?.label ?? "Continue";
+}
+
+function stableHash(input: string): number {
+  let hash = 2166136261;
+  for (let index = 0; index < input.length; index += 1) {
+    hash ^= input.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
+  }
+  return hash >>> 0;
+}
+
+function seededChoice<T>(items: T[], seed: string): T {
+  const index = stableHash(seed) % items.length;
+  return items[index] ?? items[0];
+}
+
+function decodeMinigamePick(score: number | undefined): GenreId | null {
+  if (!Number.isFinite(score)) {
+    return null;
+  }
+  const rounded = Math.round(score ?? 0);
+  return PICK_SCORE_TO_GENRE[rounded] ?? null;
+}
+
+function scriptedScore(rank: number, round: 2 | 3): number {
+  if (round === 2) {
+    return ROUND_TWO_SCORES[rank] ?? Math.max(420, 540 - rank * 40);
+  }
+  return ROUND_THREE_SCORES[rank] ?? Math.max(110, 180 - rank * 18);
 }
 
 export class RoomDurableObject {
@@ -332,21 +377,25 @@ export class RoomDurableObject {
     const room = await this.requireFreshRoom();
     const socketPlayerId = this.sockets.get(socket) ?? "";
     const payload = (envelope.data ?? {}) as Record<string, unknown>;
-    const payloadPlayerId = typeof payload.playerId === "string" ? payload.playerId : socketPlayerId;
+    const claimedPlayerId = typeof payload.playerId === "string" ? payload.playerId : socketPlayerId;
+    if (socketPlayerId && claimedPlayerId && claimedPlayerId !== socketPlayerId) {
+      throw new Error("Invalid player session");
+    }
+    const actorPlayerId = socketPlayerId || claimedPlayerId;
 
     try {
       if (envelope.event === "join_room") {
-        await this.handleJoinRoomEvent(socket, room, payloadPlayerId, envelope.id);
+        await this.handleJoinRoomEvent(socket, room, actorPlayerId, envelope.id);
         return;
       }
 
       if (envelope.event === "leave_room") {
-        await this.handleLeaveRoomEvent(room, payloadPlayerId, envelope.id);
+        await this.handleLeaveRoomEvent(room, actorPlayerId, envelope.id);
         return;
       }
 
       if (envelope.event === "start_game") {
-        const started = this.startGame(room, payloadPlayerId);
+        const started = this.startGame(room, actorPlayerId);
         await this.saveRoom(room);
         await this.broadcast("game_started", { code: room.code }, envelope.id);
         await this.broadcast("minigame_start", { startAt: started.startAt }, envelope.id);
@@ -357,18 +406,26 @@ export class RoomDurableObject {
       if (envelope.event === "minigame_score") {
         const round = Number(payload.round);
         const score = Number(payload.score);
-        const result = this.recordMinigameScore(room, payloadPlayerId, round, score);
+        const result = this.recordMinigameScore(room, actorPlayerId, round, score);
         await this.saveRoom(room);
         await this.broadcast("room_updated", this.getRoomView(room), envelope.id);
         if (result.ready) {
-          await this.broadcast("minigame_complete", { players: result.leaderboard }, envelope.id);
+          // Host can now trigger authoritative wheel resolution with `minigame_spin`.
         }
+        return;
+      }
+
+      if (envelope.event === "minigame_spin") {
+        const result = this.resolveMinigameSpin(room, actorPlayerId);
+        await this.saveRoom(room);
+        await this.broadcast("room_updated", this.getRoomView(room), envelope.id);
+        await this.broadcast("minigame_complete", { players: result.leaderboard, outcome: result.outcome }, envelope.id);
         return;
       }
 
       if (envelope.event === "genre_selected") {
         const genre = String(payload.genre ?? "") as GenreId;
-        const selection = this.selectGenre(room, payloadPlayerId, genre);
+        const selection = this.selectGenre(room, actorPlayerId, genre);
         await this.saveRoom(room);
         await this.broadcast(
           "genre_selected",
@@ -387,7 +444,7 @@ export class RoomDurableObject {
 
       if (envelope.event === "submit_choice") {
         const choiceId = typeof payload.choiceId === "string" ? payload.choiceId : undefined;
-        const result = this.submitChoice(room, payloadPlayerId, { choiceId });
+        const result = this.submitChoice(room, actorPlayerId, { choiceId });
         await this.saveRoom(room);
         if (result.narration) {
           await this.broadcast("narrator_update", { line: result.narration, roomCode: room.code }, envelope.id);
@@ -650,6 +707,17 @@ export class RoomDurableObject {
     };
   }
 
+  private playersByJoinOrder(room: RoomState): Player[] {
+    return [...room.players].sort((a, b) => {
+      const orderA = a.orderIndex ?? a.turnOrder ?? 0;
+      const orderB = b.orderIndex ?? b.turnOrder ?? 0;
+      if (orderA !== orderB) {
+        return orderA - orderB;
+      }
+      return a.id.localeCompare(b.id);
+    });
+  }
+
   private ensureHostAssigned(room: RoomState) {
     const currentHost = room.players.find((player) => player.isHost && player.connected !== false);
     if (currentHost) {
@@ -760,34 +828,93 @@ export class RoomDurableObject {
     if (!player) {
       throw new Error("Player not found");
     }
-    if (round < 1 || round > 3) {
-      throw new Error("Invalid round");
+    if (round !== 1) {
+      throw new Error("Round is server-controlled");
+    }
+
+    const rounded = Math.round(score);
+    if (!decodeMinigamePick(rounded)) {
+      throw new Error("Invalid pick");
     }
 
     const rounds = player.rounds ?? [];
-    rounds[round - 1] = Math.max(0, Math.round(score));
-    player.rounds = rounds;
-    player.score = rounds.reduce((sum, value) => sum + value, 0);
-
-    const completed = room.players.every(
-      (entry) => (entry.rounds?.length ?? 0) >= 3 && (entry.rounds ?? []).every((value) => Number.isFinite(value))
-    );
-
-    if (!completed) {
-      return { ready: false, leaderboard: [] as Player[] };
+    if (Number.isFinite(rounds[0])) {
+      throw new Error("Pick already locked");
     }
 
-    const leaderboard = [...room.players].sort((a, b) => b.score - a.score);
-    room.turnOrder = leaderboard.map((entry) => entry.id);
-    room.players = room.players.map((entry) => ({
-      ...entry,
-      orderIndex: room.turnOrder.indexOf(entry.id),
-      turnOrder: room.turnOrder.indexOf(entry.id),
-    }));
+    rounds[0] = rounded;
+    player.rounds = rounds;
+    player.score = Math.max(0, rounded);
+
+    const ready = room.players.every((entry) => decodeMinigamePick(entry.rounds?.[0]) !== null);
+    return { ready, pick: decodeMinigamePick(rounded) };
+  }
+
+  private resolveMinigameSpin(room: RoomState, hostPlayerId: string): { leaderboard: Player[]; outcome: MinigameOutcome } {
+    if (room.phase !== "minigame") {
+      throw new Error("Minigame not active");
+    }
+
+    const host = room.players.find((player) => player.isHost);
+    if (!host || host.id !== hostPlayerId) {
+      throw new Error("Only host can spin the wheel");
+    }
+
+    const orderedPlayers = this.playersByJoinOrder(room);
+    const missingPick = orderedPlayers.some((player) => decodeMinigamePick(player.rounds?.[0]) === null);
+    if (missingPick) {
+      throw new Error("Waiting for all picks");
+    }
+
+    const genrePool = MINIGAME_GENRES.filter((genre) =>
+      orderedPlayers.some((player) => decodeMinigamePick(player.rounds?.[0]) === genre)
+    );
+    const availableGenres = genrePool.length ? genrePool : MINIGAME_GENRES;
+    const seedBase = `${room.code}:${orderedPlayers.map((player) => `${player.id}:${Math.round(player.rounds?.[0] ?? 0)}`).join("|")}`;
+    const winningGenre = seededChoice(availableGenres, `${seedBase}:genre`);
+
+    const contendersByPick = orderedPlayers.filter((player) => decodeMinigamePick(player.rounds?.[0]) === winningGenre);
+    const contenders = contendersByPick.length ? contendersByPick : orderedPlayers;
+    const winner = seededChoice(contenders, `${seedBase}:winner`);
+
+    const leaderboard = [winner, ...orderedPlayers.filter((player) => player.id !== winner.id)];
+    leaderboard.forEach((player, rank) => {
+      const firstRound = Math.round(player.rounds?.[0] ?? MINIGAME_PICK_SCORE.zombie);
+      const rounds = [firstRound, scriptedScore(rank, 2), scriptedScore(rank, 3)];
+      player.rounds = rounds;
+      player.score = rounds.reduce((sum, value) => sum + value, 0);
+    });
+
+    room.turnOrder = leaderboard.map((player) => player.id);
+    room.players = room.players.map((entry) => {
+      const scored = leaderboard.find((player) => player.id === entry.id) ?? entry;
+      const rank = room.turnOrder.indexOf(entry.id);
+      return {
+        ...entry,
+        score: scored.score,
+        rounds: scored.rounds ?? [],
+        orderIndex: rank,
+        turnOrder: rank,
+      };
+    });
     room.activePlayerIndex = 0;
     room.currentPlayerId = this.activePlayerId(room);
 
-    return { ready: true, leaderboard };
+    return {
+      leaderboard: room.turnOrder.map((id) => {
+        const player = room.players.find((entry) => entry.id === id);
+        if (!player) {
+          throw new Error("Player not found");
+        }
+        return player;
+      }),
+      outcome: {
+        winningGenre,
+        contenders: contenders.map((player) => player.id),
+        winnerId: winner.id,
+        tieBreak: contenders.length > 1,
+      },
+    };
   }
 
   private selectGenre(room: RoomState, playerId: string, genre: GenreId) {
