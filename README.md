@@ -2,6 +2,8 @@
 
 Realtime multiplayer narrative battle game built with Next.js App Router, TypeScript, Tailwind CSS, Framer Motion, and Socket.IO.
 
+**Product priority:** Ordered roadmap to be the #1 app in category → [docs/PRIORITY-NUMBER-ONE.md](docs/PRIORITY-NUMBER-ONE.md)
+
 ## Runtime requirement
 
 - Node.js 20.x (see `.nvmrc`)
@@ -89,6 +91,7 @@ docker compose up --build
 - Sentry:
   - Initialized in `instrumentation-client.ts`, `sentry.server.config.ts`, `sentry.edge.config.ts`
   - Global app errors captured in `src/app/global-error.tsx`
+  - For production, set `SENTRY_DSN` and `NEXT_PUBLIC_SENTRY_DSN` so errors and performance are visible. Lobby and game show reconnection toasts when realtime drops.
 
 ## Sharing / OG proxy
 

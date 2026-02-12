@@ -1,6 +1,7 @@
 import { ImageResponse } from "next/og";
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { SITE_TAGLINE } from "@/lib/app-meta";
 import { verifyShareToken } from "@/lib/share-token";
 import { getRecapState } from "@/lib/store";
 import { logger } from "@/lib/logger";
@@ -83,7 +84,10 @@ export async function GET(request: Request) {
               <span>Room: {payload.code}</span>
               <span>MVP: {recap.mvp.player}</span>
             </div>
-            <p style={{ fontSize: 28, color: "#93c5fd" }}>Join the next run</p>
+            <div style={{ display: "flex", flexDirection: "column", gap: 4, textAlign: "right" }}>
+              <p style={{ fontSize: 28, color: "#93c5fd" }}>Join the next run</p>
+              <p style={{ fontSize: 20, color: "#94a3b8" }}>{SITE_TAGLINE}</p>
+            </div>
           </div>
         </div>
       ),

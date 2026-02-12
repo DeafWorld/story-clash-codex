@@ -31,6 +31,9 @@ test("demo game shows narrator banner", async ({ page }) => {
   await page.waitForURL(/\/lobby\/DEMO1\?/);
   await page.getByRole("button", { name: "Start Minigame (Demo)" }).click();
   await page.waitForURL(/\/minigame\/DEMO1\?/);
+  await page.getByRole("button", { name: /Pick Zombie Outbreak/i }).click();
+  await page.getByRole("button", { name: /Spin Genre Wheel \(Demo\)/i }).click();
+  await expect(page.getByRole("button", { name: "Finish Demo Minigame" })).toBeVisible({ timeout: 12_000 });
   await page.getByRole("button", { name: "Finish Demo Minigame" }).click();
   await page.waitForURL(/\/game\/DEMO1\?/);
   await expect(page.getByText(/narrator/i)).toBeVisible();

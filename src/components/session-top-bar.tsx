@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { trackEvent } from "../lib/analytics";
-import { shareInvite } from "../lib/invite";
+import { buildInviteUrl, shareInvite } from "../lib/invite";
 
 export type SessionTopBarProps = {
   backHref: string;
@@ -74,6 +74,26 @@ export default function SessionTopBar({
     }
   }
 
+  async function handleCopyLink() {
+    if (!showInvite || !roomCode) {
+      return;
+    }
+    const url = buildInviteUrl({
+      code: roomCode,
+      origin: typeof window !== "undefined" ? window.location.origin : "",
+      inviter: playerName ?? playerId,
+    });
+    try {
+      await navigator.clipboard.writeText(url);
+      trackEvent("invite_copied", { roomCode, playerId: playerId ?? null, isDemo, method: "copy_link" });
+      setMessage("Link copied");
+      window.setTimeout(() => setMessage(null), 2200);
+    } catch {
+      setMessage("Could not copy");
+      window.setTimeout(() => setMessage(null), 2200);
+    }
+  }
+
   return (
     <header className="session-top-bar">
       <div className="session-top-inner">
@@ -84,14 +104,24 @@ export default function SessionTopBar({
         >
           {backLabel}
         </Link>
-        <button
-          type="button"
-          className="btn btn-primary py-2 disabled:cursor-not-allowed disabled:opacity-45"
-          onClick={handleInvite}
-          disabled={sharing || !showInvite || !roomCode}
-        >
-          {sharing ? "Sharing..." : "Invite"}
-        </button>
+        <div className="flex gap-2">
+          <button
+            type="button"
+            className="btn btn-secondary py-2"
+            onClick={handleCopyLink}
+            disabled={!showInvite || !roomCode}
+          >
+            Copy link
+          </button>
+          <button
+            type="button"
+            className="btn btn-primary py-2 disabled:cursor-not-allowed disabled:opacity-45"
+            onClick={handleInvite}
+            disabled={sharing || !showInvite || !roomCode}
+          >
+            {sharing ? "Sharing..." : "Invite"}
+          </button>
+        </div>
       </div>
 
       {chips.length > 0 ? (

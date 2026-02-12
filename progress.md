@@ -80,3 +80,43 @@ TODO:
   - `npx vitest run`
   - `npm run build -- --no-lint` (or normal `npm run build` if lint runtime is stable)
 - Run end-to-end multiplayer validation with both transports (`socketio` and `ws`) to verify `narrator_update` sync and recap/share behavior on real clients.
+
+- User feedback: minigame quality below acceptable minimum; performed full gameplay overhaul in `/Users/deafgod/Desktop/Codex/src/app/minigame/[code]/page.tsx`.
+- Replaced previous one-tap roulette with a stronger 3-attempt pressure-lock system per round:
+  - deterministic strike-zone generation by room/round seed
+  - moving pulse cursor with escalating speed across rounds
+  - graded hit quality (`perfect/great/good/glance/miss`) + points
+  - per-round bonuses (clear + time) and local total tracking
+  - faster, deliberate progression through 3 rounds (attempt cap + timeout fallback)
+- Updated both demo and realtime minigame implementations to keep existing room flow and Socket.io scoring contract.
+- Preserved existing route flow and top-bar invite/back behavior.
+- Updated live e2e expectations for new minigame control label and tap cadence in `/Users/deafgod/Desktop/Codex/tests/e2e/live-multiplayer.spec.ts`.
+- Quick syntax sanity for rewritten minigame passed via TypeScript transpile check (`minigame-transpile-ok`).
+
+TODO:
+- Re-run lint/build/e2e once shell process hangs are resolved; current environment still intermittently stalls eslint/next/vitest commands.
+
+- Implemented new wheel-based minigame flow per user request (`players choose pie -> wheel spins -> winner goes first -> tie wheel by names`).
+- Updated `/Users/deafgod/Desktop/Codex/src/app/minigame/[code]/page.tsx`:
+  - Added genre pie selection UI (Zombie/Alien/Haunted), spinning genre wheel animation, and names-only tie-break wheel.
+  - Reworked realtime phase flow to `countdown -> picking -> spinning_genre -> spinning_tie (optional) -> submitting -> results -> revealed`.
+  - Host now finalizes winner-first order after wheel resolution and auto-emits `genre_selected`; clients route to game together.
+  - Demo mode mirrors the same wheel mechanics and carries selected genre into the story.
+- Updated `/Users/deafgod/Desktop/Codex/src/lib/demo-session.ts`:
+  - Demo session now supports multi-genre trees (`zombie`, `alien`, `haunted`) and winner-first turn order.
+  - Fixed story progression bug by resolving story tree from `session.storyId` before node lookups.
+- Updated demo story/game surfaces:
+  - `/Users/deafgod/Desktop/Codex/src/app/game/[code]/page.tsx` now uses selected demo genre for overlay + title.
+  - `/Users/deafgod/Desktop/Codex/src/app/recap/[code]/page.tsx` now shows dynamic demo story title.
+- Intensified all story trees for stronger immersion and added consistent node structure fields (`tensionLevel`, `label/nextId` with compatibility fields) in:
+  - `/Users/deafgod/Desktop/Codex/src/data/stories/zombie.json`
+  - `/Users/deafgod/Desktop/Codex/src/data/stories/alien.json`
+  - `/Users/deafgod/Desktop/Codex/src/data/stories/haunted.json`
+- Updated e2e scripts to align with wheel flow:
+  - `/Users/deafgod/Desktop/Codex/tests/e2e/smoke.spec.ts`
+  - `/Users/deafgod/Desktop/Codex/tests/e2e/live-multiplayer.spec.ts`
+- Server startup default changed in `/Users/deafgod/Desktop/Codex/server/index.ts` so dev Next prepare is enabled unless `NEXT_ENABLE_PREPARE=0`.
+
+Validation notes:
+- JSON story files parse cleanly via Node (`JSON_OK`).
+- Full lint/typecheck/build/e2e commands still intermittently hang in this shell environment; unable to complete full gate run in this turn.

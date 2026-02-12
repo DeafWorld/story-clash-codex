@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { SITE_HOOK } from "@/lib/app-meta";
 import TutorialOverlay from "../components/tutorial-overlay";
 
 const TUTORIAL_FLAG = "storyClashTutorialSeen";
@@ -34,11 +35,15 @@ export default function HomePage() {
         <section className="panel w-full max-w-xl space-y-7 p-6 text-center sm:p-8">
           <p className="badge mx-auto">Realtime Multiplayer</p>
           <h1 className="hero-title text-[2.3rem] leading-none sm:text-6xl">Story Clash</h1>
-          <p className="mx-auto max-w-xl text-base text-zinc-200 sm:text-lg">
+          <p className="mx-auto max-w-xl text-base font-medium text-cyan-100 sm:text-lg">
+            The best 15-minute horror co-op in the browser.
+          </p>
+          <p className="mx-auto max-w-xl text-sm text-zinc-300 sm:text-base">
             Compete in a reflex minigame, take turns shaping a branching horror story, and survive to the recap.
           </p>
+          <p className="text-xs text-zinc-400">{SITE_HOOK}</p>
           <div className="grid gap-3">
-            <Link href="/create" className="btn btn-primary w-full py-4 text-lg font-semibold">
+            <Link href="/create" className="btn btn-primary w-full py-4 text-lg font-semibold" id="cta-create">
               Create Room
             </Link>
             <Link href="/join" className="btn btn-secondary w-full py-4 text-lg font-semibold">

@@ -12,38 +12,248 @@ import SessionTopBar from "../../../components/session-top-bar";
 import type { GenreId, NarrationLine, Player } from "../../../types/game";
 import type { NarratorUpdatePayload } from "../../../types/realtime";
 
-type Phase = "countdown" | "playing" | "waiting" | "results" | "revealed";
+type Phase =
+  | "countdown"
+  | "picking"
+  | "spinning_genre"
+  | "spinning_tie"
+  | "submitting"
+  | "results"
+  | "revealed";
 
-const GENRES: Array<{ id: GenreId; name: string; icon: string }> = [
-  { id: "zombie", name: "Zombie Outbreak", icon: "Z" },
-  { id: "alien", name: "Alien Invasion", icon: "A" },
-  { id: "haunted", name: "Haunted Manor", icon: "H" },
+type SpinOutcome = {
+  winningGenre: GenreId;
+  contenders: string[];
+  winnerId: string;
+  tieBreak: boolean;
+};
+
+const GENRES: Array<{ id: GenreId; name: string; icon: string; color: string }> = [
+  { id: "zombie", name: "Zombie Outbreak", icon: "Z", color: "#ef4444" },
+  { id: "alien", name: "Alien Invasion", icon: "A", color: "#22d3ee" },
+  { id: "haunted", name: "Haunted Manor", icon: "H", color: "#a78bfa" },
 ];
 
-function angleDiff(a: number, b: number) {
-  const diff = Math.abs(a - b) % 360;
-  return diff > 180 ? 360 - diff : diff;
+const PICK_SCORE: Record<GenreId, number> = {
+  zombie: 11,
+  alien: 22,
+  haunted: 33,
+};
+
+function decodePick(value: number | undefined): GenreId | null {
+  if (!Number.isFinite(value)) {
+    return null;
+  }
+  const rounded = Math.round(value ?? 0);
+  if (rounded === PICK_SCORE.zombie) {
+    return "zombie";
+  }
+  if (rounded === PICK_SCORE.alien) {
+    return "alien";
+  }
+  if (rounded === PICK_SCORE.haunted) {
+    return "haunted";
+  }
+  return null;
 }
 
-function buildMinigameNarration(input: {
-  code: string;
-  playerName: string;
-  trigger: "scene_enter" | "choice_submitted";
-  historyLength: number;
-  tensionLevel: number;
-}): NarrationLine {
+function stableHash(input: string): number {
+  let hash = 2166136261;
+  for (let i = 0; i < input.length; i += 1) {
+    hash ^= input.charCodeAt(i);
+    hash = Math.imul(hash, 16777619);
+  }
+  return hash >>> 0;
+}
+
+function seededChoice<T>(items: T[], seed: string): T {
+  const index = stableHash(seed) % items.length;
+  return items[index] ?? items[0];
+}
+
+function orderWinnerFirst(players: Player[], winnerId: string): Player[] {
+  const sorted = [...players].sort((a, b) => (a.orderIndex ?? 0) - (b.orderIndex ?? 0));
+  const winner = sorted.find((player) => player.id === winnerId);
+  if (!winner) {
+    return sorted;
+  }
+  return [winner, ...sorted.filter((player) => player.id !== winnerId)];
+}
+
+function scriptedScore(rank: number, round: 2 | 3): number {
+  const roundTwo = [940, 760, 670, 610, 560, 520];
+  const roundThree = [360, 300, 260, 230, 205, 180];
+  if (round === 2) {
+    return roundTwo[rank] ?? Math.max(420, 540 - rank * 40);
+  }
+  return roundThree[rank] ?? Math.max(110, 180 - rank * 18);
+}
+
+function spinOutcome(players: Player[], picks: Record<string, GenreId>, seedKey: string): SpinOutcome {
+  const genresWithContenders = GENRES.map((genre) => genre.id).filter((id) =>
+    players.some((player) => picks[player.id] === id)
+  );
+  const genrePool = genresWithContenders.length ? genresWithContenders : GENRES.map((genre) => genre.id);
+  const winningGenre = seededChoice(genrePool, `${seedKey}:genre`);
+
+  const contenders = players.filter((player) => picks[player.id] === winningGenre).map((player) => player.id);
+  const contenderPool = contenders.length ? contenders : players.map((player) => player.id);
+  const winnerId = seededChoice(contenderPool, `${seedKey}:winner`);
+
+  return {
+    winningGenre,
+    contenders: contenderPool,
+    winnerId,
+    tieBreak: contenderPool.length > 1,
+  };
+}
+
+function buildNarration(
+  code: string,
+  playerName: string,
+  trigger: "scene_enter" | "choice_submitted",
+  intensity: number,
+  genre: GenreId = "zombie"
+) {
   return generateNarrationLine({
-    code: input.code,
-    trigger: input.trigger,
-    genre: "zombie",
-    sceneId: "minigame",
-    historyLength: input.historyLength,
-    tensionLevel: input.tensionLevel,
-    playerId: null,
-    playerName: input.playerName,
-    choiceLabel: input.trigger === "choice_submitted" ? "locked in a score" : "steady hands",
-    endingType: null,
+    code,
+    trigger,
+    genre,
+    sceneId: "genre_wheel",
+    historyLength: intensity,
+    tensionLevel: intensity >= 4 ? 5 : 3,
+    playerName,
+    choiceLabel: trigger === "scene_enter" ? "locked in a genre" : "spun the fate wheel",
   });
+}
+
+function pickMap(players: Player[]): Record<string, GenreId> {
+  return players.reduce<Record<string, GenreId>>((acc, player) => {
+    const pick = decodePick(player.rounds?.[0]);
+    if (pick) {
+      acc[player.id] = pick;
+    }
+    return acc;
+  }, {});
+}
+
+function genreWheelRotation(genreId: GenreId, previous: number, seed: string): number {
+  const centerByGenre: Record<GenreId, number> = {
+    zombie: 60,
+    alien: 180,
+    haunted: 300,
+  };
+  const target = (360 - centerByGenre[genreId]) % 360;
+  const wobble = stableHash(`${seed}:wobble`) % 10;
+  return previous + 1080 + target + wobble;
+}
+
+function tieWheelRotation(index: number, count: number, previous: number, seed: string): number {
+  const segment = 360 / count;
+  const center = segment * index + segment / 2;
+  const target = (360 - center) % 360;
+  const wobble = stableHash(`${seed}:tie`) % 8;
+  return previous + 1080 + target + wobble;
+}
+
+function tieWheelGradient(size: number): string {
+  const colors = ["#22d3ee", "#ef4444", "#f59e0b", "#a78bfa", "#34d399", "#f97316"];
+  const segment = 360 / size;
+  const parts = Array.from({ length: size }).map((_, index) => {
+    const start = segment * index;
+    const end = segment * (index + 1);
+    return `${colors[index % colors.length]} ${start}deg ${end}deg`;
+  });
+  return `conic-gradient(${parts.join(",")})`;
+}
+
+type WheelViewProps = {
+  picks: Record<string, GenreId>;
+  players: Array<{ id: string; name: string }>;
+  activePick: GenreId | null;
+  onPick: (genre: GenreId) => void;
+  wheelRotation: number;
+  disabled: boolean;
+};
+
+function WheelView({ picks, players, activePick, onPick, wheelRotation, disabled }: WheelViewProps) {
+  return (
+    <section className="panel w-full max-w-3xl space-y-4 p-6">
+      <header className="space-y-2 text-center">
+        <h1 className="text-3xl font-black">Genre Fate Wheel</h1>
+        <p className="text-zinc-300">Pick a pie. Wheel lands on a genre. Matched players fight for first turn.</p>
+      </header>
+
+      <div className="relative mx-auto h-72 w-72">
+        <div className="absolute left-1/2 top-0 z-20 -translate-x-1/2 text-red-300">▼</div>
+        <div
+          className="h-full w-full rounded-full border border-white/20 shadow-[0_0_40px_rgba(0,217,255,0.2)]"
+          style={{
+            background:
+              "conic-gradient(#ef4444 0deg 120deg, #22d3ee 120deg 240deg, #a78bfa 240deg 360deg)",
+            transform: `rotate(${wheelRotation}deg)`,
+            transition: "transform 1.6s cubic-bezier(0.2, 0.9, 0.2, 1)",
+          }}
+        />
+        <div className="pointer-events-none absolute inset-5 rounded-full border border-black/40 bg-black/45" />
+      </div>
+
+      <div className="grid gap-2 sm:grid-cols-3">
+        {GENRES.map((genre) => {
+          const pickedBy = players.filter((player) => picks[player.id] === genre.id);
+          return (
+            <button
+              key={genre.id}
+              type="button"
+              className={clsx(
+                "rounded-xl border px-3 py-3 text-left transition",
+                activePick === genre.id
+                  ? "border-cyan-300 bg-cyan-500/20"
+                  : "border-white/20 bg-black/25 hover:border-white/45",
+                disabled ? "cursor-not-allowed opacity-70" : ""
+              )}
+              onClick={() => onPick(genre.id)}
+              disabled={disabled || Boolean(activePick)}
+            >
+              <p className="text-xs uppercase tracking-[0.16em]" style={{ color: genre.color }}>
+                {genre.icon} Pie
+              </p>
+              <p className="text-lg font-semibold">Pick {genre.name}</p>
+              <p className="mt-1 text-xs text-zinc-400">
+                {pickedBy.length > 0 ? pickedBy.map((player) => player.name).join(", ") : "No picks yet"}
+              </p>
+            </button>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
+type TieWheelProps = {
+  names: string[];
+  rotation: number;
+};
+
+function TieWheel({ names, rotation }: TieWheelProps) {
+  return (
+    <section className="panel w-full max-w-2xl space-y-4 p-5 text-center">
+      <h2 className="text-2xl font-semibold">Tie Break Wheel</h2>
+      <p className="text-zinc-300">Tie detected. Spinning names only to lock first player.</p>
+      <div className="relative mx-auto h-56 w-56">
+        <div className="absolute left-1/2 top-0 z-20 -translate-x-1/2 text-red-300">▼</div>
+        <div
+          className="h-full w-full rounded-full border border-white/20"
+          style={{
+            background: tieWheelGradient(Math.max(2, names.length)),
+            transform: `rotate(${rotation}deg)`,
+            transition: "transform 1.3s cubic-bezier(0.2, 0.9, 0.2, 1)",
+          }}
+        />
+      </div>
+      <p className="text-sm text-zinc-300">Contenders: {names.join(" vs ")}</p>
+    </section>
+  );
 }
 
 type DemoProps = {
@@ -53,142 +263,160 @@ type DemoProps = {
 
 function DemoMinigame({ code, playerId }: DemoProps) {
   const router = useRouter();
-  const playerName = playerId === "demo-p2" ? "Player 2" : playerId === "demo-p3" ? "Player 3" : "Host";
-  const [barProgress, setBarProgress] = useState(0);
-  const [direction, setDirection] = useState(1);
-  const [score, setScore] = useState(0);
-  const [taps, setTaps] = useState(0);
-  const [flash, setFlash] = useState(false);
-  const [timeLeft, setTimeLeft] = useState(10);
-  const [finished, setFinished] = useState(false);
-  const [narration, setNarration] = useState<NarrationLine | null>(() =>
-    buildMinigameNarration({
-      code,
-      playerName,
-      trigger: "scene_enter",
-      historyLength: 0,
-      tensionLevel: 2,
-    })
+  const [phase, setPhase] = useState<Phase>("picking");
+  const [wheelRotation, setWheelRotation] = useState(0);
+  const [tieRotation, setTieRotation] = useState(0);
+  const [outcome, setOutcome] = useState<SpinOutcome | null>(null);
+  const [picks, setPicks] = useState<Record<string, GenreId>>({});
+  const [narration, setNarration] = useState<NarrationLine | null>(() => buildNarration(code, "Host", "scene_enter", 1));
+
+  const players = useMemo(
+    () => [
+      { id: "demo-host", name: "Host" },
+      { id: "demo-p2", name: "Player 2" },
+      { id: "demo-p3", name: "Player 3" },
+    ],
+    []
   );
 
+  const selfId = playerId || "demo-host";
+  const self = players.find((player) => player.id === selfId) ?? players[0];
+  const allPicked = players.every((player) => Boolean(picks[player.id]));
+
   useEffect(() => {
-    if (finished) {
+    if (!picks[self.id]) {
+      return;
+    }
+    const others = players.filter((player) => player.id !== self.id && !picks[player.id]);
+    if (!others.length) {
       return;
     }
 
-    const timer = window.setInterval(() => {
-      setBarProgress((value) => {
-        const next = value + direction * 3;
-        if (next >= 100) {
-          setDirection(-1);
-          return 100;
-        }
-        if (next <= 0) {
-          setDirection(1);
-          return 0;
-        }
+    const timer = window.setTimeout(() => {
+      setPicks((current) => {
+        const next = { ...current };
+        others.forEach((player, index) => {
+          const fallback = GENRES[(stableHash(`${code}:${player.id}:${index}`) % GENRES.length)]?.id ?? "zombie";
+          next[player.id] = fallback;
+        });
         return next;
       });
-    }, 45);
+    }, 340);
 
-    return () => window.clearInterval(timer);
-  }, [direction, finished]);
+    return () => window.clearTimeout(timer);
+  }, [code, picks, players, self.id]);
 
-  useEffect(() => {
-    if (finished) {
+  function pickGenre(genre: GenreId) {
+    if (picks[self.id]) {
       return;
     }
-
-    const timer = window.setInterval(() => {
-      setTimeLeft((value) => {
-        if (value <= 1) {
-          setFinished(true);
-          return 0;
-        }
-        return value - 1;
-      });
-    }, 1000);
-
-    return () => window.clearInterval(timer);
-  }, [finished]);
-
-  useEffect(() => {
-    if (!finished) {
-      return;
-    }
-    setNarration(
-      buildMinigameNarration({
-        code,
-        playerName,
-        trigger: "choice_submitted",
-        historyLength: taps,
-        tensionLevel: 4,
-      })
-    );
-  }, [code, finished, playerName, taps]);
-
-  function tapBar() {
-    if (finished) {
-      return;
-    }
-
-    const inRedZone = barProgress >= 60 && barProgress <= 80;
-    setTaps((value) => value + 1);
-    setScore((value) => value + (inRedZone ? 100 : 25));
-    setFlash(true);
-    window.setTimeout(() => setFlash(false), 150);
+    setPicks((current) => ({ ...current, [self.id]: genre }));
+    setNarration(buildNarration(code, self.name, "choice_submitted", 2, genre));
   }
 
-  function finishDemoMinigame() {
-    // TODO(multiplayer): Replace fixed demo order with server-ranked results once demo mode is removed.
-    setDemoMinigameOrder(["demo-host", "demo-p2", "demo-p3"]);
-    const nextPlayer = playerId || "demo-host";
-    router.push(`/game/${code}?player=${nextPlayer}&demo=1`);
+  function spinWheel() {
+    if (!allPicked) {
+      return;
+    }
+
+    const pseudoPlayers: Player[] = players.map((player, index) => ({
+      id: player.id,
+      name: player.name,
+      isHost: player.id === "demo-host",
+      score: 0,
+      orderIndex: index,
+      rounds: [PICK_SCORE[picks[player.id] ?? "zombie"]],
+    }));
+
+    const resolved = spinOutcome(pseudoPlayers, picks, `${code}:${Date.now()}`);
+    setOutcome(resolved);
+    setPhase("spinning_genre");
+    setWheelRotation((value) => genreWheelRotation(resolved.winningGenre, value, `${code}:${Date.now()}`));
+    setNarration(buildNarration(code, self.name, "choice_submitted", 4, resolved.winningGenre));
+
+    window.setTimeout(() => {
+      if (!resolved.tieBreak) {
+        setPhase("results");
+        return;
+      }
+      const contenderIndex = resolved.contenders.indexOf(resolved.winnerId);
+      setPhase("spinning_tie");
+      setTieRotation((value) =>
+        tieWheelRotation(Math.max(0, contenderIndex), Math.max(2, resolved.contenders.length), value, `${code}:${Date.now()}`)
+      );
+      window.setTimeout(() => setPhase("results"), 1400);
+    }, 1700);
   }
+
+  function finishDemo() {
+    if (!outcome) {
+      return;
+    }
+    const ordered = [
+      outcome.winnerId,
+      ...players.map((player) => player.id).filter((id) => id !== outcome.winnerId),
+    ];
+    setDemoMinigameOrder(ordered, outcome.winningGenre);
+    router.push(`/game/${code}?player=${self.id}&demo=1`);
+  }
+
+  const winner = outcome ? players.find((player) => player.id === outcome.winnerId) : null;
+  const winningGenre = outcome ? GENRES.find((genre) => genre.id === outcome.winningGenre) : null;
+  const tieNames = outcome
+    ? outcome.contenders.map((id) => players.find((player) => player.id === id)?.name ?? "Player")
+    : [];
 
   return (
     <main className="page-shell page-with-top-bar">
       <div className="suspense-wash" aria-hidden />
       <SessionTopBar
-        backHref={`/lobby/${code}?player=${playerId || "demo-host"}&demo=1`}
+        backHref={`/lobby/${code}?player=${self.id}&demo=1`}
         backLabel="Back to Lobby"
         roomCode={code}
-        playerId={playerId || "demo-host"}
+        playerId={self.id}
         showInvite
         isDemo
         phaseLabel="Minigame"
-        playerName={playerName}
+        playerName={self.name}
       />
+
       <div className="content-wrap flex min-h-dvh flex-col items-center justify-center gap-6">
         <NarratorBanner line={narration} compact />
-        <h1 className="text-3xl font-bold">Reflex Roulette (Demo)</h1>
-        <div className={clsx("rounded-full border px-5 py-2 text-lg font-black", timeLeft <= 3 ? "tension-pulse border-red-400 text-red-300" : "border-cyan-300 text-cyan-300")}>
-          {timeLeft}s
-        </div>
-        <p className="text-center text-zinc-300">Tap when the marker is inside the red zone.</p>
 
-        <div className={`panel w-full max-w-2xl space-y-4 p-6 ${flash ? "ring-2 ring-red-400" : ""}`}>
-          <div className="relative h-10 rounded-full bg-zinc-800">
-            <div className={clsx("absolute left-[60%] top-0 h-full w-[20%] rounded-full bg-red-500/70", flash ? "bg-red-300/90" : "")} />
-            <div
-              className={clsx("absolute top-1/2 h-6 w-6 -translate-y-1/2 rounded-full bg-cyan-300 shadow-glow", flash ? "scale-110" : "")}
-              style={{ left: `calc(${barProgress}% - 12px)` }}
-            />
-          </div>
+        <WheelView
+          picks={picks}
+          players={players}
+          activePick={picks[self.id] ?? null}
+          onPick={pickGenre}
+          wheelRotation={wheelRotation}
+          disabled={phase !== "picking"}
+        />
 
-          <button type="button" className="btn btn-danger w-full py-4 text-lg font-semibold" onClick={tapBar} disabled={finished}>
-            Tap when bar is in the red zone
+        {phase === "picking" ? (
+          <button type="button" className="btn btn-primary w-full max-w-3xl py-4 text-lg font-semibold" onClick={spinWheel} disabled={!allPicked}>
+            {allPicked ? "Spin Genre Wheel (Demo)" : "Waiting for all picks"}
           </button>
+        ) : null}
 
-          <div className="flex items-center justify-between text-sm text-zinc-300">
-            <span>Taps: {taps}</span>
-            <span>Score: {score}</span>
-          </div>
-        </div>
+        {phase === "spinning_genre" ? <p className="text-zinc-300">Spinning genre wheel...</p> : null}
 
-        <button type="button" className="btn btn-primary w-full max-w-2xl py-4 text-lg font-semibold sm:text-xl" onClick={finishDemoMinigame}>
-          Finish Demo Minigame
-        </button>
+        {phase === "spinning_tie" ? <TieWheel names={tieNames} rotation={tieRotation} /> : null}
+
+        {phase === "results" && winner && winningGenre ? (
+          <section className="panel w-full max-w-3xl space-y-4 p-5">
+            <p className="text-xs uppercase tracking-[0.2em] text-zinc-400">Spin Result</p>
+            <h2 className="text-3xl font-black" style={{ color: winningGenre.color }}>
+              {winningGenre.name}
+            </h2>
+            <p className="text-lg">
+              <strong>{winner.name}</strong> goes first.
+            </p>
+            {outcome?.tieBreak ? <p className="text-sm text-zinc-300">Tie break resolved by name wheel.</p> : null}
+            <button type="button" className="btn btn-primary w-full py-4 text-lg font-semibold" onClick={finishDemo}>
+              Finish Demo Minigame
+            </button>
+          </section>
+        ) : null}
       </div>
     </main>
   );
@@ -201,25 +429,88 @@ type RealtimeProps = {
 
 function RealtimeMinigame({ code, playerId }: RealtimeProps) {
   const router = useRouter();
-
-  const [players, setPlayers] = useState<Player[]>([]);
   const [phase, setPhase] = useState<Phase>("countdown");
-  const [startAt, setStartAt] = useState<number>(Date.now() + 2000);
-  const [round, setRound] = useState(1);
-  const [roundStartAt, setRoundStartAt] = useState(0);
-  const [renderTick, setRenderTick] = useState(Date.now());
-  const [feedback, setFeedback] = useState<string | null>(null);
+  const [players, setPlayers] = useState<Player[]>([]);
+  const [startAt, setStartAt] = useState(Date.now() + 1500);
+  const [nowMs, setNowMs] = useState(Date.now());
+  const [wheelRotation, setWheelRotation] = useState(0);
+  const [tieRotation, setTieRotation] = useState(0);
+  const [outcome, setOutcome] = useState<SpinOutcome | null>(null);
   const [leaderboard, setLeaderboard] = useState<Player[]>([]);
   const [genreReveal, setGenreReveal] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
-  const [tapFlash, setTapFlash] = useState(false);
   const [narration, setNarration] = useState<NarrationLine | null>(null);
 
-  const submittedRef = useRef(false);
+  const spinSubmittedRef = useRef(false);
+  const autoGenreRef = useRef(false);
+  const outcomeRef = useRef<SpinOutcome | null>(null);
 
   const selfPlayer = useMemo(() => players.find((player) => player.id === playerId) ?? null, [players, playerId]);
-  const isStoryMaster = useMemo(() => leaderboard[0]?.id === playerId, [leaderboard, playerId]);
+  const picks = useMemo(() => pickMap(players), [players]);
+  const allPicked = useMemo(() => players.length > 0 && players.every((player) => Boolean(picks[player.id])), [players, picks]);
+  const isHost = Boolean(selfPlayer?.isHost);
+  const countdown = Math.max(0, Math.ceil((startAt - nowMs) / 1000));
+
+  const applyResolvedOutcome = useCallback(
+    (resolved: SpinOutcome) => {
+      outcomeRef.current = resolved;
+      setOutcome(resolved);
+      setPhase("spinning_genre");
+      setWheelRotation((value) => genreWheelRotation(resolved.winningGenre, value, `${code}:${Date.now()}`));
+
+      const resolveTie = () => {
+        if (!resolved.tieBreak) {
+          setPhase("submitting");
+          return;
+        }
+        const contenderIndex = resolved.contenders.indexOf(resolved.winnerId);
+        setPhase("spinning_tie");
+        setTieRotation((value) =>
+          tieWheelRotation(Math.max(0, contenderIndex), Math.max(2, resolved.contenders.length), value, `${code}:${Date.now()}`)
+        );
+        window.setTimeout(() => setPhase("submitting"), 1300);
+      };
+
+      window.setTimeout(resolveTie, 1650);
+    },
+    [code]
+  );
+
+  const finalizeSpin = useCallback(
+    (resolved: SpinOutcome) => {
+      if (spinSubmittedRef.current) {
+        return;
+      }
+      spinSubmittedRef.current = true;
+
+      const socket = getSocketClient();
+      const ordered = orderWinnerFirst(players, resolved.winnerId);
+
+      ordered.forEach((player, rank) => {
+        socket.emit("minigame_score", {
+          code,
+          playerId: player.id,
+          round: 2,
+          score: scriptedScore(rank, 2),
+          accuracy: 100,
+        });
+      });
+
+      ordered.forEach((player, rank) => {
+        socket.emit("minigame_score", {
+          code,
+          playerId: player.id,
+          round: 3,
+          score: scriptedScore(rank, 3),
+          accuracy: 100,
+        });
+      });
+
+      setNarration(buildNarration(code, selfPlayer?.name ?? "Host", "choice_submitted", 5));
+    },
+    [code, players, selfPlayer?.name]
+  );
 
   useEffect(() => {
     const socket = getSocketClient();
@@ -231,20 +522,55 @@ function RealtimeMinigame({ code, playerId }: RealtimeProps) {
 
     socket.on("minigame_start", (payload: { startAt: number }) => {
       setStartAt(payload.startAt);
+      setNowMs(Date.now());
       setPhase("countdown");
+      setOutcome(null);
+      outcomeRef.current = null;
+      setLeaderboard([]);
+      setGenreReveal(null);
+      spinSubmittedRef.current = false;
+      autoGenreRef.current = false;
     });
 
     socket.on("minigame_complete", (payload: { players: Player[] }) => {
       setLeaderboard(payload.players);
       setPhase("results");
+
+      const winner = payload.players[0];
+      if (!winner) {
+        return;
+      }
+      const winnerPick = decodePick(winner.rounds?.[0]) ?? "zombie";
+      const contenderIds = payload.players
+        .filter((player) => decodePick(player.rounds?.[0]) === winnerPick)
+        .map((player) => player.id);
+      const resolved: SpinOutcome = {
+        winningGenre: winnerPick,
+        contenders: contenderIds.length ? contenderIds : [winner.id],
+        winnerId: winner.id,
+        tieBreak: contenderIds.length > 1,
+      };
+      setOutcome((current) => current ?? resolved);
+      outcomeRef.current = outcomeRef.current ?? resolved;
+
+      if (isHost && !autoGenreRef.current) {
+        autoGenreRef.current = true;
+        window.setTimeout(() => {
+          getSocketClient().emit("genre_selected", {
+            code,
+            playerId: resolved.winnerId,
+            genre: resolved.winningGenre,
+          });
+        }, 1300);
+      }
     });
 
-    socket.on("genre_selected", (payload: { genre: GenreId; genreName: string }) => {
+    socket.on("genre_selected", (payload: { genreName: string }) => {
       setGenreReveal(payload.genreName);
       setPhase("revealed");
       window.setTimeout(() => {
         router.push(`/game/${code}?player=${playerId}`);
-      }, 2100);
+      }, 1800);
     });
 
     socket.on("narrator_update", (payload: NarratorUpdatePayload) => {
@@ -255,7 +581,6 @@ function RealtimeMinigame({ code, playerId }: RealtimeProps) {
 
     socket.on("server_error", (payload: { message: string }) => {
       const message = payload.message || "Server error";
-      // Don't hard-fail the minigame for transient WS errors; allow reconnect.
       if (/realtime|connect/i.test(message)) {
         setToast(message);
         return;
@@ -271,7 +596,16 @@ function RealtimeMinigame({ code, playerId }: RealtimeProps) {
       socket.off("narrator_update");
       socket.off("server_error");
     };
-  }, [code, playerId, router]);
+  }, [code, isHost, playerId, router]);
+
+  useEffect(() => {
+    if (!selfPlayer) {
+      return;
+    }
+    if (phase === "countdown") {
+      setNarration(buildNarration(code, selfPlayer.name, "scene_enter", 1));
+    }
+  }, [code, phase, selfPlayer]);
 
   useEffect(() => {
     if (!toast) {
@@ -282,151 +616,57 @@ function RealtimeMinigame({ code, playerId }: RealtimeProps) {
   }, [toast]);
 
   useEffect(() => {
-    if (!selfPlayer) {
-      return;
-    }
-    if (phase === "countdown") {
-      setNarration(
-        buildMinigameNarration({
-          code,
-          playerName: selfPlayer.name,
-          trigger: "scene_enter",
-          historyLength: 0,
-          tensionLevel: 2,
-        })
-      );
-      return;
-    }
-    if (phase === "results") {
-      setNarration(
-        buildMinigameNarration({
-          code,
-          playerName: selfPlayer.name,
-          trigger: "choice_submitted",
-          historyLength: leaderboard.length || 1,
-          tensionLevel: 4,
-        })
-      );
-    }
-  }, [code, leaderboard.length, phase, selfPlayer]);
-
-  useEffect(() => {
     if (phase !== "countdown") {
       return;
     }
-
     const timer = window.setInterval(() => {
-      if (Date.now() >= startAt) {
-        setPhase("playing");
-        setRound(1);
-        setRoundStartAt(Date.now());
-        submittedRef.current = false;
+      const current = Date.now();
+      setNowMs(current);
+      if (current >= startAt) {
+        setPhase("picking");
       }
-    }, 50);
-
+    }, 70);
     return () => window.clearInterval(timer);
   }, [phase, startAt]);
 
   useEffect(() => {
-    if (phase !== "playing") {
+    if (phase !== "submitting") {
       return;
     }
-
-    let frame = 0;
-    const loop = () => {
-      setRenderTick(Date.now());
-      frame = window.requestAnimationFrame(loop);
-    };
-
-    frame = window.requestAnimationFrame(loop);
-    return () => window.cancelAnimationFrame(frame);
-  }, [phase]);
-
-  const nextRound = useCallback(() => {
-    if (round >= 3) {
-      setPhase("waiting");
+    const resolved = outcomeRef.current;
+    if (!resolved || !isHost) {
       return;
     }
-    setRound((value) => value + 1);
-    setRoundStartAt(Date.now());
-    submittedRef.current = false;
-    setFeedback(null);
-  }, [round]);
+    finalizeSpin(resolved);
+  }, [finalizeSpin, isHost, phase]);
 
-  const submitScore = useCallback(
-    (score: number, accuracy: number) => {
-      if (submittedRef.current) {
-        return;
-      }
-
-      submittedRef.current = true;
-      const socket = getSocketClient();
-      // TODO(multiplayer): Include anti-cheat metadata when backend validation is introduced.
-      socket.emit("minigame_score", {
-        code,
-        playerId,
-        round,
-        score,
-        accuracy,
-      });
-
-      setFeedback(`+${Math.round(score)} pts`);
-
-      window.setTimeout(() => {
-        nextRound();
-      }, 700);
-    },
-    [code, playerId, round, nextRound]
-  );
-
-  useEffect(() => {
-    if (phase !== "playing" || roundStartAt <= 0) {
+  function choosePie(genre: GenreId) {
+    if (!selfPlayer || picks[selfPlayer.id]) {
       return;
     }
-
-    const timer = window.setInterval(() => {
-      const elapsedInRound = Date.now() - roundStartAt;
-      if (elapsedInRound >= 5000 && !submittedRef.current) {
-        submitScore(0, 0);
-      }
-    }, 40);
-
-    return () => window.clearInterval(timer);
-  }, [phase, roundStartAt, submitScore]);
-
-  const elapsed = Math.max(0, renderTick - roundStartAt);
-  const needleAngle = (elapsed / 1500) * 360;
-  const zoneAngle = (elapsed / 2000) * 360;
-  const roundSeconds = Math.max(0, Math.ceil((5000 - elapsed) / 1000));
-
-  function handleTap() {
-    if (phase !== "playing" || submittedRef.current) {
-      return;
-    }
-
-    const diff = angleDiff(needleAngle, zoneAngle);
-    const inZone = diff <= 30;
-    const accuracy = inZone ? Math.round((1 - diff / 30) * 100) : 0;
-    const speedMultiplier = Math.max(1, 1.5 - elapsed / 5000 / 2);
-    const score = Math.round(accuracy * speedMultiplier);
-
-    navigator.vibrate?.(30);
-    setTapFlash(true);
-    window.setTimeout(() => setTapFlash(false), 180);
-    submitScore(score, accuracy);
-  }
-
-  function chooseGenre(genre: GenreId) {
-    const socket = getSocketClient();
-    // TODO(multiplayer): Host authority can move to server-side role checks when auth is added.
-    socket.emit("genre_selected", {
+    getSocketClient().emit("minigame_score", {
       code,
       playerId,
-      genre,
+      round: 1,
+      score: PICK_SCORE[genre],
+      accuracy: 100,
     });
+    setNarration(buildNarration(code, selfPlayer.name, "choice_submitted", 2, genre));
   }
 
-  const countdownNumber = Math.max(0, Math.ceil((startAt - Date.now()) / 1000));
+  function spinGenreWheel() {
+    if (!isHost || !allPicked || !selfPlayer) {
+      return;
+    }
+    const resolved = spinOutcome(players, picks, `${code}:${Date.now()}:${selfPlayer.id}`);
+    applyResolvedOutcome(resolved);
+  }
+
+  const winner = outcome ? players.find((player) => player.id === outcome.winnerId) : null;
+  const winningGenre = outcome ? GENRES.find((genre) => genre.id === outcome.winningGenre) : null;
+  const tieNames = outcome
+    ? outcome.contenders.map((id) => players.find((player) => player.id === id)?.name ?? "Player")
+    : [];
 
   if (error) {
     return (
@@ -464,115 +704,70 @@ function RealtimeMinigame({ code, playerId }: RealtimeProps) {
         phaseLabel="Minigame"
         playerName={selfPlayer?.name}
       />
-      <div className="content-wrap flex min-h-dvh flex-col items-center justify-center gap-7">
+
+      <div className="content-wrap flex min-h-dvh flex-col items-center justify-center gap-6">
         <NarratorBanner line={narration} compact />
-        <h1 className="text-3xl font-bold">Reflex Roulette</h1>
         {toast ? <p className="text-sm text-cyan-300">{toast}</p> : null}
-        {phase === "playing" ? (
-          <div
-            className={clsx(
-              "rounded-full border px-4 py-2 text-lg font-black",
-              roundSeconds <= 2 ? "tension-pulse border-red-400 text-red-300" : "border-cyan-300 text-cyan-300"
-            )}
-          >
-            {roundSeconds}s
-          </div>
-        ) : null}
 
         {phase === "countdown" ? (
-          <motion.div
-            key={countdownNumber}
-            initial={{ scale: 0.6, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            className="text-[5rem] font-black"
-          >
-            {countdownNumber <= 0 ? "GO" : countdownNumber}
+          <motion.div key={countdown} initial={{ scale: 0.6, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="text-center">
+            <p className="text-sm uppercase tracking-[0.2em] text-zinc-300">Genre wheel opens in</p>
+            <h1 className="text-[5rem] font-black">{countdown <= 0 ? "GO" : countdown}</h1>
           </motion.div>
-        ) : null}
+        ) : (
+          <WheelView
+            picks={picks}
+            players={players.map((player) => ({ id: player.id, name: player.name }))}
+            activePick={selfPlayer ? picks[selfPlayer.id] ?? null : null}
+            onPick={choosePie}
+            wheelRotation={wheelRotation}
+            disabled={phase !== "picking"}
+          />
+        )}
 
-        {phase === "playing" ? (
-          <button
-            type="button"
-            onClick={handleTap}
-            className={clsx(
-              "relative grid h-[340px] w-[340px] place-items-center rounded-full border border-white/20 bg-black/30",
-              tapFlash ? "ring-2 ring-red-400" : ""
-            )}
-            aria-label="Tap to score this round"
-          >
-            <div
-              className="pointer-events-none absolute h-[280px] w-[280px] rounded-full border-8 border-transparent"
-              style={{
-                borderTopColor: "#00d9ff",
-                transform: `rotate(${zoneAngle}deg)`,
-                transition: "transform 40ms linear",
-              }}
-            />
-            <div
-              className="pointer-events-none absolute h-[130px] w-[3px] origin-bottom rounded-full bg-white"
-              style={{ transform: `translateY(-45px) rotate(${needleAngle}deg)` }}
-            />
-            <div className="text-center">
-              <p className="text-xs uppercase tracking-[0.2em] text-zinc-400">Round {round}/3</p>
-              <p className="text-3xl font-bold">Tap</p>
-              <p className="text-sm text-zinc-300">Hit zone + speed = score</p>
-            </div>
-            {feedback ? <p className="absolute -top-10 text-xl font-bold text-cyan-300">{feedback}</p> : null}
+        {phase === "picking" ? (
+          <button type="button" className="btn btn-primary w-full max-w-3xl py-4 text-lg font-semibold" onClick={spinGenreWheel} disabled={!isHost || !allPicked}>
+            {isHost ? (allPicked ? "Spin Genre Wheel" : "Waiting for all picks") : "Host spins after all picks"}
           </button>
         ) : null}
 
-        {phase === "waiting" ? <p className="text-zinc-300">Waiting for others...</p> : null}
+        {phase === "spinning_genre" ? <p className="text-zinc-300">Spinning genre wheel...</p> : null}
+        {phase === "spinning_tie" ? <TieWheel names={tieNames} rotation={tieRotation} /> : null}
+        {phase === "submitting" ? <p className="text-zinc-300">Locking winner and turn order...</p> : null}
 
-        {phase === "results" ? (
-          <div className="panel w-full max-w-2xl space-y-4 p-6">
-            <h2 className="text-2xl font-semibold">Leaderboard</h2>
+        {phase === "results" && winner && winningGenre ? (
+          <section className="panel w-full max-w-3xl space-y-4 p-5">
+            <p className="text-xs uppercase tracking-[0.2em] text-zinc-400">Wheel Result</p>
+            <h2 className="text-3xl font-black" style={{ color: winningGenre.color }}>
+              {winningGenre.name}
+            </h2>
+            <p className="text-lg">
+              <strong>{winner.name}</strong> goes first.
+            </p>
+            {outcome?.tieBreak ? <p className="text-sm text-zinc-300">Tie resolved with the names-only wheel.</p> : null}
+
             <div className="space-y-2">
               {leaderboard.map((player, index) => (
                 <div
                   key={player.id}
-                  className={`flex items-center justify-between rounded-xl border px-4 py-3 ${
-                    index === 0 ? "border-yellow-300/70 bg-yellow-300/10" : "border-white/15 bg-black/25"
-                  }`}
+                  className={clsx(
+                    "rounded-xl border px-3 py-2 text-sm",
+                    index === 0 ? "border-yellow-300/70 bg-yellow-300/15" : "border-white/20 bg-black/20"
+                  )}
                 >
-                  <span>
-                    #{index + 1} {player.name} {index === 0 ? "Story Master" : ""}
-                  </span>
-                  <span className="font-semibold">{player.score}</span>
+                  #{index + 1} {player.name}
                 </div>
               ))}
             </div>
-
-            {isStoryMaster ? (
-              <div className="space-y-2">
-                <p className="text-sm text-zinc-300">Choose the genre</p>
-                <div className="grid gap-2 md:grid-cols-3">
-                  {GENRES.map((genre) => (
-                    <button
-                      key={genre.id}
-                      type="button"
-                      className="btn btn-secondary min-h-20 text-left"
-                      onClick={() => chooseGenre(genre.id)}
-                    >
-                      <div className="text-xs text-zinc-400">Mystery Card</div>
-                      <div className="text-lg font-semibold">{genre.name}</div>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            ) : (
-              <p className="text-zinc-300">Story Master is choosing the genre...</p>
-            )}
-          </div>
+          </section>
         ) : null}
 
         {phase === "revealed" ? (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center">
-            <p className="text-xs uppercase tracking-[0.2em] text-zinc-300">Genre Selected</p>
+            <p className="text-xs uppercase tracking-[0.2em] text-zinc-300">Story Loading</p>
             <h2 className="text-5xl font-black text-cyan-300">{genreReveal}</h2>
           </motion.div>
         ) : null}
-
-        <p className="text-xs text-zinc-400">Player: {selfPlayer?.name ?? "Unknown"}</p>
       </div>
     </main>
   );

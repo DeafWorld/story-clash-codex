@@ -8,7 +8,7 @@ import { apiFetch } from "../../../lib/api-client";
 import { trackEvent } from "../../../lib/analytics";
 import Typewriter from "../../../components/typewriter";
 import NarratorBanner from "../../../components/narrator-banner";
-import { getDemoEndingText, getDemoSession, initDemoRoom } from "../../../lib/demo-session";
+import { getDemoEndingText, getDemoSession, getDemoStoryTree, initDemoRoom } from "../../../lib/demo-session";
 import SessionTopBar from "../../../components/session-top-bar";
 import type { EndingType, RecapPayload } from "../../../types/game";
 
@@ -29,6 +29,7 @@ type DemoRecapProps = {
 function DemoRecap({ code }: DemoRecapProps) {
   const router = useRouter();
   const session = getDemoSession();
+  const story = getDemoStoryTree();
 
   return (
     <main className="page-shell page-with-top-bar">
@@ -47,7 +48,7 @@ function DemoRecap({ code }: DemoRecapProps) {
         <NarratorBanner line={session.latestNarration ?? null} />
         <section className="panel space-y-4 p-6 text-center">
           <p className="badge mx-auto">Demo Complete</p>
-          <p className="text-xs uppercase tracking-[0.2em] text-zinc-400">Zombie Outbreak (Demo)</p>
+          <p className="text-xs uppercase tracking-[0.2em] text-zinc-400">{story.title} (Demo)</p>
           <Typewriter text={getDemoEndingText()} charsPerSecond={20} />
           <p className="mx-auto w-fit rounded-full border border-cyan-300/60 px-4 py-2 text-lg font-bold text-cyan-300">
             Demo Complete
@@ -204,6 +205,15 @@ function RealtimeRecap({ code, playerId }: RealtimeRecapProps) {
     };
   }, [code, recap, socialCardEnabled]);
 
+  const shareToXUrl = useMemo(() => {
+    const u = shareUrl || (typeof window !== "undefined" ? window.location.href : "");
+    return `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(u)}`;
+  }, [shareText, shareUrl]);
+  const shareToWhatsAppUrl = useMemo(() => {
+    const u = shareUrl || (typeof window !== "undefined" ? window.location.href : "");
+    return `https://wa.me/?text=${encodeURIComponent(shareText + "\n" + u)}`;
+  }, [shareText, shareUrl]);
+
   async function copyShare() {
     const url = shareUrl || window.location.href;
     if (typeof navigator.share === "function") {
@@ -223,6 +233,13 @@ function RealtimeRecap({ code, playerId }: RealtimeRecapProps) {
     await navigator.clipboard.writeText(`${shareText}\n${url}`);
     trackEvent("recap_shared", { code, method: "clipboard" });
     setToast("Copied! Share with friends");
+  }
+
+  async function copyLinkOnly() {
+    const url = shareUrl || window.location.href;
+    await navigator.clipboard.writeText(url);
+    trackEvent("recap_shared", { code, method: "copy_link" });
+    setToast("Link copied");
   }
 
   function playAgain() {
@@ -324,11 +341,37 @@ function RealtimeRecap({ code, playerId }: RealtimeRecapProps) {
           </section>
         ) : null}
 
-        <section className="panel flex flex-wrap gap-3 p-5">
-          <button type="button" className="btn btn-primary flex-1 py-3 text-lg font-semibold" onClick={copyShare}>
+        <section className="panel flex flex-col gap-4 p-5">
+          <p className="text-center text-sm font-medium text-cyan-200">
+            You survived (or didn’t). Share the story.
+          </p>
+          <div className="flex flex-wrap gap-3">
+          <button type="button" className="btn btn-primary flex-1 min-w-[140px] py-3 text-lg font-semibold" onClick={copyShare}>
             Share Story
           </button>
-          <button type="button" className="btn btn-secondary flex-1 py-3" onClick={playAgain}>
+          <button type="button" className="btn btn-secondary min-w-[120px] py-3" onClick={copyLinkOnly}>
+            Copy link
+          </button>
+          <a
+            href={shareToXUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="btn btn-secondary min-w-[120px] py-3 text-center"
+            onClick={() => trackEvent("recap_shared", { code, method: "twitter" })}
+          >
+            Share to X
+          </a>
+          <a
+            href={shareToWhatsAppUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="btn btn-secondary min-w-[120px] py-3 text-center"
+            onClick={() => trackEvent("recap_shared", { code, method: "whatsapp" })}
+          >
+            WhatsApp
+          </a>
+          </div>
+          <button type="button" className="btn btn-secondary w-full py-3" onClick={playAgain}>
             Play Again with Same Crew
           </button>
           <button type="button" className="btn btn-secondary" onClick={() => router.push("/")}>

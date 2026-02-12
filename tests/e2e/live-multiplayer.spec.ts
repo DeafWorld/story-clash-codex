@@ -76,40 +76,19 @@ test.describe("Live Multiplayer Flow (Cloudflare Worker)", () => {
     await expect(host.getByRole("link", { name: "Back to Lobby" })).toBeVisible();
     await expect(host.getByRole("button", { name: "Invite" })).toBeVisible();
 
-    const tapSelector = { name: "Tap to score this round" as const };
-    await expect(host.getByRole("button", tapSelector)).toBeVisible({ timeout: 30_000 });
-    await expect(p2.getByRole("button", tapSelector)).toBeVisible({ timeout: 30_000 });
-    await expect(p3.getByRole("button", tapSelector)).toBeVisible({ timeout: 30_000 });
+    await expect(host.getByRole("button", { name: /Pick Zombie Outbreak/i })).toBeVisible({ timeout: 30_000 });
+    await expect(p2.getByRole("button", { name: /Pick Alien Invasion/i })).toBeVisible({ timeout: 30_000 });
+    await expect(p3.getByRole("button", { name: /Pick Haunted Manor/i })).toBeVisible({ timeout: 30_000 });
 
-    // Submit 3 rounds each.
-    for (let i = 0; i < 3; i += 1) {
-      await host.getByRole("button", tapSelector).click();
-      await p2.getByRole("button", tapSelector).click();
-      await p3.getByRole("button", tapSelector).click();
-      await host.waitForTimeout(900);
-    }
+    await host.getByRole("button", { name: /Pick Zombie Outbreak/i }).click();
+    await p2.getByRole("button", { name: /Pick Alien Invasion/i }).click();
+    await p3.getByRole("button", { name: /Pick Haunted Manor/i }).click();
 
-    await expect(host.getByRole("heading", { name: "Leaderboard" })).toBeVisible({ timeout: 30_000 });
-    await expect(p2.getByRole("heading", { name: "Leaderboard" })).toBeVisible({ timeout: 30_000 });
-    await expect(p3.getByRole("heading", { name: "Leaderboard" })).toBeVisible({ timeout: 30_000 });
+    await host.getByRole("button", { name: /^Spin Genre Wheel$/ }).click();
 
-    // Whoever is Story Master chooses the genre. Pick Zombie for deterministic short path.
-    const pages = [host, p2, p3];
-    let chooser = host;
-    for (const page of pages) {
-      // eslint-disable-next-line no-await-in-loop
-      const canChoose = await page.getByText("Choose the genre").isVisible().catch(() => false);
-      if (canChoose) {
-        chooser = page;
-        break;
-      }
-    }
-
-    await chooser.getByRole("button", { name: "Zombie Outbreak" }).click();
-
-    await host.waitForURL(new RegExp(`/game/${code}`), { timeout: 30_000 });
-    await p2.waitForURL(new RegExp(`/game/${code}`), { timeout: 30_000 });
-    await p3.waitForURL(new RegExp(`/game/${code}`), { timeout: 30_000 });
+    await host.waitForURL(new RegExp(`/game/${code}`), { timeout: 45_000 });
+    await p2.waitForURL(new RegExp(`/game/${code}`), { timeout: 45_000 });
+    await p3.waitForURL(new RegExp(`/game/${code}`), { timeout: 45_000 });
     await expect(host.getByRole("link", { name: "Back to Lobby" })).toBeVisible();
     await expect(host.getByRole("button", { name: "Invite" })).toBeVisible();
     await expect(host.getByText(/narrator/i)).toBeVisible();
@@ -118,15 +97,15 @@ test.describe("Live Multiplayer Flow (Cloudflare Worker)", () => {
     const gamePages: any[] = [host, p2, p3];
 
     let active = await waitForActiveTurn(gamePages);
-    await active.getByRole("button", { name: "Search for a weapon" }).click();
+    await active.getByRole("button", { name: "Rip open the supply locker for a weapon" }).click();
     await host.waitForTimeout(1200);
 
     active = await waitForActiveTurn(gamePages);
-    await active.getByRole("button", { name: "Confront the threat" }).click();
+    await active.getByRole("button", { name: "Charge the hallway before they surround you" }).click();
     await host.waitForTimeout(1200);
 
     active = await waitForActiveTurn(gamePages);
-    await active.getByRole("button", { name: "Fight through" }).click();
+    await active.getByRole("button", { name: "Fight upward through the swarm" }).click();
 
     await host.waitForURL(new RegExp(`/recap/${code}`), { timeout: 30_000 });
     await p2.waitForURL(new RegExp(`/recap/${code}`), { timeout: 30_000 });

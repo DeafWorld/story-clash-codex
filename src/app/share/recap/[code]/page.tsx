@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { z } from "zod";
+import { SITE_TAGLINE } from "@/lib/app-meta";
 import { verifyShareToken } from "@/lib/share-token";
 import { getRecapState } from "@/lib/store";
 
@@ -51,18 +52,19 @@ export async function generateMetadata({ params, searchParams }: ShareRecapPageP
   try {
     const recap = getRecapState(code);
     const image = `/api/og/recap?token=${encodeURIComponent(token)}`;
+    const description = `${recap.storyTitle} ended in ${endingLabel(recap.endingType)}. ${SITE_TAGLINE}`;
     return {
       title: `Story Clash • ${endingLabel(recap.endingType)}`,
-      description: `${recap.storyTitle} ended in ${endingLabel(recap.endingType)}.`,
+      description,
       openGraph: {
         title: `Story Clash • ${endingLabel(recap.endingType)}`,
-        description: `${recap.storyTitle} ended in ${endingLabel(recap.endingType)}.`,
+        description,
         images: [image],
       },
       twitter: {
         card: "summary_large_image",
         title: `Story Clash • ${endingLabel(recap.endingType)}`,
-        description: `${recap.storyTitle} ended in ${endingLabel(recap.endingType)}.`,
+        description,
         images: [image],
       },
     };

@@ -1,4 +1,6 @@
 import zombieSource from "../data/stories/zombie.json";
+import alienSource from "../data/stories/alien.json";
+import hauntedSource from "../data/stories/haunted.json";
 import { generateNarrationLine } from "./narrator";
 import {
   getNextNodeIdFromChoice,
@@ -6,7 +8,7 @@ import {
   getNodeById,
   getStoryStartNode,
 } from "./story-utils";
-import type { NarrationLine, Player, StoryTree } from "../types/game";
+import type { GenreId, NarrationLine, Player, StoryTree } from "../types/game";
 
 export type DemoPlayer = Player;
 
@@ -26,7 +28,7 @@ export type DemoStoryEntry = {
 
 export type DemoSessionState = {
   roomCode: "DEMO1";
-  storyId: "zombie";
+  storyId: GenreId;
   status: "lobby" | "minigame" | "story" | "recap";
   players: DemoPlayer[];
   turnOrder: string[];
@@ -38,7 +40,11 @@ export type DemoSessionState = {
   narrationLog: NarrationLine[];
 };
 
-const storyTree = zombieSource as StoryTree;
+const storyTrees: Record<GenreId, StoryTree> = {
+  zombie: zombieSource as StoryTree,
+  alien: alienSource as StoryTree,
+  haunted: hauntedSource as StoryTree,
+};
 
 const DEMO_PLAYERS: DemoPlayer[] = [
   { id: "demo-host", name: "Host", isHost: true, score: 0, orderIndex: 0, connected: true, rounds: [] },
@@ -49,7 +55,7 @@ const DEMO_PLAYERS: DemoPlayer[] = [
 let session: DemoSessionState = createSession();
 
 function createSession(): DemoSessionState {
-  const startNode = getStoryStartNode(storyTree);
+  const startNode = getStoryStartNode(storyTrees.zombie);
   return {
     roomCode: "DEMO1",
     storyId: "zombie",
@@ -71,6 +77,7 @@ function appendNarration(trigger: "scene_enter" | "choice_submitted" | "turn_tim
   choiceLabel?: string;
   freeText?: string;
 } = {}) {
+  const storyTree = storyTrees[session.storyId];
   const scene = getNodeById(storyTree, input.sceneId ?? session.currentNodeId) ?? getStoryStartNode(storyTree);
   const player = session.players.find((entry) => entry.id === (input.playerId ?? session.currentPlayerId));
   const endingType = scene.ending ? scene.endingType ?? "doom" : null;
@@ -92,6 +99,7 @@ function appendNarration(trigger: "scene_enter" | "choice_submitted" | "turn_tim
 }
 
 function markStoryOrRecap(nextNodeId: string) {
+  const storyTree = storyTrees[session.storyId];
   const node = getNodeById(storyTree, nextNodeId);
   if (!node) {
     return;
@@ -100,6 +108,7 @@ function markStoryOrRecap(nextNodeId: string) {
 }
 
 function pushHistory(nextNodeId: string, choiceLabel: string, isFreeChoice: boolean, freeText?: string) {
+  const storyTree = storyTrees[session.storyId];
   const node = getNodeById(storyTree, session.currentNodeId);
   if (!node) {
     return;
@@ -131,26 +140,33 @@ export function getDemoSession() {
 }
 
 export function getDemoStoryTree() {
-  return storyTree;
+  return storyTrees[session.storyId];
 }
 
 export function getDemoScene() {
+  const storyTree = storyTrees[session.storyId];
   return getNodeById(storyTree, session.currentNodeId);
 }
 
-export function setDemoMinigameOrder(order: string[]) {
+export function setDemoMinigameOrder(order: string[], genre: GenreId = "zombie") {
+  const storyTree = storyTrees[genre] ?? storyTrees.zombie;
+  const startNode = getStoryStartNode(storyTree);
   session.minigameOrder = order;
   session.turnOrder = order;
+  session.storyId = genre;
+  session.currentNodeId = startNode.id;
+  session.history = [];
   session.players = session.players.map((player) => ({
     ...player,
     orderIndex: order.indexOf(player.id) >= 0 ? order.indexOf(player.id) : player.orderIndex,
   }));
   session.status = "story";
-  session.currentPlayerId = "demo-host";
+  session.currentPlayerId = order[0] ?? "demo-host";
   appendNarration("scene_enter", { playerId: session.currentPlayerId, sceneId: session.currentNodeId });
 }
 
 export function advanceDemoStoryChoice(choiceId: string) {
+  const storyTree = storyTrees[session.storyId];
   const scene = getDemoScene();
   if (!scene || scene.ending || !scene.choices.length) {
     return session;
@@ -179,6 +195,7 @@ export function advanceDemoStoryChoice(choiceId: string) {
 }
 
 export function advanceDemoStoryFreeChoice(freeText: string) {
+  const storyTree = storyTrees[session.storyId];
   const scene = getDemoScene();
   if (!scene || scene.ending) {
     return session;

@@ -46,6 +46,7 @@ function DemoGame({ code, playerId }: DemoGameProps) {
 
   const session = getDemoSession();
   const storyTree = getDemoStoryTree();
+  const storyLabel = `${storyTree.title} (Demo)`;
   const scene = getNodeById(storyTree, session.currentNodeId) ?? getStoryStartNode(storyTree);
   const activePlayerId = session.currentPlayerId;
   const activePlayer = session.players.find((player) => player.id === activePlayerId) ?? session.players[0];
@@ -82,7 +83,7 @@ function DemoGame({ code, playerId }: DemoGameProps) {
       <div
         className={clsx(
           "absolute inset-0 opacity-80",
-          genreOverlay("zombie"),
+          genreOverlay(session.storyId),
           tensionHigh ? "animate-pulse" : tensionMedium ? "opacity-95" : "opacity-70"
         )}
         style={tensionHigh ? { animationDuration: "0.8s" } : undefined}
@@ -105,9 +106,9 @@ function DemoGame({ code, playerId }: DemoGameProps) {
       <div className="grid min-h-[70dvh] gap-4 lg:grid-cols-[1fr_280px]">
         <section className={clsx("panel flex flex-col gap-5 p-5", tensionHigh ? "tension-pulse" : "")}>
           <header className="flex flex-wrap items-center justify-between gap-3">
-            <p className="text-sm uppercase tracking-[0.2em] text-zinc-400">Zombie Outbreak (Demo)</p>
+            <p className="text-sm uppercase tracking-[0.2em] text-zinc-400">{storyLabel}</p>
             <p className="rounded-full border border-white/20 px-3 py-1 text-sm">
-              Tension {tensionLevel}/5 - Your Turn, {activePlayer.name}
+              Tension {tensionLevel}/5 - Current turn: {activePlayer.name}
             </p>
           </header>
 
@@ -440,6 +441,15 @@ function RealtimeGame({ code, playerId }: RealtimeGameProps) {
       <div className="content-wrap space-y-4">
         {timeoutNotice ? <p className="text-sm text-yellow-300">{timeoutNotice}</p> : null}
         {toast ? <p className="text-sm text-cyan-300">{toast}</p> : null}
+        {isActivePlayer ? (
+          <div
+            className="rounded-xl border-2 border-cyan-400 bg-cyan-500/20 px-4 py-3 text-center text-lg font-bold text-cyan-100 shadow-[0_0_20px_rgba(34,211,238,0.3)] animate-pulse"
+            aria-live="polite"
+            role="status"
+          >
+            Your turn, {activePlayer?.name ?? "Player"} — make your move
+          </div>
+        ) : null}
         <NarratorBanner line={narration} />
         <RoomCodeCard
           code={code}

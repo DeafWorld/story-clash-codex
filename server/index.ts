@@ -87,7 +87,7 @@ async function bootstrap() {
   logger.info("server.bootstrap.step", { step: "get_request_handler_done" });
   let nextReady = false;
   let prepareError: unknown = null;
-  const enableDevNextPrepare = process.env.NEXT_ENABLE_PREPARE === "1";
+  const enableDevNextPrepare = process.env.NEXT_ENABLE_PREPARE !== "0";
 
   const startPrepare = () => {
     // `app.prepare()` can hard-block for long periods in this environment.
@@ -111,7 +111,7 @@ async function bootstrap() {
     } else {
       logger.warn("server.next.prepare_mode", {
         mode: "disabled",
-        reason: "NEXT_ENABLE_PREPARE is not set; serving public assets only",
+        reason: "NEXT_ENABLE_PREPARE=0 set; serving public assets only",
       });
     }
   } else {
