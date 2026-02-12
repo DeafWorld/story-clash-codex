@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import Script from "next/script";
-import SoundToggle from "../components/sound-toggle";
 import "./globals.css";
 
 const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? process.env.APP_URL ?? "http://localhost:3000";
@@ -25,7 +24,6 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
             strategy="afterInteractive"
           />
         ) : null}
-        <SoundToggle />
         {children}
       </body>
     </html>

@@ -60,6 +60,7 @@ describe("store multiplayer flow", () => {
     const selected = selectGenre(code, host.id, "zombie");
     expect(selected.genre).toBe("zombie");
     expect(selected.scene.id).toBe("start");
+    expect(selected.narration?.trigger).toBe("scene_enter");
 
     const firstTurn = getGameState(code);
     const firstPlayer = firstTurn.activePlayerId;
@@ -73,6 +74,7 @@ describe("store multiplayer flow", () => {
       throw new Error("Game unexpectedly ended at first decision");
     }
     expect(one.nextScene?.id).toBe("armed");
+    expect(one.narration?.trigger).toBe("choice_submitted");
 
     const secondTurn = getGameState(code);
     if (!secondTurn.activePlayerId) {
@@ -96,15 +98,21 @@ describe("store multiplayer flow", () => {
     }
     expect(three.endingType).toBe("survival");
     expect(three.history.length).toBe(3);
+    expect(three.narration?.trigger).toBe("choice_submitted");
+    expect(three.endingNarration?.trigger).toBe("ending");
 
     const recap = getRecapState(code);
     expect(recap.genre).toBe("zombie");
     expect(recap.endingType).toBe("survival");
     expect(recap.history.length).toBe(3);
+    expect(recap.latestNarration?.trigger).toBe("ending");
+    expect(recap.narrationLog.length).toBeGreaterThan(0);
 
     const restarted = restartSession(code);
     expect(restarted.phase).toBe("lobby");
     expect(restarted.history.length).toBe(0);
     expect(restarted.genre).toBeNull();
+    expect(restarted.latestNarration).toBeNull();
+    expect(restarted.narrationLog.length).toBe(0);
   });
 });

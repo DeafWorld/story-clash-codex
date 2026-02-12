@@ -55,6 +55,10 @@ textarea {
   padding: 24px 0 48px;
 }
 
+.page-with-top-bar .content-wrap {
+  padding-top: 112px;
+}
+
 .panel {
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.01));
   border: 1px solid rgba(255, 255, 255, 0.1);
@@ -180,17 +184,76 @@ textarea:focus-visible {
   opacity: 0.5;
 }
 
-.mute-button {
+.session-top-bar {
   position: fixed;
-  top: 14px;
-  right: 14px;
-  z-index: 30;
-  width: min(82vw, 240px);
+  left: 0;
+  right: 0;
+  top: 0;
+  z-index: 40;
+  padding: calc(8px + env(safe-area-inset-top, 0px)) 12px 10px;
+  background: linear-gradient(180deg, rgba(10, 12, 16, 0.92), rgba(10, 12, 16, 0.76), rgba(10, 12, 16, 0));
+  backdrop-filter: blur(8px);
 }
 
-.audio-panel {
-  backdrop-filter: blur(8px);
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+.session-top-inner {
+  margin: 0 auto;
+  width: min(1100px, 94vw);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.session-chip-row {
+  margin: 8px auto 0;
+  width: min(1100px, 94vw);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.session-chip {
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  background: rgba(0, 0, 0, 0.28);
+  padding: 5px 10px;
+  font-size: 11px;
+  line-height: 1;
+  letter-spacing: 0.02em;
+  color: #f4f6f8;
+}
+
+.session-toast {
+  margin: 8px auto 0;
+  width: min(1100px, 94vw);
+  font-size: 12px;
+  color: #84ffff;
+}
+
+.narrator-banner {
+  border-radius: 14px;
+  border: 1px solid rgba(103, 232, 249, 0.45);
+  background: linear-gradient(180deg, rgba(7, 15, 20, 0.95), rgba(7, 15, 20, 0.76));
+  box-shadow: 0 0 24px rgba(34, 211, 238, 0.18);
+  padding: 10px 12px;
+}
+
+.narrator-banner-compact {
+  padding: 8px 10px;
+}
+
+.narrator-label {
+  margin: 0 0 4px;
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #67e8f9;
+}
+
+.narrator-banner p:last-child {
+  margin: 0;
+  font-size: 0.98rem;
+  line-height: 1.45;
 }
 
 .suspense-wash {
@@ -236,6 +299,24 @@ textarea:focus-visible {
 @media (max-width: 900px) {
   .content-wrap {
     width: min(96vw, 640px);
-    padding-top: 22px;
+    padding-top: 18px;
+  }
+
+  .page-with-top-bar .content-wrap {
+    padding-top: 128px;
+  }
+
+  .session-top-inner {
+    width: min(96vw, 640px);
+  }
+
+  .session-chip-row,
+  .session-toast {
+    width: min(96vw, 640px);
+  }
+
+  .session-top-inner .btn {
+    min-width: 44%;
+    min-height: 42px;
   }
 }

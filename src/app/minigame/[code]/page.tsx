@@ -5,9 +5,12 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import clsx from "clsx";
 import { getSocketClient } from "../../../lib/socket-client";
+import { generateNarrationLine } from "../../../lib/narrator";
 import { setDemoMinigameOrder } from "../../../lib/demo-session";
-import { soundManager } from "../../../lib/soundManager";
-import type { GenreId, Player } from "../../../types/game";
+import NarratorBanner from "../../../components/narrator-banner";
+import SessionTopBar from "../../../components/session-top-bar";
+import type { GenreId, NarrationLine, Player } from "../../../types/game";
+import type { NarratorUpdatePayload } from "../../../types/realtime";
 
 type Phase = "countdown" | "playing" | "waiting" | "results" | "revealed";
 
@@ -22,6 +25,27 @@ function angleDiff(a: number, b: number) {
   return diff > 180 ? 360 - diff : diff;
 }
 
+function buildMinigameNarration(input: {
+  code: string;
+  playerName: string;
+  trigger: "scene_enter" | "choice_submitted";
+  historyLength: number;
+  tensionLevel: number;
+}): NarrationLine {
+  return generateNarrationLine({
+    code: input.code,
+    trigger: input.trigger,
+    genre: "zombie",
+    sceneId: "minigame",
+    historyLength: input.historyLength,
+    tensionLevel: input.tensionLevel,
+    playerId: null,
+    playerName: input.playerName,
+    choiceLabel: input.trigger === "choice_submitted" ? "locked in a score" : "steady hands",
+    endingType: null,
+  });
+}
+
 type DemoProps = {
   code: string;
   playerId: string;
@@ -29,6 +53,7 @@ type DemoProps = {
 
 function DemoMinigame({ code, playerId }: DemoProps) {
   const router = useRouter();
+  const playerName = playerId === "demo-p2" ? "Player 2" : playerId === "demo-p3" ? "Player 3" : "Host";
   const [barProgress, setBarProgress] = useState(0);
   const [direction, setDirection] = useState(1);
   const [score, setScore] = useState(0);
@@ -36,27 +61,15 @@ function DemoMinigame({ code, playerId }: DemoProps) {
   const [flash, setFlash] = useState(false);
   const [timeLeft, setTimeLeft] = useState(10);
   const [finished, setFinished] = useState(false);
-  const lastCountdownRef = useRef<number | null>(null);
-
-  useEffect(() => {
-    soundManager.transitionLoop("minigame");
-    return () => {
-      soundManager.stopLoop("minigame");
-    };
-  }, []);
-
-  useEffect(() => {
-    if (timeLeft === lastCountdownRef.current) {
-      return;
-    }
-    if (timeLeft > 0 && timeLeft <= 3) {
-      soundManager.play("countdown_beep", { volume: 0.75 });
-    }
-    if (timeLeft === 0) {
-      soundManager.play("countdown_go");
-    }
-    lastCountdownRef.current = timeLeft;
-  }, [timeLeft]);
+  const [narration, setNarration] = useState<NarrationLine | null>(() =>
+    buildMinigameNarration({
+      code,
+      playerName,
+      trigger: "scene_enter",
+      historyLength: 0,
+      tensionLevel: 2,
+    })
+  );
 
   useEffect(() => {
     if (finished) {
@@ -99,6 +112,21 @@ function DemoMinigame({ code, playerId }: DemoProps) {
     return () => window.clearInterval(timer);
   }, [finished]);
 
+  useEffect(() => {
+    if (!finished) {
+      return;
+    }
+    setNarration(
+      buildMinigameNarration({
+        code,
+        playerName,
+        trigger: "choice_submitted",
+        historyLength: taps,
+        tensionLevel: 4,
+      })
+    );
+  }, [code, finished, playerName, taps]);
+
   function tapBar() {
     if (finished) {
       return;
@@ -107,13 +135,11 @@ function DemoMinigame({ code, playerId }: DemoProps) {
     const inRedZone = barProgress >= 60 && barProgress <= 80;
     setTaps((value) => value + 1);
     setScore((value) => value + (inRedZone ? 100 : 25));
-    soundManager.play("tap", { volume: inRedZone ? 1 : 0.7 });
     setFlash(true);
     window.setTimeout(() => setFlash(false), 150);
   }
 
   function finishDemoMinigame() {
-    soundManager.play("results_reveal");
     // TODO(multiplayer): Replace fixed demo order with server-ranked results once demo mode is removed.
     setDemoMinigameOrder(["demo-host", "demo-p2", "demo-p3"]);
     const nextPlayer = playerId || "demo-host";
@@ -121,9 +147,20 @@ function DemoMinigame({ code, playerId }: DemoProps) {
   }
 
   return (
-    <main className="page-shell">
+    <main className="page-shell page-with-top-bar">
       <div className="suspense-wash" aria-hidden />
+      <SessionTopBar
+        backHref={`/lobby/${code}?player=${playerId || "demo-host"}&demo=1`}
+        backLabel="Back to Lobby"
+        roomCode={code}
+        playerId={playerId || "demo-host"}
+        showInvite
+        isDemo
+        phaseLabel="Minigame"
+        playerName={playerName}
+      />
       <div className="content-wrap flex min-h-dvh flex-col items-center justify-center gap-6">
+        <NarratorBanner line={narration} compact />
         <h1 className="text-3xl font-bold">Reflex Roulette (Demo)</h1>
         <div className={clsx("rounded-full border px-5 py-2 text-lg font-black", timeLeft <= 3 ? "tension-pulse border-red-400 text-red-300" : "border-cyan-300 text-cyan-300")}>
           {timeLeft}s
@@ -177,16 +214,9 @@ function RealtimeMinigame({ code, playerId }: RealtimeProps) {
   const [error, setError] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const [tapFlash, setTapFlash] = useState(false);
+  const [narration, setNarration] = useState<NarrationLine | null>(null);
 
   const submittedRef = useRef(false);
-  const countdownRef = useRef<number | null>(null);
-
-  useEffect(() => {
-    soundManager.transitionLoop("minigame");
-    return () => {
-      soundManager.stopLoop("minigame");
-    };
-  }, []);
 
   const selfPlayer = useMemo(() => players.find((player) => player.id === playerId) ?? null, [players, playerId]);
   const isStoryMaster = useMemo(() => leaderboard[0]?.id === playerId, [leaderboard, playerId]);
@@ -207,7 +237,6 @@ function RealtimeMinigame({ code, playerId }: RealtimeProps) {
     socket.on("minigame_complete", (payload: { players: Player[] }) => {
       setLeaderboard(payload.players);
       setPhase("results");
-      soundManager.play("results_reveal");
     });
 
     socket.on("genre_selected", (payload: { genre: GenreId; genreName: string }) => {
@@ -216,6 +245,12 @@ function RealtimeMinigame({ code, playerId }: RealtimeProps) {
       window.setTimeout(() => {
         router.push(`/game/${code}?player=${playerId}`);
       }, 2100);
+    });
+
+    socket.on("narrator_update", (payload: NarratorUpdatePayload) => {
+      if (payload?.line) {
+        setNarration(payload.line);
+      }
     });
 
     socket.on("server_error", (payload: { message: string }) => {
@@ -233,6 +268,7 @@ function RealtimeMinigame({ code, playerId }: RealtimeProps) {
       socket.off("minigame_start");
       socket.off("minigame_complete");
       socket.off("genre_selected");
+      socket.off("narrator_update");
       socket.off("server_error");
     };
   }, [code, playerId, router]);
@@ -244,6 +280,35 @@ function RealtimeMinigame({ code, playerId }: RealtimeProps) {
     const timer = window.setTimeout(() => setToast(null), 2200);
     return () => window.clearTimeout(timer);
   }, [toast]);
+
+  useEffect(() => {
+    if (!selfPlayer) {
+      return;
+    }
+    if (phase === "countdown") {
+      setNarration(
+        buildMinigameNarration({
+          code,
+          playerName: selfPlayer.name,
+          trigger: "scene_enter",
+          historyLength: 0,
+          tensionLevel: 2,
+        })
+      );
+      return;
+    }
+    if (phase === "results") {
+      setNarration(
+        buildMinigameNarration({
+          code,
+          playerName: selfPlayer.name,
+          trigger: "choice_submitted",
+          historyLength: leaderboard.length || 1,
+          tensionLevel: 4,
+        })
+      );
+    }
+  }, [code, leaderboard.length, phase, selfPlayer]);
 
   useEffect(() => {
     if (phase !== "countdown") {
@@ -346,7 +411,6 @@ function RealtimeMinigame({ code, playerId }: RealtimeProps) {
     const score = Math.round(accuracy * speedMultiplier);
 
     navigator.vibrate?.(30);
-    soundManager.play("tap", { volume: inZone ? 1 : 0.7 });
     setTapFlash(true);
     window.setTimeout(() => setTapFlash(false), 180);
     submitScore(score, accuracy);
@@ -354,7 +418,6 @@ function RealtimeMinigame({ code, playerId }: RealtimeProps) {
 
   function chooseGenre(genre: GenreId) {
     const socket = getSocketClient();
-    soundManager.play("button_click");
     // TODO(multiplayer): Host authority can move to server-side role checks when auth is added.
     socket.emit("genre_selected", {
       code,
@@ -365,22 +428,18 @@ function RealtimeMinigame({ code, playerId }: RealtimeProps) {
 
   const countdownNumber = Math.max(0, Math.ceil((startAt - Date.now()) / 1000));
 
-  useEffect(() => {
-    if (phase !== "countdown" || countdownRef.current === countdownNumber) {
-      return;
-    }
-    if (countdownNumber > 0 && countdownNumber <= 3) {
-      soundManager.play("countdown_beep", { volume: 0.75 });
-    }
-    if (countdownNumber === 0) {
-      soundManager.play("countdown_go");
-    }
-    countdownRef.current = countdownNumber;
-  }, [phase, countdownNumber]);
-
   if (error) {
     return (
-      <main className="page-shell">
+      <main className="page-shell page-with-top-bar">
+        <SessionTopBar
+          backHref={`/lobby/${code}?player=${playerId}`}
+          backLabel="Back to Lobby"
+          roomCode={code}
+          playerId={playerId}
+          showInvite
+          phaseLabel="Minigame"
+          playerName={selfPlayer?.name}
+        />
         <div className="content-wrap grid min-h-dvh place-items-center">
           <div className="panel p-6">
             <p className="text-red-300">{error}</p>
@@ -394,9 +453,19 @@ function RealtimeMinigame({ code, playerId }: RealtimeProps) {
   }
 
   return (
-    <main className="page-shell">
+    <main className="page-shell page-with-top-bar">
       <div className="suspense-wash" aria-hidden />
+      <SessionTopBar
+        backHref={`/lobby/${code}?player=${playerId}`}
+        backLabel="Back to Lobby"
+        roomCode={code}
+        playerId={playerId}
+        showInvite
+        phaseLabel="Minigame"
+        playerName={selfPlayer?.name}
+      />
       <div className="content-wrap flex min-h-dvh flex-col items-center justify-center gap-7">
+        <NarratorBanner line={narration} compact />
         <h1 className="text-3xl font-bold">Reflex Roulette</h1>
         {toast ? <p className="text-sm text-cyan-300">{toast}</p> : null}
         {phase === "playing" ? (

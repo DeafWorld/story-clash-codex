@@ -4,6 +4,12 @@ import { isServerEnvelope } from "../src/types/realtime";
 describe("realtime envelope guard", () => {
   it("accepts objects with event string", () => {
     expect(isServerEnvelope({ event: "room_updated", data: { ok: true } })).toBe(true);
+    expect(
+      isServerEnvelope({
+        event: "narrator_update",
+        data: { line: { id: "1", text: "line" } },
+      })
+    ).toBe(true);
   });
 
   it("rejects invalid payloads", () => {

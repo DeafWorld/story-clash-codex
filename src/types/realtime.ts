@@ -1,3 +1,5 @@
+import type { NarrationLine } from "./game";
+
 export type ClientEventName =
   | "join_room"
   | "leave_room"
@@ -13,6 +15,7 @@ export type ServerEventName =
   | "minigame_start"
   | "minigame_complete"
   | "genre_selected"
+  | "narrator_update"
   | "scene_update"
   | "turn_timeout"
   | "turn_timer"
@@ -24,6 +27,15 @@ export type ServerEventName =
   | "player_left";
 
 export type RealtimeEventName = ClientEventName | ServerEventName | (string & {});
+
+export type NarratorUpdatePayload = {
+  line: NarrationLine;
+  roomCode: string;
+};
+
+export type ServerEventPayloadMap = {
+  narrator_update: NarratorUpdatePayload;
+};
 
 export type ClientEnvelope = {
   event: ClientEventName | (string & {});

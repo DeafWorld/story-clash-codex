@@ -5,19 +5,12 @@ import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { getSocketClient } from "../../../lib/socket-client";
 import { apiFetch } from "../../../lib/api-client";
+import { trackEvent } from "../../../lib/analytics";
 import Typewriter from "../../../components/typewriter";
+import NarratorBanner from "../../../components/narrator-banner";
 import { getDemoEndingText, getDemoSession, initDemoRoom } from "../../../lib/demo-session";
-import { soundManager } from "../../../lib/soundManager";
-import type { EndingType, GenreId, HistoryEntry, MVP, Scene } from "../../../types/game";
-
-type RecapPayload = {
-  endingScene: Scene;
-  endingType: EndingType;
-  history: HistoryEntry[];
-  mvp: MVP;
-  genre: GenreId;
-  storyTitle: string;
-};
+import SessionTopBar from "../../../components/session-top-bar";
+import type { EndingType, RecapPayload } from "../../../types/game";
 
 function endingLabel(type: EndingType) {
   if (type === "triumph") {
@@ -37,15 +30,21 @@ function DemoRecap({ code }: DemoRecapProps) {
   const router = useRouter();
   const session = getDemoSession();
 
-  useEffect(() => {
-    soundManager.stopAllLoops();
-    soundManager.play("ending_survival");
-  }, []);
-
   return (
-    <main className="page-shell">
+    <main className="page-shell page-with-top-bar">
       <div className="suspense-wash" aria-hidden />
+      <SessionTopBar
+        backHref="/"
+        backLabel="Back Home"
+        roomCode={code}
+        playerId="demo-host"
+        showInvite
+        isDemo
+        phaseLabel="Recap"
+        playerName="Host"
+      />
       <div className="content-wrap space-y-6">
+        <NarratorBanner line={session.latestNarration ?? null} />
         <section className="panel space-y-4 p-6 text-center">
           <p className="badge mx-auto">Demo Complete</p>
           <p className="text-xs uppercase tracking-[0.2em] text-zinc-400">Zombie Outbreak (Demo)</p>
@@ -106,12 +105,14 @@ type RealtimeRecapProps = {
 
 function RealtimeRecap({ code, playerId }: RealtimeRecapProps) {
   const router = useRouter();
+  const socialCardEnabled = process.env.NEXT_PUBLIC_ENABLE_SOCIAL_CARD !== "0";
 
   const [recap, setRecap] = useState<RecapPayload | null>(null);
   const [showTimeline, setShowTimeline] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const [shareUrl, setShareUrl] = useState<string>("");
+  const [narrationText, setNarrationText] = useState<string>("");
 
   useEffect(() => {
     let mounted = true;
@@ -126,6 +127,7 @@ function RealtimeRecap({ code, playerId }: RealtimeRecapProps) {
 
         if (mounted) {
           setRecap(data);
+          setNarrationText(data.latestNarration?.text ?? "");
           window.setTimeout(() => setShowTimeline(true), 5000);
         }
       } catch (err) {
@@ -143,28 +145,18 @@ function RealtimeRecap({ code, playerId }: RealtimeRecapProps) {
   }, [code]);
 
   useEffect(() => {
-    if (!recap) {
-      return;
-    }
-    soundManager.stopAllLoops();
-    if (recap.endingType === "triumph") {
-      soundManager.play("ending_triumph");
-      return;
-    }
-    if (recap.endingType === "survival") {
-      soundManager.play("ending_survival");
-      return;
-    }
-    soundManager.play("ending_doom");
-  }, [recap]);
-
-  useEffect(() => {
     const socket = getSocketClient();
     socket.emit("join_room", { code, playerId });
+    socket.on("narrator_update", (payload: { line?: { text?: string } }) => {
+      if (payload?.line?.text) {
+        setNarrationText(payload.line.text);
+      }
+    });
     socket.on("session_restarted", () => {
       router.push(`/lobby/${code}?player=${playerId}`);
     });
     return () => {
+      socket.off("narrator_update");
       socket.off("session_restarted");
     };
   }, [code, playerId, router]);
@@ -181,11 +173,12 @@ function RealtimeRecap({ code, playerId }: RealtimeRecapProps) {
     if (!recap) {
       return "";
     }
-    return `We just played Story Clash!\nStory: ${recap.storyTitle}\nEnding: ${endingLabel(recap.endingType)}\nMVP: ${recap.mvp.player}`;
-  }, [recap]);
+    const narratorOneLiner = narrationText || recap.latestNarration?.text || "The story kept escalating.";
+    return `We just played Story Clash!\nStory: ${recap.storyTitle ?? "Unknown Story"}\nEnding: ${endingLabel(recap.endingType)}\n${narratorOneLiner}\nMVP: ${recap.mvp.player}`;
+  }, [narrationText, recap]);
 
   useEffect(() => {
-    if (!recap) {
+    if (!recap || !socialCardEnabled) {
       return;
     }
     let mounted = true;
@@ -209,21 +202,44 @@ function RealtimeRecap({ code, playerId }: RealtimeRecapProps) {
     return () => {
       mounted = false;
     };
-  }, [code, recap]);
+  }, [code, recap, socialCardEnabled]);
 
   async function copyShare() {
     const url = shareUrl || window.location.href;
+    if (typeof navigator.share === "function") {
+      try {
+        await navigator.share({
+          title: "Story Clash Recap",
+          text: shareText,
+          url,
+        });
+        trackEvent("recap_shared", { code, method: "native" });
+        setToast("Shared");
+        return;
+      } catch {
+        // Fall back to clipboard.
+      }
+    }
     await navigator.clipboard.writeText(`${shareText}\n${url}`);
+    trackEvent("recap_shared", { code, method: "clipboard" });
     setToast("Copied! Share with friends");
   }
 
   function playAgain() {
+    trackEvent("play_again_clicked", { code, playerId });
     getSocketClient().emit("restart_session", { code, playerId });
   }
 
   if (error) {
     return (
-      <main className="page-shell">
+      <main className="page-shell page-with-top-bar">
+        <SessionTopBar
+          backHref="/"
+          backLabel="Back Home"
+          phaseLabel="Recap"
+          playerId={playerId}
+          playerName={playerId || undefined}
+        />
         <div className="content-wrap grid min-h-dvh place-items-center">
           <div className="panel p-6">
             <p className="text-red-300">{error}</p>
@@ -238,7 +254,14 @@ function RealtimeRecap({ code, playerId }: RealtimeRecapProps) {
 
   if (!recap) {
     return (
-      <main className="page-shell">
+      <main className="page-shell page-with-top-bar">
+        <SessionTopBar
+          backHref="/"
+          backLabel="Back Home"
+          phaseLabel="Recap"
+          playerId={playerId}
+          playerName={playerId || undefined}
+        />
         <div className="content-wrap grid min-h-dvh place-items-center">
           <p>Loading recap...</p>
         </div>
@@ -247,11 +270,21 @@ function RealtimeRecap({ code, playerId }: RealtimeRecapProps) {
   }
 
   return (
-    <main className="page-shell">
+    <main className="page-shell page-with-top-bar">
       <div className="suspense-wash" aria-hidden />
+      <SessionTopBar
+        backHref="/"
+        backLabel="Back Home"
+        roomCode={code}
+        playerId={playerId}
+        showInvite
+        phaseLabel="Recap"
+        playerName={playerId || undefined}
+      />
       <div className="content-wrap space-y-6">
+        <NarratorBanner line={recap.latestNarration} />
         <section className="panel space-y-4 p-6 text-center">
-          <p className="text-xs uppercase tracking-[0.2em] text-zinc-400">{recap.storyTitle}</p>
+          <p className="text-xs uppercase tracking-[0.2em] text-zinc-400">{recap.storyTitle ?? "Unknown Story"}</p>
           <Typewriter text={recap.endingScene.text} charsPerSecond={20} />
           <p className="mx-auto w-fit rounded-full border border-cyan-300/60 px-4 py-2 text-lg font-bold text-cyan-300">
             {endingLabel(recap.endingType)}
@@ -260,7 +293,7 @@ function RealtimeRecap({ code, playerId }: RealtimeRecapProps) {
 
         {showTimeline ? (
           <section className="panel p-5">
-            <h2 className="mb-3 text-2xl font-semibold">Recap Timeline</h2>
+            <h2 className="mb-3 text-2xl font-semibold">How your story unfolded</h2>
             <div className="max-h-[48dvh] space-y-3 overflow-y-auto pr-2 [scroll-snap-type:y_mandatory]">
               {recap.history.map((entry, index) => (
                 <motion.article
@@ -272,11 +305,14 @@ function RealtimeRecap({ code, playerId }: RealtimeRecapProps) {
                   aria-label={`Scene ${index + 1}, ${entry.player} chose ${entry.choice}`}
                 >
                   <p className="text-xs uppercase tracking-[0.15em] text-zinc-400">Scene {index + 1}</p>
-                  <p className="mt-1 text-sm text-zinc-300">{entry.sceneText.slice(0, 70)}...</p>
+                  <p className="mt-1 text-sm text-zinc-300">{entry.sceneText.slice(0, 120)}...</p>
                   <p className="mt-2 text-sm">
                     <strong>{entry.player}</strong> chose:{" "}
                     <span className={entry.isFreeChoice ? "text-green-300" : "text-cyan-300"}>{entry.choice}</span>
                   </p>
+                  {entry.isFreeChoice && entry.freeText ? (
+                    <p className="mt-1 text-xs text-green-300">Free choice text: &quot;{entry.freeText}&quot;</p>
+                  ) : null}
                 </motion.article>
               ))}
             </div>
@@ -289,11 +325,11 @@ function RealtimeRecap({ code, playerId }: RealtimeRecapProps) {
         ) : null}
 
         <section className="panel flex flex-wrap gap-3 p-5">
-          <button type="button" className="btn btn-primary flex-1 py-3 text-lg font-semibold" onClick={playAgain}>
-            Play Again
-          </button>
-          <button type="button" className="btn btn-secondary flex-1 py-3" onClick={copyShare}>
+          <button type="button" className="btn btn-primary flex-1 py-3 text-lg font-semibold" onClick={copyShare}>
             Share Story
+          </button>
+          <button type="button" className="btn btn-secondary flex-1 py-3" onClick={playAgain}>
+            Play Again with Same Crew
           </button>
           <button type="button" className="btn btn-secondary" onClick={() => router.push("/")}>
             Exit

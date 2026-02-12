@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import TutorialOverlay from "../components/tutorial-overlay";
-import { soundManager } from "../lib/soundManager";
 
 const TUTORIAL_FLAG = "storyClashTutorialSeen";
 
@@ -17,13 +16,6 @@ export default function HomePage() {
       setTutorialOpen(true);
     }
     setReady(true);
-  }, []);
-
-  useEffect(() => {
-    soundManager.transitionLoop("intro");
-    return () => {
-      soundManager.stopLoop("intro");
-    };
   }, []);
 
   function closeTutorial() {

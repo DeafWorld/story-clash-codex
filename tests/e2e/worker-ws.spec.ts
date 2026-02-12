@@ -1,9 +1,12 @@
 import { expect, test } from "@playwright/test";
 
+const RUN_WORKER_E2E = process.env.RUN_WORKER_E2E === "1";
+
 test.describe("Cloudflare Worker WebSocket", () => {
   test.setTimeout(60_000);
 
   test("can upgrade to wss://.../ws and receive room_updated", async ({ page }) => {
+    test.skip(!RUN_WORKER_E2E, "Set RUN_WORKER_E2E=1 to run worker WebSocket E2E tests.");
     await page.goto("/");
 
     const apiBase = (process.env.NEXT_PUBLIC_API_BASE_URL ?? "").trim() || "https://story-clash-api.storyclashcodex.workers.dev";
@@ -64,6 +67,7 @@ test.describe("Cloudflare Worker WebSocket", () => {
   });
 
   test("join -> lobby ws connect works for a second player", async ({ page }) => {
+    test.skip(!RUN_WORKER_E2E, "Set RUN_WORKER_E2E=1 to run worker WebSocket E2E tests.");
     await page.goto("/");
 
     const apiBase = (process.env.NEXT_PUBLIC_API_BASE_URL ?? "").trim() || "https://story-clash-api.storyclashcodex.workers.dev";

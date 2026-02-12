@@ -5,17 +5,20 @@ import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import clsx from "clsx";
 import { getSocketClient } from "../../../lib/socket-client";
 import { apiFetch } from "../../../lib/api-client";
+import { trackEvent } from "../../../lib/analytics";
 import Typewriter from "../../../components/typewriter";
 import RoomCodeCard from "../../../components/room-code-card";
+import NarratorBanner from "../../../components/narrator-banner";
 import {
   advanceDemoStoryChoice,
   advanceDemoStoryFreeChoice,
   getDemoSession,
   getDemoStoryTree,
 } from "../../../lib/demo-session";
-import { soundManager } from "../../../lib/soundManager";
 import { getNodeById, getStoryStartNode } from "../../../lib/story-utils";
-import type { RoomView } from "../../../types/game";
+import SessionTopBar from "../../../components/session-top-bar";
+import type { NarrationLine, RoomView } from "../../../types/game";
+import type { NarratorUpdatePayload } from "../../../types/realtime";
 
 function genreOverlay(genre: string | null) {
   if (genre === "zombie") {
@@ -32,9 +35,10 @@ function genreOverlay(genre: string | null) {
 
 type DemoGameProps = {
   code: string;
+  playerId: string;
 };
 
-function DemoGame({ code }: DemoGameProps) {
+function DemoGame({ code, playerId }: DemoGameProps) {
   const router = useRouter();
   const [freeText, setFreeText] = useState("");
   const [freeChoiceError, setFreeChoiceError] = useState<string | null>(null);
@@ -45,20 +49,15 @@ function DemoGame({ code }: DemoGameProps) {
   const scene = getNodeById(storyTree, session.currentNodeId) ?? getStoryStartNode(storyTree);
   const activePlayerId = session.currentPlayerId;
   const activePlayer = session.players.find((player) => player.id === activePlayerId) ?? session.players[0];
+  const viewerId = playerId || "demo-host";
+  const viewer = session.players.find((player) => player.id === viewerId) ?? session.players[0];
   const isDone = Boolean(scene?.ending);
   const tensionLevel = scene?.tensionLevel ?? 1;
   const tensionHigh = tensionLevel >= 4;
   const tensionMedium = tensionLevel === 3;
-
-  useEffect(() => {
-    soundManager.transitionLoop("zombie");
-    return () => {
-      soundManager.stopLoop("zombie");
-    };
-  }, []);
+  const narration = session.latestNarration ?? null;
 
   function choose(choiceId: string) {
-    soundManager.play("scene_transition");
     advanceDemoStoryChoice(choiceId);
     setFreeChoiceError(null);
     setFreeText("");
@@ -72,7 +71,6 @@ function DemoGame({ code }: DemoGameProps) {
       setFreeChoiceError("Enter at least 4 characters for free choice.");
       return;
     }
-    soundManager.play("scene_transition");
     advanceDemoStoryFreeChoice(trimmed);
     setFreeChoiceError(null);
     setFreeText("");
@@ -80,7 +78,7 @@ function DemoGame({ code }: DemoGameProps) {
   }
 
   return (
-    <main className="page-shell">
+    <main className="page-shell page-with-top-bar">
       <div
         className={clsx(
           "absolute inset-0 opacity-80",
@@ -91,8 +89,19 @@ function DemoGame({ code }: DemoGameProps) {
         aria-hidden
       />
       <div className="suspense-wash" aria-hidden />
+      <SessionTopBar
+        backHref={`/lobby/${code}?player=${viewer.id}&demo=1`}
+        backLabel="Back to Lobby"
+        roomCode={code}
+        playerId={viewer.id}
+        showInvite
+        isDemo
+        phaseLabel="Story"
+        playerName={viewer.name}
+      />
       <div className="content-wrap space-y-4">
         <RoomCodeCard code={code} players={session.players} title="Demo Room" />
+        <NarratorBanner line={narration} />
       <div className="grid min-h-[70dvh] gap-4 lg:grid-cols-[1fr_280px]">
         <section className={clsx("panel flex flex-col gap-5 p-5", tensionHigh ? "tension-pulse" : "")}>
           <header className="flex flex-wrap items-center justify-between gap-3">
@@ -142,7 +151,6 @@ function DemoGame({ code }: DemoGameProps) {
               type="button"
               className="btn btn-primary w-full py-4 text-lg font-semibold"
               onClick={() => {
-                soundManager.play("button_click");
                 router.push(`/recap/${code}?demo=1`);
               }}
             >
@@ -197,12 +205,14 @@ function RealtimeGame({ code, playerId }: RealtimeGameProps) {
   const [submitting, setSubmitting] = useState(false);
   const [remainingMs, setRemainingMs] = useState(30000);
   const [timeoutNotice, setTimeoutNotice] = useState<string | null>(null);
-  const warningSecondRef = useRef<number | null>(null);
+  const [narration, setNarration] = useState<NarrationLine | null>(null);
+  const lastNarrationIdRef = useRef<string | null>(null);
 
   const activePlayer = useMemo(
     () => room?.players.find((player) => player.id === room.activePlayerId) ?? null,
     [room]
   );
+  const selfPlayer = useMemo(() => room?.players.find((player) => player.id === playerId) ?? null, [room, playerId]);
 
   const isActivePlayer = room?.activePlayerId === playerId;
   const scene = room?.currentScene;
@@ -223,6 +233,7 @@ function RealtimeGame({ code, playerId }: RealtimeGameProps) {
         }
         if (mounted) {
           setRoom(data);
+          setNarration(data.latestNarration ?? null);
         }
       } catch (err) {
         if (mounted) {
@@ -244,6 +255,7 @@ function RealtimeGame({ code, playerId }: RealtimeGameProps) {
 
     socket.on("scene_update", (payload: RoomView) => {
       setRoom(payload);
+      setNarration(payload.latestNarration ?? null);
       setSubmitting(false);
       setFreeText("");
       if (payload.turnDeadline) {
@@ -253,6 +265,7 @@ function RealtimeGame({ code, playerId }: RealtimeGameProps) {
 
     socket.on("room_updated", (payload: RoomView) => {
       setRoom(payload);
+      setNarration(payload.latestNarration ?? null);
       if (payload.turnDeadline) {
         setRemainingMs(Math.max(0, payload.turnDeadline - Date.now()));
       }
@@ -260,9 +273,17 @@ function RealtimeGame({ code, playerId }: RealtimeGameProps) {
 
     socket.on("reconnect_state", (payload: RoomView) => {
       setRoom(payload);
+      setNarration(payload.latestNarration ?? null);
       if (payload.turnDeadline) {
         setRemainingMs(Math.max(0, payload.turnDeadline - Date.now()));
       }
+    });
+
+    socket.on("narrator_update", (payload: NarratorUpdatePayload) => {
+      if (!payload?.line) {
+        return;
+      }
+      setNarration(payload.line);
     });
 
     socket.on("turn_timer", (payload: { playerId: string; remainingMs: number }) => {
@@ -300,6 +321,7 @@ function RealtimeGame({ code, playerId }: RealtimeGameProps) {
       socket.off("turn_timer");
       socket.off("turn_timeout");
       socket.off("game_end");
+      socket.off("narrator_update");
       socket.off("server_error");
     };
   }, [code, playerId, room?.activePlayerId, room?.players, router]);
@@ -311,6 +333,18 @@ function RealtimeGame({ code, playerId }: RealtimeGameProps) {
     const timer = window.setTimeout(() => setToast(null), 2200);
     return () => window.clearTimeout(timer);
   }, [toast]);
+
+  useEffect(() => {
+    if (!narration || narration.id === lastNarrationIdRef.current) {
+      return;
+    }
+    lastNarrationIdRef.current = narration.id;
+    trackEvent("narrator_line_emitted", {
+      code,
+      trigger: narration.trigger,
+      tone: narration.tone,
+    });
+  }, [code, narration]);
 
   useEffect(() => {
     if (!room?.turnDeadline || room.phase !== "game") {
@@ -325,40 +359,11 @@ function RealtimeGame({ code, playerId }: RealtimeGameProps) {
     return () => window.clearInterval(interval);
   }, [room?.turnDeadline, room?.phase]);
 
-  useEffect(() => {
-    if (genre === "zombie") {
-      soundManager.transitionLoop("zombie");
-    } else if (genre === "alien") {
-      soundManager.transitionLoop("alien");
-    } else if (genre === "haunted") {
-      soundManager.transitionLoop("haunted");
-    }
-
-    return () => {
-      soundManager.stopLoop("zombie");
-      soundManager.stopLoop("alien");
-      soundManager.stopLoop("haunted");
-    };
-  }, [genre]);
-
-  useEffect(() => {
-    if (!isActivePlayer || seconds > 10 || seconds <= 0) {
-      warningSecondRef.current = null;
-      return;
-    }
-    if (warningSecondRef.current === seconds) {
-      return;
-    }
-    soundManager.play("timer_warning", { volume: 0.75 });
-    warningSecondRef.current = seconds;
-  }, [isActivePlayer, seconds]);
-
   function submitPreset(choiceId: string) {
     if (!isActivePlayer) {
       return;
     }
     setSubmitting(true);
-    soundManager.play("button_click");
     // TODO(multiplayer): Route through authoritative turn validation service when enabled.
     getSocketClient().emit("submit_choice", { code, playerId, choiceId });
     navigator.vibrate?.(28);
@@ -370,7 +375,6 @@ function RealtimeGame({ code, playerId }: RealtimeGameProps) {
       return;
     }
     setSubmitting(true);
-    soundManager.play("scene_transition");
     // TODO(multiplayer): Add moderation + semantic routing for free text on the server.
     getSocketClient().emit("submit_choice", { code, playerId, freeText: freeText.trim().slice(0, 60) });
     navigator.vibrate?.(35);
@@ -378,7 +382,16 @@ function RealtimeGame({ code, playerId }: RealtimeGameProps) {
 
   if (error) {
     return (
-      <main className="page-shell">
+      <main className="page-shell page-with-top-bar">
+        <SessionTopBar
+          backHref={`/lobby/${code}?player=${playerId}`}
+          backLabel="Back to Lobby"
+          roomCode={code}
+          playerId={playerId}
+          showInvite
+          phaseLabel="Story"
+          playerName={selfPlayer?.name}
+        />
         <div className="content-wrap grid min-h-dvh place-items-center">
           <div className="panel max-w-lg p-6">
             <p className="text-red-300">{error}</p>
@@ -393,7 +406,16 @@ function RealtimeGame({ code, playerId }: RealtimeGameProps) {
 
   if (!room || !scene) {
     return (
-      <main className="page-shell">
+      <main className="page-shell page-with-top-bar">
+        <SessionTopBar
+          backHref={`/lobby/${code}?player=${playerId}`}
+          backLabel="Back to Lobby"
+          roomCode={code}
+          playerId={playerId}
+          showInvite
+          phaseLabel="Story"
+          playerName={selfPlayer?.name}
+        />
         <div className="content-wrap grid min-h-dvh place-items-center">
           <p>Loading game state...</p>
         </div>
@@ -402,13 +424,23 @@ function RealtimeGame({ code, playerId }: RealtimeGameProps) {
   }
 
   return (
-    <main className="page-shell">
+    <main className="page-shell page-with-top-bar">
       <div className={clsx("absolute inset-0 opacity-80", genreOverlay(genre), tensionHigh ? "animate-pulse" : "")} aria-hidden />
       <div className="suspense-wash" aria-hidden />
+      <SessionTopBar
+        backHref={`/lobby/${code}?player=${playerId}`}
+        backLabel="Back to Lobby"
+        roomCode={code}
+        playerId={playerId}
+        showInvite
+        phaseLabel="Story"
+        playerName={selfPlayer?.name}
+      />
 
       <div className="content-wrap space-y-4">
         {timeoutNotice ? <p className="text-sm text-yellow-300">{timeoutNotice}</p> : null}
         {toast ? <p className="text-sm text-cyan-300">{toast}</p> : null}
+        <NarratorBanner line={narration} />
         <RoomCodeCard
           code={code}
           title="Live Room"
@@ -514,7 +546,7 @@ export default function GamePage() {
   const playerId = searchParams.get("player") ?? "";
 
   if (code === "DEMO1") {
-    return <DemoGame code={code} />;
+    return <DemoGame code={code} playerId={playerId || "demo-host"} />;
   }
 
   return <RealtimeGame code={code} playerId={playerId} />;

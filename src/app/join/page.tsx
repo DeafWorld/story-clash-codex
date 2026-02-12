@@ -1,26 +1,60 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import { FormEvent, useMemo, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { apiFetch } from "../../lib/api-client";
+import { trackEvent } from "../../lib/analytics";
 import { initDemoRoom } from "../../lib/demo-session";
+import SessionTopBar from "../../components/session-top-bar";
 
 const CODE_REGEX = /^[A-HJ-NP-Z]{4}$/;
 
 export default function JoinRoomPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [code, setCode] = useState("");
   const [name, setName] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const seededInviteRef = useRef(false);
+  const trackedInviteRef = useRef(false);
+  const nameFieldRef = useRef<HTMLInputElement | null>(null);
+  const [inviteBanner, setInviteBanner] = useState<{ fromInvite: boolean; inviter: string | null }>({
+    fromInvite: false,
+    inviter: null,
+  });
 
   const normalizedCode = code.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 5);
   const realCode = normalizedCode.slice(0, 4);
+  const inviteCodeLabel = normalizedCode === "DEMO1" ? "DEMO1" : realCode;
   const validFormat = CODE_REGEX.test(realCode) || normalizedCode === "DEMO1";
   const disabled = useMemo(
     () => !validFormat || name.trim().length === 0 || loading,
     [validFormat, name, loading]
   );
+
+  useEffect(() => {
+    if (seededInviteRef.current) {
+      return;
+    }
+    const sharedCode = (searchParams.get("code") ?? "").toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 5);
+    const fromInvite = searchParams.get("from") === "invite";
+    const inviterRaw = searchParams.get("inviter");
+    const inviter = inviterRaw ? inviterRaw.trim().slice(0, 24) : null;
+    if (sharedCode) {
+      setCode(sharedCode);
+      trackEvent("join_prefilled", { code: sharedCode, fromInvite, inviter });
+      window.setTimeout(() => {
+        nameFieldRef.current?.focus();
+      }, 60);
+    }
+    if (fromInvite && !trackedInviteRef.current) {
+      trackEvent("invite_opened", { code: sharedCode || null, inviter });
+      trackedInviteRef.current = true;
+    }
+    setInviteBanner({ fromInvite, inviter });
+    seededInviteRef.current = true;
+  }, [searchParams]);
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -59,19 +93,26 @@ export default function JoinRoomPage() {
   }
 
   return (
-    <main className="page-shell">
+    <main className="page-shell page-with-top-bar">
+      <SessionTopBar backHref="/" backLabel="Back Home" phaseLabel="Join Room" />
       <div className="content-wrap grid min-h-dvh place-items-center">
         <form onSubmit={onSubmit} className="panel w-full max-w-lg space-y-5 p-6">
           <h1 className="text-3xl font-bold">Join Room</h1>
           <p className="text-zinc-300">Enter a 4-letter room code and your display name to join a live session.</p>
+          {inviteBanner.fromInvite && inviteCodeLabel ? (
+            <div className="rounded-xl border border-cyan-300/40 bg-cyan-300/10 px-3 py-2 text-sm text-cyan-100">
+              Invited to room <strong>{inviteCodeLabel}</strong>
+              {inviteBanner.inviter ? ` by ${inviteBanner.inviter}` : ""}.
+            </div>
+          ) : null}
 
           <label className="block space-y-2">
             <span className="text-sm text-zinc-300">Room Code</span>
             <div className="relative">
               <input
                 className="field tracking-[0.3em] uppercase"
-              maxLength={5}
-              placeholder="ABCD"
+                maxLength={5}
+                placeholder="ABCD"
                 value={normalizedCode}
                 onChange={(event) => setCode(event.target.value)}
                 aria-label="Room code"
@@ -92,6 +133,7 @@ export default function JoinRoomPage() {
               value={name}
               onChange={(event) => setName(event.target.value)}
               aria-label="Display name"
+              ref={nameFieldRef}
               required
             />
           </label>

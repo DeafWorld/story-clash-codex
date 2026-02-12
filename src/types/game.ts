@@ -4,6 +4,23 @@ export type EndingType = "triumph" | "survival" | "doom";
 
 export type RoomPhase = "lobby" | "minigame" | "game" | "recap";
 
+export type NarrationTone = "calm" | "uneasy" | "urgent" | "desperate" | "hopeful" | "grim";
+export type NarrationTrigger = "scene_enter" | "choice_submitted" | "turn_timeout" | "ending";
+
+export interface NarrationLine {
+  id: string;
+  text: string;
+  tone: NarrationTone;
+  trigger: NarrationTrigger;
+  roomCode: string;
+  sceneId: string | null;
+  playerId: string | null;
+  tensionLevel: number;
+  genre: GenreId | null;
+  endingType: EndingType | null;
+  createdAt: number;
+}
+
 export interface Choice {
   id: string;
   text?: string;
@@ -70,6 +87,8 @@ export interface StoryState {
   tensionLevel: number;
   currentPlayerId: string | null;
   storyId: GenreId | null;
+  latestNarration: NarrationLine | null;
+  narrationLog: NarrationLine[];
 }
 
 export interface RoomState extends Room, StoryState {
@@ -96,6 +115,17 @@ export interface RoomView extends RoomState {
 export interface MVP {
   player: string;
   reason: string;
+}
+
+export interface RecapPayload {
+  endingScene: Scene;
+  endingType: EndingType;
+  history: HistoryEntry[];
+  mvp: MVP;
+  genre: GenreId | null;
+  storyTitle: string | null;
+  latestNarration: NarrationLine | null;
+  narrationLog: NarrationLine[];
 }
 
 export interface StoryChoiceNode {

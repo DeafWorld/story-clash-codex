@@ -4,6 +4,7 @@ import { FormEvent, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { apiFetch } from "../../lib/api-client";
 import { initDemoRoom } from "../../lib/demo-session";
+import SessionTopBar from "../../components/session-top-bar";
 
 export default function CreateRoomPage() {
   const router = useRouter();
@@ -43,8 +44,9 @@ export default function CreateRoomPage() {
   }
 
   return (
-    <main className="page-shell">
+    <main className="page-shell page-with-top-bar">
       <div className="suspense-wash" aria-hidden />
+      <SessionTopBar backHref="/" backLabel="Back Home" phaseLabel="Create Room" />
       <div className="content-wrap grid min-h-dvh place-items-center">
         <form onSubmit={createLiveRoom} className="panel w-full max-w-lg space-y-6 p-5 sm:p-7">
           <p className="badge">Host Session</p>

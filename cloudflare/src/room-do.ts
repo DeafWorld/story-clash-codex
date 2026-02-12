@@ -1,4 +1,5 @@
 import { containsProfanity, sanitizeDisplayName } from "./profanity";
+import { generateNarrationLine } from "./narrator";
 import {
   getNextSceneIdFromChoice,
   getNextSceneIdFromFreeChoice,
@@ -11,6 +12,7 @@ import type {
   EndingType,
   GenreId,
   MVP,
+  NarrationLine,
   Player,
   RecapPayload,
   RoomState,
@@ -27,6 +29,7 @@ const ROOM_TTL_MS = 30 * 60 * 1000;
 const TURN_DURATION_MS = 30 * 1000;
 const MAX_PLAYERS = 6;
 const MIN_PLAYERS = 3;
+const MAX_NARRATION_LOG = 30;
 const DISCONNECT_TIMEOUT_MS = 10_000;
 
 const AVATARS = ["circle-cyan", "diamond-red", "hex-green", "triangle-blue", "square-gold", "ring-white"];
@@ -124,12 +127,18 @@ export class RoomDurableObject {
       if (timedOutPlayerId) {
         const result = this.submitChoice(room, timedOutPlayerId, { timeout: true });
         await this.saveRoom(room);
+        if (result.narration) {
+          await this.broadcast("narrator_update", { line: result.narration, roomCode: room.code });
+        }
         await this.broadcast("turn_timeout", {
           playerId: timedOutPlayerId,
           message: "Random choice made due to timeout.",
         });
 
         if (result.ended) {
+          if (result.endingNarration) {
+            await this.broadcast("narrator_update", { line: result.endingNarration, roomCode: room.code });
+          }
           await this.broadcast("game_end", result);
           await this.broadcast("room_updated", this.getRoomView(room));
           return;
@@ -180,6 +189,8 @@ export class RoomDurableObject {
       currentSceneId: "start",
       tensionLevel: 1,
       history: [],
+      latestNarration: null,
+      narrationLog: [],
       turnDeadline: null,
       endingScene: null,
       endingType: null,
@@ -356,6 +367,9 @@ export class RoomDurableObject {
           },
           envelope.id
         );
+        if (selection.narration) {
+          await this.broadcast("narrator_update", { line: selection.narration, roomCode: room.code }, envelope.id);
+        }
         await this.broadcast("scene_update", this.getRoomView(room), envelope.id);
         return;
       }
@@ -365,8 +379,14 @@ export class RoomDurableObject {
         const freeText = typeof payload.freeText === "string" ? payload.freeText : undefined;
         const result = this.submitChoice(room, payloadPlayerId, { choiceId, freeText });
         await this.saveRoom(room);
+        if (result.narration) {
+          await this.broadcast("narrator_update", { line: result.narration, roomCode: room.code }, envelope.id);
+        }
 
         if (result.ended) {
+          if (result.endingNarration) {
+            await this.broadcast("narrator_update", { line: result.endingNarration, roomCode: room.code }, envelope.id);
+          }
           await this.broadcast("game_end", result, envelope.id);
           await this.broadcast("room_updated", this.getRoomView(room), envelope.id);
           return;
@@ -448,11 +468,17 @@ export class RoomDurableObject {
 
     const result = this.submitChoice(room, playerId, { timeout: true });
     await this.saveRoom(room);
+    if (result.narration) {
+      await this.broadcast("narrator_update", { line: result.narration, roomCode: room.code });
+    }
     await this.broadcast("turn_timeout", {
       playerId,
       message: "Random choice made due to timeout.",
     });
     if (result.ended) {
+      if (result.endingNarration) {
+        await this.broadcast("narrator_update", { line: result.endingNarration, roomCode: room.code });
+      }
       await this.broadcast("game_end", result);
       await this.broadcast("room_updated", this.getRoomView(room));
       return;
@@ -526,6 +552,8 @@ export class RoomDurableObject {
     room.currentNodeId = room.currentNodeId ?? room.currentSceneId;
     room.currentPlayerId = room.currentPlayerId ?? this.activePlayerId(room);
     room.tensionLevel = room.tensionLevel ?? this.getCurrentScene(room)?.tensionLevel ?? 1;
+    room.latestNarration = room.latestNarration ?? null;
+    room.narrationLog = (room.narrationLog ?? []).slice(-MAX_NARRATION_LOG);
     room.players = room.players.map((player, index) => ({
       ...player,
       orderIndex: player.orderIndex ?? player.turnOrder ?? index,
@@ -645,6 +673,37 @@ export class RoomDurableObject {
     return getScene(room.genre, room.currentSceneId);
   }
 
+  private appendNarration(
+    room: RoomState,
+    trigger: "scene_enter" | "choice_submitted" | "turn_timeout" | "ending",
+    input: {
+      sceneId?: string | null;
+      playerId?: string | null;
+      choiceLabel?: string | null;
+      freeText?: string | null;
+      endingType?: EndingType | null;
+      tensionLevel?: number;
+    } = {}
+  ): NarrationLine {
+    const player = room.players.find((entry) => entry.id === (input.playerId ?? room.currentPlayerId));
+    const line = generateNarrationLine({
+      code: room.code,
+      trigger,
+      genre: room.genre,
+      sceneId: input.sceneId ?? room.currentNodeId,
+      historyLength: room.history.length,
+      tensionLevel: input.tensionLevel ?? room.tensionLevel,
+      playerId: input.playerId ?? room.currentPlayerId,
+      playerName: player?.name ?? null,
+      choiceLabel: input.choiceLabel ?? null,
+      freeText: input.freeText ?? null,
+      endingType: input.endingType ?? room.endingType,
+    });
+    room.latestNarration = line;
+    room.narrationLog = [...(room.narrationLog ?? []), line].slice(-MAX_NARRATION_LOG);
+    return line;
+  }
+
   private getRoomView(room: RoomState): RoomView {
     return {
       ...room,
@@ -736,12 +795,18 @@ export class RoomDurableObject {
     room.turnDeadline = now() + TURN_DURATION_MS;
     room.tensionLevel = startScene.tensionLevel ?? 1;
     room.currentPlayerId = this.activePlayerId(room);
+    const narration = this.appendNarration(room, "scene_enter", {
+      sceneId: startScene.id,
+      playerId: room.currentPlayerId,
+      tensionLevel: room.tensionLevel,
+    });
 
     return {
       genre,
       scene: startScene,
       activePlayerId: room.currentPlayerId,
       turnDeadline: room.turnDeadline,
+      narration,
     };
   }
 
@@ -815,6 +880,14 @@ export class RoomDurableObject {
       timestamp: now(),
     });
 
+    const narration = this.appendNarration(room, payload.timeout ? "turn_timeout" : "choice_submitted", {
+      sceneId: scene.id,
+      playerId,
+      choiceLabel: resolvedChoiceText,
+      freeText: payload.freeText ?? null,
+      tensionLevel: scene.tensionLevel ?? 1,
+    });
+
     const nextScene = getScene(room.genre, nextSceneId);
     if (!nextScene) {
       throw new Error("Next scene not found");
@@ -831,12 +904,20 @@ export class RoomDurableObject {
       room.endingType = (nextScene.endingType ?? "doom") as EndingType;
       room.turnDeadline = null;
       room.currentPlayerId = null;
+      const endingNarration = this.appendNarration(room, "ending", {
+        sceneId: nextScene.id,
+        playerId,
+        endingType: room.endingType,
+        tensionLevel: nextScene.tensionLevel ?? room.tensionLevel,
+      });
 
       return {
         ended: true,
         endingScene: nextScene,
         endingType: room.endingType,
         history: room.history,
+        narration,
+        endingNarration,
       };
     }
 
@@ -850,6 +931,7 @@ export class RoomDurableObject {
       activePlayerId: room.currentPlayerId,
       turnDeadline: room.turnDeadline,
       history: room.history,
+      narration,
     };
   }
 
@@ -861,6 +943,8 @@ export class RoomDurableObject {
     room.currentNodeId = "start";
     room.tensionLevel = 1;
     room.history = [];
+    room.latestNarration = null;
+    room.narrationLog = [];
     room.endingScene = null;
     room.endingType = null;
     room.turnOrder = room.players.map((player) => player.id);
@@ -908,6 +992,8 @@ export class RoomDurableObject {
       mvp: this.computeMVP(room),
       genre: room.genre,
       storyTitle: getStoryTitle(room.genre),
+      latestNarration: room.latestNarration ?? null,
+      narrationLog: room.narrationLog ?? [],
     };
   }
 

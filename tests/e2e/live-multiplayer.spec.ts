@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 
 const RUN_LIVE_E2E = process.env.RUN_LIVE_E2E === "1";
 
@@ -10,7 +10,7 @@ function roomCodeFromLobbyUrl(url: string): string {
   return match[1];
 }
 
-async function waitForActiveTurn(pages: Array<{ url(): string; locator: any }>) {
+async function waitForActiveTurn(pages: Page[]) {
   const deadline = Date.now() + 20_000;
   while (Date.now() < deadline) {
     for (const page of pages) {
@@ -44,6 +44,8 @@ test.describe("Live Multiplayer Flow (Cloudflare Worker)", () => {
     await host.getByLabel("Display Name").fill("Host");
     await host.getByRole("button", { name: "Create Live Room" }).click();
     await host.waitForURL(/\/lobby\/[A-Z0-9]{4}\?player=/);
+    await expect(host.getByRole("link", { name: "Back Home" })).toBeVisible();
+    await expect(host.getByRole("button", { name: "Invite" })).toBeVisible();
 
     const code = roomCodeFromLobbyUrl(host.url());
 
@@ -71,6 +73,8 @@ test.describe("Live Multiplayer Flow (Cloudflare Worker)", () => {
     await host.waitForURL(new RegExp(`/minigame/${code}`));
     await p2.waitForURL(new RegExp(`/minigame/${code}`));
     await p3.waitForURL(new RegExp(`/minigame/${code}`));
+    await expect(host.getByRole("link", { name: "Back to Lobby" })).toBeVisible();
+    await expect(host.getByRole("button", { name: "Invite" })).toBeVisible();
 
     const tapSelector = { name: "Tap to score this round" as const };
     await expect(host.getByRole("button", tapSelector)).toBeVisible({ timeout: 30_000 });
@@ -106,6 +110,9 @@ test.describe("Live Multiplayer Flow (Cloudflare Worker)", () => {
     await host.waitForURL(new RegExp(`/game/${code}`), { timeout: 30_000 });
     await p2.waitForURL(new RegExp(`/game/${code}`), { timeout: 30_000 });
     await p3.waitForURL(new RegExp(`/game/${code}`), { timeout: 30_000 });
+    await expect(host.getByRole("link", { name: "Back to Lobby" })).toBeVisible();
+    await expect(host.getByRole("button", { name: "Invite" })).toBeVisible();
+    await expect(host.getByText(/narrator/i)).toBeVisible();
 
     // Three turns to reach ending: start -> armed -> stairwell -> ending_survival
     const gamePages: any[] = [host, p2, p3];
@@ -124,9 +131,11 @@ test.describe("Live Multiplayer Flow (Cloudflare Worker)", () => {
     await host.waitForURL(new RegExp(`/recap/${code}`), { timeout: 30_000 });
     await p2.waitForURL(new RegExp(`/recap/${code}`), { timeout: 30_000 });
     await p3.waitForURL(new RegExp(`/recap/${code}`), { timeout: 30_000 });
+    await expect(host.getByRole("link", { name: "Back Home" })).toBeVisible();
+    await expect(host.getByRole("button", { name: "Invite" })).toBeVisible();
 
     // Timeline fades in after a short delay; ensure recap page is actually populated.
-    await expect(host.getByRole("heading", { name: "Recap Timeline" })).toBeVisible({ timeout: 30_000 });
+    await expect(host.getByRole("heading", { name: "How your story unfolded" })).toBeVisible({ timeout: 30_000 });
 
     await hostContext.close();
     await p2Context.close();

@@ -1,6 +1,22 @@
 export type GenreId = "zombie" | "alien" | "haunted";
 export type EndingType = "triumph" | "survival" | "doom";
 export type RoomPhase = "lobby" | "minigame" | "game" | "recap";
+export type NarrationTone = "calm" | "uneasy" | "urgent" | "desperate" | "hopeful" | "grim";
+export type NarrationTrigger = "scene_enter" | "choice_submitted" | "turn_timeout" | "ending";
+
+export type NarrationLine = {
+  id: string;
+  text: string;
+  tone: NarrationTone;
+  trigger: NarrationTrigger;
+  roomCode: string;
+  sceneId: string | null;
+  playerId: string | null;
+  tensionLevel: number;
+  genre: GenreId | null;
+  endingType: EndingType | null;
+  createdAt: number;
+};
 
 export type Choice = {
   id: string;
@@ -73,6 +89,8 @@ export type RoomState = {
   currentSceneId: string;
   tensionLevel: number;
   history: HistoryEntry[];
+  latestNarration: NarrationLine | null;
+  narrationLog: NarrationLine[];
   turnDeadline: number | null;
   endingScene: Scene | null;
   endingType: EndingType | null;
@@ -96,6 +114,13 @@ export type RecapPayload = {
   mvp: MVP;
   genre: GenreId | null;
   storyTitle: string | null;
+  latestNarration: NarrationLine | null;
+  narrationLog: NarrationLine[];
+};
+
+export type NarratorUpdatePayload = {
+  line: NarrationLine;
+  roomCode: string;
 };
 
 export type ClientEnvelope = {

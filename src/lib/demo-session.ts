@@ -1,11 +1,12 @@
 import zombieSource from "../data/stories/zombie.json";
+import { generateNarrationLine } from "./narrator";
 import {
   getNextNodeIdFromChoice,
   getNextNodeIdFromFreeChoice,
   getNodeById,
   getStoryStartNode,
 } from "./story-utils";
-import type { Player, StoryTree } from "../types/game";
+import type { NarrationLine, Player, StoryTree } from "../types/game";
 
 export type DemoPlayer = Player;
 
@@ -33,6 +34,8 @@ export type DemoSessionState = {
   currentPlayerId: string;
   currentNodeId: string;
   history: DemoStoryEntry[];
+  latestNarration: NarrationLine | null;
+  narrationLog: NarrationLine[];
 };
 
 const storyTree = zombieSource as StoryTree;
@@ -57,7 +60,35 @@ function createSession(): DemoSessionState {
     currentPlayerId: "demo-host",
     currentNodeId: startNode.id,
     history: [],
+    latestNarration: null,
+    narrationLog: [],
   };
+}
+
+function appendNarration(trigger: "scene_enter" | "choice_submitted" | "turn_timeout" | "ending", input: {
+  sceneId?: string;
+  playerId?: string;
+  choiceLabel?: string;
+  freeText?: string;
+} = {}) {
+  const scene = getNodeById(storyTree, input.sceneId ?? session.currentNodeId) ?? getStoryStartNode(storyTree);
+  const player = session.players.find((entry) => entry.id === (input.playerId ?? session.currentPlayerId));
+  const endingType = scene.ending ? scene.endingType ?? "doom" : null;
+  const line = generateNarrationLine({
+    code: session.roomCode,
+    trigger,
+    genre: session.storyId,
+    sceneId: scene.id,
+    historyLength: session.history.length,
+    tensionLevel: scene.tensionLevel ?? 1,
+    playerId: player?.id ?? null,
+    playerName: player?.name ?? null,
+    choiceLabel: input.choiceLabel ?? null,
+    freeText: input.freeText ?? null,
+    endingType,
+  });
+  session.latestNarration = line;
+  session.narrationLog = [...session.narrationLog, line].slice(-30);
 }
 
 function markStoryOrRecap(nextNodeId: string) {
@@ -116,6 +147,7 @@ export function setDemoMinigameOrder(order: string[]) {
   }));
   session.status = "story";
   session.currentPlayerId = "demo-host";
+  appendNarration("scene_enter", { playerId: session.currentPlayerId, sceneId: session.currentNodeId });
 }
 
 export function advanceDemoStoryChoice(choiceId: string) {
@@ -131,9 +163,18 @@ export function advanceDemoStoryChoice(choiceId: string) {
 
   const choice = scene.choices.find((entry) => entry.id === choiceId) ?? scene.choices[0];
   pushHistory(nextNodeId, choice.label, false);
+  appendNarration("choice_submitted", {
+    sceneId: scene.id,
+    playerId: session.currentPlayerId,
+    choiceLabel: choice.label,
+  });
 
   session.currentNodeId = nextNodeId;
   markStoryOrRecap(nextNodeId);
+  const nextScene = getNodeById(storyTree, nextNodeId);
+  if (nextScene?.ending) {
+    appendNarration("ending", { sceneId: nextScene.id, playerId: session.currentPlayerId });
+  }
   return session;
 }
 
@@ -149,9 +190,19 @@ export function advanceDemoStoryFreeChoice(freeText: string) {
   }
 
   pushHistory(nextNodeId, "Free Choice", true, freeText.trim().slice(0, 120));
+  appendNarration("choice_submitted", {
+    sceneId: scene.id,
+    playerId: session.currentPlayerId,
+    choiceLabel: "Free Choice",
+    freeText,
+  });
 
   session.currentNodeId = nextNodeId;
   markStoryOrRecap(nextNodeId);
+  const nextScene = getNodeById(storyTree, nextNodeId);
+  if (nextScene?.ending) {
+    appendNarration("ending", { sceneId: nextScene.id, playerId: session.currentPlayerId });
+  }
   return session;
 }
 

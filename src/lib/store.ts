@@ -4,11 +4,14 @@ import { sanitizeDisplayName } from "./profanity";
 import { generateRoomCode, validateRoomCode } from "./room-code";
 import { getScene, getStoryTitle } from "./stories";
 import { mapFreeChoiceToPath } from "./story-utils";
+import { generateNarrationLine } from "./narrator";
 import type {
   Choice,
   EndingType,
   GenreId,
   MVP,
+  NarrationLine,
+  NarrationTrigger,
   Player,
   RoomState,
   RoomView,
@@ -19,6 +22,7 @@ const ROOM_TTL_MS = 30 * 60 * 1000;
 const TURN_DURATION_MS = 30 * 1000;
 const MAX_PLAYERS = 6;
 const MIN_PLAYERS = 3;
+const MAX_NARRATION_LOG = 30;
 
 const AVATARS = ["circle-cyan", "diamond-red", "hex-green", "triangle-blue", "square-gold", "ring-white"];
 
@@ -69,6 +73,8 @@ function ensureFreshRoom(code: string): RoomState {
   room.currentNodeId = room.currentNodeId ?? room.currentSceneId;
   room.currentPlayerId = room.currentPlayerId ?? activePlayerId(room);
   room.tensionLevel = room.tensionLevel ?? getCurrentScene(room)?.tensionLevel ?? 1;
+  room.latestNarration = room.latestNarration ?? null;
+  room.narrationLog = (room.narrationLog ?? []).slice(-MAX_NARRATION_LOG);
   room.players = room.players.map((player, index) => ({
     ...player,
     orderIndex: player.orderIndex ?? player.turnOrder ?? index,
@@ -154,6 +160,37 @@ function getChoice(scene: Scene, choiceId: string): Choice | null {
   return scene.choices?.find((choice) => choice.id === choiceId) ?? null;
 }
 
+function appendNarration(
+  room: RoomState,
+  trigger: NarrationTrigger,
+  input: {
+    sceneId?: string | null;
+    playerId?: string | null;
+    choiceLabel?: string | null;
+    freeText?: string | null;
+    endingType?: EndingType | null;
+    tensionLevel?: number;
+  } = {}
+): NarrationLine {
+  const player = room.players.find((entry) => entry.id === (input.playerId ?? room.currentPlayerId));
+  const line = generateNarrationLine({
+    code: room.code,
+    trigger,
+    genre: room.genre,
+    sceneId: input.sceneId ?? room.currentNodeId,
+    historyLength: room.history.length,
+    tensionLevel: input.tensionLevel ?? room.tensionLevel,
+    playerId: input.playerId ?? room.currentPlayerId,
+    playerName: player?.name ?? null,
+    choiceLabel: input.choiceLabel ?? null,
+    freeText: input.freeText ?? null,
+    endingType: input.endingType ?? room.endingType,
+  });
+  room.latestNarration = line;
+  room.narrationLog = [...(room.narrationLog ?? []), line].slice(-MAX_NARRATION_LOG);
+  return line;
+}
+
 function ensureHostAssigned(room: RoomState) {
   const currentHost = room.players.find((player) => player.isHost && player.connected !== false);
   if (currentHost) {
@@ -229,6 +266,8 @@ export function createRoom(hostName: string) {
     currentSceneId: "start",
     tensionLevel: 1,
     history: [],
+    latestNarration: null,
+    narrationLog: [],
     turnDeadline: null,
     endingScene: null,
     endingType: null,
@@ -389,12 +428,18 @@ export function selectGenre(code: string, playerId: string, genre: GenreId) {
   }
   room.tensionLevel = scene.tensionLevel ?? 1;
   room.currentPlayerId = activePlayerId(room);
+  const narration = appendNarration(room, "scene_enter", {
+    sceneId: scene.id,
+    playerId: room.currentPlayerId,
+    tensionLevel: room.tensionLevel,
+  });
 
   return {
     genre,
     scene,
     activePlayerId: activePlayerId(room),
     turnDeadline: room.turnDeadline,
+    narration,
   };
 }
 
@@ -470,6 +515,14 @@ export function submitChoice(
     timestamp: now(),
   });
 
+  const narration = appendNarration(room, payload.timeout ? "turn_timeout" : "choice_submitted", {
+    sceneId: scene.id,
+    playerId,
+    choiceLabel: resolvedChoiceText,
+    freeText: payload.freeText ?? null,
+    tensionLevel: scene.tensionLevel ?? 1,
+  });
+
   const genre = room.genre;
   if (!genre) {
     throw new Error("Genre is not selected");
@@ -491,12 +544,20 @@ export function submitChoice(
     room.endingType = (nextScene.endingType ?? "doom") as EndingType;
     room.turnDeadline = null;
     room.currentPlayerId = null;
+    const endingNarration = appendNarration(room, "ending", {
+      sceneId: nextScene.id,
+      playerId,
+      endingType: room.endingType,
+      tensionLevel: nextScene.tensionLevel ?? room.tensionLevel,
+    });
 
     return {
       ended: true,
       endingScene: nextScene,
       endingType: room.endingType,
       history: room.history,
+      narration,
+      endingNarration,
     };
   }
 
@@ -510,6 +571,7 @@ export function submitChoice(
     activePlayerId: activePlayerId(room),
     turnDeadline: room.turnDeadline,
     history: room.history,
+    narration,
   };
 }
 
@@ -540,6 +602,8 @@ export function getRecapState(code: string) {
     mvp: computeMVP(room),
     genre: room.genre,
     storyTitle: getStoryTitle(room.genre),
+    latestNarration: room.latestNarration ?? null,
+    narrationLog: room.narrationLog ?? [],
   };
 }
 
@@ -552,6 +616,8 @@ export function restartSession(code: string) {
   room.currentNodeId = "start";
   room.tensionLevel = 1;
   room.history = [];
+  room.latestNarration = null;
+  room.narrationLog = [];
   room.endingScene = null;
   room.endingType = null;
   room.turnOrder = room.players.map((player) => player.id);

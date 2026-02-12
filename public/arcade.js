@@ -12,6 +12,11 @@
   const MAX_SHARDS = 6;
   const MAX_ENEMIES = 5;
   const TARGET_SCORE = 14;
+  const query = new URLSearchParams(window.location.search);
+  const testPreset = (query.get("testPreset") || "").toLowerCase();
+  const seedValue = Number.parseInt(query.get("seed") || "", 10);
+  const useSeededRng = Number.isFinite(seedValue);
+  let seededState = useSeededRng ? (seedValue >>> 0) || 0x9e3779b9 : 0;
 
   const keys = new Set();
   const pointer = { x: WIDTH / 2, y: HEIGHT / 2 };
@@ -61,8 +66,14 @@
     return Math.min(max, Math.max(min, value));
   }
 
+  function random() {
+    if (!useSeededRng) return Math.random();
+    seededState = (seededState * 1664525 + 1013904223) >>> 0;
+    return seededState / 4294967296;
+  }
+
   function rand(min, max) {
-    return min + Math.random() * (max - min);
+    return min + random() * (max - min);
   }
 
   function dist(ax, ay, bx, by) {
@@ -80,14 +91,14 @@
   }
 
   function spawnEnemy() {
-    const fromHorizontal = Math.random() < 0.5;
-    let startX = fromHorizontal ? (Math.random() < 0.5 ? -32 : WIDTH + 32) : rand(80, WIDTH - 80);
-    let startY = fromHorizontal ? rand(70, HEIGHT - 70) : (Math.random() < 0.5 ? -32 : HEIGHT + 32);
+    const fromHorizontal = random() < 0.5;
+    let startX = fromHorizontal ? (random() < 0.5 ? -32 : WIDTH + 32) : rand(80, WIDTH - 80);
+    let startY = fromHorizontal ? rand(70, HEIGHT - 70) : (random() < 0.5 ? -32 : HEIGHT + 32);
 
     // Keep new enemies from spawning immediately on top of the player.
     for (let i = 0; i < 6 && dist(startX, startY, player.x, player.y) < 240; i += 1) {
-      startX = fromHorizontal ? (Math.random() < 0.5 ? -32 : WIDTH + 32) : rand(80, WIDTH - 80);
-      startY = fromHorizontal ? rand(70, HEIGHT - 70) : (Math.random() < 0.5 ? -32 : HEIGHT + 32);
+      startX = fromHorizontal ? (random() < 0.5 ? -32 : WIDTH + 32) : rand(80, WIDTH - 80);
+      startY = fromHorizontal ? rand(70, HEIGHT - 70) : (random() < 0.5 ? -32 : HEIGHT + 32);
     }
 
     state.enemies.push({
@@ -146,6 +157,41 @@
     }
     for (let i = 0; i < 3; i += 1) {
       spawnEnemy();
+    }
+
+    if (testPreset === "win") {
+      state.score = TARGET_SCORE;
+      state.shards = [];
+      state.enemies = [];
+      state.keyCollected = true;
+      state.keyItem = null;
+      state.gateOpen = true;
+      state.spawnTimer = 999;
+      state.enemyWaveTimer = 999;
+      player.hp = 5;
+    }
+
+    if (testPreset === "lose") {
+      state.score = 0;
+      state.timer = 40;
+      state.shards = [];
+      state.spawnTimer = 999;
+      state.enemyWaveTimer = 999;
+      player.hp = 1;
+      player.invuln = 0;
+      state.enemies = [
+        {
+          id: nextId(),
+          x: player.x + player.radius + 10,
+          y: player.y,
+          vx: 0,
+          vy: 0,
+          radius: 16,
+          hp: 3,
+          speed: 0,
+          cooldown: 0,
+        },
+      ];
     }
   }
 
@@ -592,6 +638,7 @@
     const gate = state.gateRect;
     return JSON.stringify({
       mode: state.mode,
+      testPreset,
       meta: {
         origin: "top-left",
         xAxis: "right",

@@ -6,8 +6,8 @@ import { motion } from "framer-motion";
 import { getSocketClient } from "../../../lib/socket-client";
 import { apiFetch } from "../../../lib/api-client";
 import { getDemoSession, initDemoRoom } from "../../../lib/demo-session";
-import { soundManager } from "../../../lib/soundManager";
 import RoomCodeCard from "../../../components/room-code-card";
+import SessionTopBar from "../../../components/session-top-bar";
 import type { RoomView } from "../../../types/game";
 
 export default function LobbyPage() {
@@ -40,13 +40,6 @@ export default function LobbyPage() {
     id: player.id,
     name: player.name,
   }));
-
-  useEffect(() => {
-    soundManager.transitionLoop("lobby");
-    return () => {
-      soundManager.stopLoop("lobby");
-    };
-  }, []);
 
   useEffect(() => {
     if (demoMode) {
@@ -142,21 +135,7 @@ export default function LobbyPage() {
     return () => window.clearTimeout(timeout);
   }, [toast]);
 
-  async function copyCode() {
-    soundManager.play("button_click", { volume: 0.5 });
-    await navigator.clipboard.writeText(code);
-    setToast("Copied room code");
-  }
-
-  async function shareRoom() {
-    soundManager.play("button_click", { volume: 0.5 });
-    const text = `Join my Story Clash game. Code: ${code}`;
-    await navigator.clipboard.writeText(text);
-    setToast("Share text copied");
-  }
-
   function startGame() {
-    soundManager.play("button_click");
     if (demoMode) {
       const nextPlayer = playerId || "demo-host";
       router.push(`/minigame/${code}?player=${nextPlayer}&demo=1`);
@@ -175,7 +154,8 @@ export default function LobbyPage() {
 
   if (loading) {
     return (
-      <main className="page-shell">
+      <main className="page-shell page-with-top-bar">
+        <SessionTopBar backHref="/" backLabel="Back Home" phaseLabel="Lobby" />
         <div className="content-wrap grid min-h-dvh place-items-center">
           <p>Loading lobby...</p>
         </div>
@@ -185,7 +165,8 @@ export default function LobbyPage() {
 
   if (error) {
     return (
-      <main className="page-shell">
+      <main className="page-shell page-with-top-bar">
+        <SessionTopBar backHref="/" backLabel="Back Home" phaseLabel="Lobby" />
         <div className="content-wrap grid min-h-dvh place-items-center">
           <div className="panel max-w-lg p-6">
             <p className="text-red-300">{error}</p>
@@ -199,23 +180,26 @@ export default function LobbyPage() {
   }
 
   return (
-    <main className="page-shell">
+    <main className="page-shell page-with-top-bar">
       <div className="suspense-wash" aria-hidden />
+      <SessionTopBar
+        backHref="/"
+        backLabel="Back Home"
+        roomCode={code}
+        playerId={playerId || undefined}
+        showInvite
+        isDemo={demoMode}
+        phaseLabel="Lobby"
+        playerName={
+          (demoMode ? demoPlayers : room?.players ?? []).find((player) => player.id === (playerId || "demo-host"))?.name ??
+          undefined
+        }
+      />
       <div className="content-wrap space-y-5">
         <RoomCodeCard
           code={code}
           players={playersForCard}
           title={demoMode ? "Demo Room" : "Room Code"}
-          actions={
-            <>
-              <button type="button" className="btn btn-secondary w-full sm:w-auto" onClick={copyCode}>
-                Copy Code
-              </button>
-              <button type="button" className="btn btn-secondary w-full sm:w-auto" onClick={shareRoom}>
-                Share Room
-              </button>
-            </>
-          }
         />
 
         {toast ? <p className="text-sm text-cyan-300">{toast}</p> : null}

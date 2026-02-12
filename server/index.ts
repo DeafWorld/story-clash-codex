@@ -1,4 +1,7 @@
-import { createServer } from "node:http";
+import { createServer, type ServerResponse } from "node:http";
+import { readFile } from "node:fs/promises";
+import { createRequire } from "node:module";
+import path from "node:path";
 import { Server } from "socket.io";
 import { loadEnvConfig } from "@next/env";
 import { logger } from "../src/lib/logger";
@@ -16,11 +19,26 @@ import {
   submitChoice,
   timeoutChoice,
 } from "../src/lib/store";
-import type { GenreId } from "../src/types/game";
+import type { GenreId, NarrationLine } from "../src/types/game";
 
 const dev = process.env.NODE_ENV !== "production";
 const hostname = "0.0.0.0";
 const port = Number(process.env.PORT ?? 3000);
+const prepareTimeoutMs = Number(process.env.NEXT_PREPARE_TIMEOUT_MS ?? 30000);
+const publicDir = path.join(process.cwd(), "public");
+const mimeByExtension: Record<string, string> = {
+  ".html": "text/html; charset=utf-8",
+  ".js": "application/javascript; charset=utf-8",
+  ".css": "text/css; charset=utf-8",
+  ".json": "application/json; charset=utf-8",
+  ".svg": "image/svg+xml",
+  ".png": "image/png",
+  ".jpg": "image/jpeg",
+  ".jpeg": "image/jpeg",
+  ".gif": "image/gif",
+  ".webp": "image/webp",
+  ".ico": "image/x-icon",
+};
 
 // When using a custom Next server, Next won't always load `.env*` files automatically
 // the way `next dev` does. Ensure client/server env vars are available.
@@ -30,17 +48,122 @@ logger.info("server.env", {
   apiBaseUrl: process.env.NEXT_PUBLIC_API_BASE_URL ?? null,
   wsBaseUrl: process.env.NEXT_PUBLIC_WS_BASE_URL ?? null,
 });
+const require = createRequire(import.meta.url);
+
+async function tryServePublicAsset(urlPath: string, res: ServerResponse) {
+  const cleanPath = urlPath.split("?")[0];
+  const relativePath = cleanPath === "/" ? "index.html" : cleanPath.replace(/^\/+/, "");
+  const decodedPath = decodeURIComponent(relativePath);
+  const normalizedPath = path.normalize(decodedPath);
+  if (normalizedPath.startsWith("..")) {
+    return false;
+  }
+
+  const assetPath = path.join(publicDir, normalizedPath);
+  if (!assetPath.startsWith(publicDir)) {
+    return false;
+  }
+
+  try {
+    const body = await readFile(assetPath);
+    const extension = path.extname(assetPath).toLowerCase();
+    res.statusCode = 200;
+    res.setHeader("content-type", mimeByExtension[extension] ?? "application/octet-stream");
+    res.end(body);
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 async function bootstrap() {
-  // Import `next` after `.env*` loading so NEXT_PUBLIC_* values are available
-  // during Next's compilation step when using a custom server.
-  const { default: next } = await import("next");
+  logger.info("server.bootstrap.step", { step: "load_next_start" });
+  const nextModule = require("next");
+  logger.info("server.bootstrap.step", { step: "load_next_done" });
+  const next = nextModule.default ?? nextModule;
   const app = next({ dev });
+  logger.info("server.bootstrap.step", { step: "create_next_app_done" });
   const handle = app.getRequestHandler();
-  await app.prepare();
+  logger.info("server.bootstrap.step", { step: "get_request_handler_done" });
+  let nextReady = false;
+  let prepareError: unknown = null;
+  const enableDevNextPrepare = process.env.NEXT_ENABLE_PREPARE === "1";
+
+  const startPrepare = () => {
+    // `app.prepare()` can hard-block for long periods in this environment.
+    // Keep startup responsive and only run it when explicitly requested.
+    app
+      .prepare()
+      .then(() => {
+        nextReady = true;
+        logger.info("server.next.prepared");
+      })
+      .catch((error) => {
+        prepareError = error;
+        logger.error("server.next.prepare_failed", { error });
+      });
+  };
+
+  if (dev) {
+    if (enableDevNextPrepare) {
+      logger.info("server.next.prepare_mode", { mode: "enabled", timeoutMs: prepareTimeoutMs });
+      setTimeout(startPrepare, 0);
+    } else {
+      logger.warn("server.next.prepare_mode", {
+        mode: "disabled",
+        reason: "NEXT_ENABLE_PREPARE is not set; serving public assets only",
+      });
+    }
+  } else {
+    startPrepare();
+    await Promise.race([
+      new Promise((resolve) => {
+        const poll = () => {
+          if (nextReady || prepareError) {
+            resolve(null);
+            return;
+          }
+          setTimeout(poll, 50);
+        };
+        poll();
+      }),
+      new Promise((resolve) => {
+        setTimeout(resolve, prepareTimeoutMs);
+      }),
+    ]);
+    if (!nextReady) {
+      throw prepareError instanceof Error
+        ? prepareError
+        : new Error(`Next preparation did not finish within ${prepareTimeoutMs}ms`);
+    }
+  }
 
   const httpServer = createServer((req, res) => {
-    void handle(req, res);
+    void (async () => {
+      const requestPath = req.url ?? "/";
+      if (!nextReady) {
+        const servedPublicAsset = await tryServePublicAsset(requestPath, res);
+        if (servedPublicAsset) {
+          return;
+        }
+        res.statusCode = prepareError ? 500 : 503;
+        res.setHeader("content-type", "application/json; charset=utf-8");
+        res.end(
+          JSON.stringify({
+            status: prepareError ? "next_prepare_failed" : "next_preparing",
+            detail: prepareError ? "Next failed to initialize" : "Next is still initializing",
+          })
+        );
+        return;
+      }
+      await handle(req, res);
+    })().catch((error) => {
+      logger.error("server.request.failed", { error });
+      if (!res.headersSent) {
+        res.statusCode = 500;
+        res.end("Internal server error");
+      }
+    });
   });
 
   const io = new Server(httpServer, {
@@ -77,6 +200,21 @@ async function bootstrap() {
       roomLocks.delete(code);
     }
     return true;
+  };
+
+  const emitNarration = (code: string, line?: NarrationLine | null) => {
+    if (!line) {
+      return;
+    }
+    trackEvent("narrator_line_emitted", {
+      code,
+      trigger: line.trigger,
+      tone: line.tone,
+    });
+    io.to(code).emit("narrator_update", {
+      line,
+      roomCode: code,
+    });
   };
 
   const scheduleTurnTimer = (code: string) => {
@@ -123,12 +261,14 @@ async function bootstrap() {
 
       const acquired = withRoomLock(code, () => {
         const result = timeoutChoice(code);
+        emitNarration(code, result.narration);
         io.to(code).emit("turn_timeout", {
           playerId: timedOutPlayerId,
           message: "Random choice made due to timeout.",
         });
 
         if (result.ended) {
+          emitNarration(code, result.endingNarration);
           clearTurnTimer(code);
           io.to(code).emit("game_end", result);
           io.to(code).emit("room_updated", getRoomView(code));
@@ -234,6 +374,7 @@ async function bootstrap() {
           genre: selection.genre,
           genreName: getRoomView(code).storyTitle,
         });
+        emitNarration(code, selection.narration);
         io.to(code).emit("scene_update", getRoomView(code));
         scheduleTurnTimer(code);
       } catch (error) {
@@ -257,8 +398,10 @@ async function bootstrap() {
             freeText: payload.freeText,
           });
           trackEvent("choice_submitted", { code, ended: result.ended });
+          emitNarration(code, result.narration);
 
           if (result.ended) {
+            emitNarration(code, result.endingNarration);
             clearTurnTimer(code);
             trackEvent("game_completed", { code, ending: result.endingType });
             io.to(code).emit("game_end", result);
@@ -287,12 +430,14 @@ async function bootstrap() {
         const acquired = withRoomLock(code, () => {
           const result = timeoutChoice(code);
           trackEvent("turn_timed_out", { code });
+          emitNarration(code, result.narration);
           io.to(code).emit("turn_timeout", {
             playerId: timedOutPlayerId,
             message: "Random choice made due to timeout.",
           });
 
           if (result.ended) {
+            emitNarration(code, result.endingNarration);
             clearTurnTimer(code);
             trackEvent("game_completed", { code, ending: result.endingType });
             io.to(code).emit("game_end", result);
@@ -350,7 +495,9 @@ async function bootstrap() {
               if (latest.phase === "game" && latest.activePlayerId === mapping.playerId && player && !player.connected) {
                 const result = timeoutChoice(mapping.code);
                 trackEvent("turn_timed_out", { code: mapping.code, source: "disconnect" });
+                emitNarration(mapping.code, result.narration);
                 if (result.ended) {
+                  emitNarration(mapping.code, result.endingNarration);
                   clearTurnTimer(mapping.code);
                   trackEvent("game_completed", { code: mapping.code, ending: result.endingType });
                   io.to(mapping.code).emit("game_end", result);

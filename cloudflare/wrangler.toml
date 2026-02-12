@@ -7,11 +7,11 @@ workers_dev = true
 # Comma-separated list for CORS allow-list.
 # Example:
 # ALLOWED_ORIGINS = "https://story-clash.vercel.app,http://localhost:3000"
-ALLOWED_ORIGINS = ""
+ALLOWED_ORIGINS = "https://story-clash-codex.vercel.app"
 # Optional frontend app URL. When set, GET / redirects there.
 # Example:
 # FRONTEND_URL = "https://story-clash.vercel.app"
-FRONTEND_URL = ""
+FRONTEND_URL = "https://story-clash-codex.vercel.app"
 
 [durable_objects]
 bindings = [

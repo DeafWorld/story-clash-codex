@@ -50,6 +50,10 @@ export async function GET(request: Request) {
 
   try {
     const recap = getRecapState(payload.code);
+    const narratorLine = (recap.latestNarration?.text ?? recap.narrationLog.at(-1)?.text ?? "A wild run from start to finish.").slice(
+      0,
+      110
+    );
     trackEvent("og_image_requested", { code: payload.code });
 
     return new ImageResponse(
@@ -71,7 +75,8 @@ export async function GET(request: Request) {
           <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
             <p style={{ letterSpacing: 2, fontSize: 26, opacity: 0.8 }}>STORY CLASH</p>
             <h1 style={{ fontSize: 72, margin: 0, color: "#67e8f9" }}>{endingLabel(recap.endingType)}</h1>
-            <p style={{ fontSize: 40, margin: 0 }}>{recap.storyTitle}</p>
+            <p style={{ fontSize: 40, margin: 0 }}>{recap.storyTitle ?? "Unknown Story"}</p>
+            <p style={{ fontSize: 28, margin: 0, color: "#cbd5e1", maxWidth: 980 }}>{narratorLine}</p>
           </div>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end" }}>
             <div style={{ fontSize: 32, display: "flex", flexDirection: "column", gap: 8 }}>

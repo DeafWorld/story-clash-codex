@@ -30,8 +30,15 @@
   },
   "include": [
     "next-env.d.ts",
-    "**/*.ts",
-    "**/*.tsx",
+    "src/**/*.ts",
+    "src/**/*.tsx",
+    "server/**/*.ts",
+    "tests/**/*.ts",
+    "playwright.config.ts",
+    "instrumentation.ts",
+    "instrumentation-client.ts",
+    "sentry.server.config.ts",
+    "sentry.edge.config.ts",
     ".next/types/**/*.ts",
     ".next/dev/types/**/*.ts"
   ],
@@ -39,6 +46,9 @@
     "node_modules",
     "archive",
     "data",
-    "cloudflare"
+    "cloudflare",
+    "output",
+    "test-results",
+    "node_modules_bak*"
   ]
 }

@@ -2,6 +2,10 @@
 
 Realtime multiplayer narrative battle game built with Next.js App Router, TypeScript, Tailwind CSS, Framer Motion, and Socket.IO.
 
+## Runtime requirement
+
+- Node.js 20.x (see `.nvmrc`)
+
 ## Local development
 
 ```bash
@@ -21,6 +25,7 @@ Use `.env.example` as the source of truth. Key groups:
 - Rate limits: `RATE_LIMIT_CREATE_ROOM_PER_MINUTE`, `RATE_LIMIT_JOIN_ROOM_PER_MINUTE`, `RATE_LIMIT_SHARE_PER_MINUTE`, `RATE_LIMIT_OG_PER_MINUTE`
 - Realtime transport: `NEXT_PUBLIC_REALTIME_TRANSPORT`, `NEXT_PUBLIC_SOCKET_URL`, `NEXT_PUBLIC_API_BASE_URL`, `NEXT_PUBLIC_WS_BASE_URL`
 - Observability: `NEXT_PUBLIC_PLAUSIBLE_DOMAIN`, `PLAUSIBLE_DOMAIN`, `SENTRY_DSN`, `NEXT_PUBLIC_SENTRY_DSN`
+- E2E controls: `E2E_PORT`, `RUN_LIVE_E2E`, `RUN_WORKER_E2E`
 
 ## Production deployment
 
@@ -103,6 +108,8 @@ npm run test:e2e
 
 - Unit/integration: Vitest (`tests/**/*.test.ts`)
 - E2E: Playwright (`tests/e2e`)
+- `RUN_LIVE_E2E=1` enables full live multiplayer browser flow
+- `RUN_WORKER_E2E=1` enables Cloudflare Worker WebSocket browser flow
 - CI workflow: `.github/workflows/ci.yml` runs lint + unit + e2e
 
 ## Project layout
