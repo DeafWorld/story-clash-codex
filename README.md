@@ -2,7 +2,7 @@
 
 Realtime multiplayer narrative battle game built with Next.js App Router, TypeScript, Tailwind CSS, Framer Motion, and Socket.IO.
 
-**Product priority:** Ordered roadmap to be the #1 app in category → [docs/PRIORITY-NUMBER-ONE.md](docs/PRIORITY-NUMBER-ONE.md)
+**Product priority:** Ordered roadmap to be the #1 app in category -> [docs/PRIORITY-NUMBER-ONE.md](docs/PRIORITY-NUMBER-ONE.md)
 
 ## Runtime requirement
 
