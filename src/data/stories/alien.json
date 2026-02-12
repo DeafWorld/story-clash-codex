@@ -1,0 +1,153 @@
+{
+  "genre": "alien",
+  "title": "Alien Invasion",
+  "scenes": [
+    {
+      "id": "start",
+      "text": "The night sky splits into violet fractures as every screen in the city flashes a non-human warning. Gravity feels wrong, like the air is being pulled upward.",
+      "tensionLevel": 2,
+      "choices": [
+        {
+          "id": "a",
+          "label": "Descend into the subway shelter",
+          "nextId": "subway",
+          "text": "Descend into the subway shelter",
+          "next": "subway"
+        },
+        {
+          "id": "b",
+          "label": "Break into emergency comms control",
+          "nextId": "control_room",
+          "text": "Break into emergency comms control",
+          "next": "control_room"
+        }
+      ]
+    },
+    {
+      "id": "subway",
+      "text": "Emergency lights pulse through flooded tracks. Mechanical scouts drop from the ceiling and begin scanning faces one by one.",
+      "tensionLevel": 4,
+      "choices": [
+        {
+          "id": "a",
+          "label": "Ambush the scouts before they alert the fleet",
+          "nextId": "echo_chamber",
+          "text": "Ambush the scouts before they alert the fleet",
+          "next": "echo_chamber"
+        },
+        {
+          "id": "b",
+          "label": "Use maintenance tunnels to reach the reactor",
+          "nextId": "reactor",
+          "text": "Use maintenance tunnels to reach the reactor",
+          "next": "reactor"
+        }
+      ]
+    },
+    {
+      "id": "control_room",
+      "text": "Inside the command bunker, alien code crawls over every monitor. The relay has fused itself into the city grid and is counting down.",
+      "tensionLevel": 4,
+      "choices": [
+        {
+          "id": "a",
+          "label": "Hard-cut city power and kill the relay",
+          "nextId": "echo_chamber",
+          "text": "Hard-cut city power and kill the relay",
+          "next": "echo_chamber"
+        },
+        {
+          "id": "b",
+          "label": "Reverse the uplink toward their mothership",
+          "nextId": "reactor",
+          "text": "Reverse the uplink toward their mothership",
+          "next": "reactor"
+        }
+      ]
+    },
+    {
+      "id": "echo_chamber",
+      "text": "A perfect human distress call echoes from a sealed service tunnel, repeating your own names back at you. Thermal scans show no human life signs.",
+      "tensionLevel": 5,
+      "choices": [
+        {
+          "id": "a",
+          "label": "Follow the voice beacon anyway",
+          "nextId": "reactor",
+          "text": "Follow the voice beacon anyway",
+          "next": "reactor"
+        },
+        {
+          "id": "b",
+          "label": "Mute comms and move by heat signatures",
+          "nextId": "reactor",
+          "text": "Mute comms and move by heat signatures",
+          "next": "reactor"
+        }
+      ]
+    },
+    {
+      "id": "reactor",
+      "text": "A hidden reactor chamber vibrates with blue plasma. The beacon is seconds from synchronizing with orbiting warships.",
+      "tensionLevel": 5,
+      "choices": [
+        {
+          "id": "a",
+          "label": "Overload the core immediately",
+          "nextId": "uplink_spire",
+          "text": "Overload the core immediately",
+          "next": "uplink_spire"
+        },
+        {
+          "id": "b",
+          "label": "Plant delayed charges and evacuate",
+          "nextId": "ending_survival",
+          "text": "Plant delayed charges and evacuate",
+          "next": "ending_survival"
+        }
+      ]
+    },
+    {
+      "id": "uplink_spire",
+      "text": "At the top of the beacon spire, emergency channels suddenly fill with perfect copies of your friends' voices begging to be let in. The lock controls are in your hand.",
+      "tensionLevel": 5,
+      "choices": [
+        {
+          "id": "a",
+          "label": "Broadcast the challenge code and collapse the spire",
+          "nextId": "ending_triumph",
+          "text": "Broadcast the challenge code and collapse the spire",
+          "next": "ending_triumph"
+        },
+        {
+          "id": "b",
+          "label": "Open the blast doors for the voices outside",
+          "nextId": "ending_doom",
+          "text": "Open the blast doors for the voices outside",
+          "next": "ending_doom"
+        }
+      ]
+    },
+    {
+      "id": "ending_triumph",
+      "text": "The spire implodes into a white arc that shreds the beacon network. Alien ships lose formation and burn across the dawn horizon.",
+      "tensionLevel": 3,
+      "ending": true,
+      "endingType": "triumph"
+    },
+    {
+      "id": "ending_survival",
+      "text": "You pull back before final detonation and outrun the shockwave through collapsing tunnels. The city is scarred, but your crew makes it out alive.",
+      "tensionLevel": 2,
+      "ending": true,
+      "endingType": "survival"
+    },
+    {
+      "id": "ending_doom",
+      "text": "The doors slide open and mimic drones flood the chamber in silence. By the time you understand, the invasion signal is complete.",
+      "tensionLevel": 5,
+      "ending": true,
+      "endingType": "doom"
+    }
+  ]
+}

@@ -1,0 +1,174 @@
+{
+  "genre": "zombie",
+  "title": "Zombie Outbreak",
+  "scenes": [
+    {
+      "id": "start",
+      "text": "Emergency lights strobe through smoke. Your heartbeat drowns out distant screams as something drags itself across the floor above you.",
+      "tensionLevel": 2,
+      "choices": [
+        {
+          "id": "a",
+          "label": "Rip open the supply locker for a weapon",
+          "nextId": "armed",
+          "text": "Rip open the supply locker for a weapon",
+          "next": "armed"
+        },
+        {
+          "id": "b",
+          "label": "Sprint for the chained fire door",
+          "nextId": "exit_attempt",
+          "text": "Sprint for the chained fire door",
+          "next": "exit_attempt"
+        }
+      ]
+    },
+    {
+      "id": "armed",
+      "text": "Your hands find a blood-slick crowbar. In the hallway, a jaw snaps in the dark and hungry feet begin to rush your position.",
+      "tensionLevel": 3,
+      "choices": [
+        {
+          "id": "a",
+          "label": "Charge the hallway before they surround you",
+          "nextId": "stairwell",
+          "text": "Charge the hallway before they surround you",
+          "next": "stairwell"
+        },
+        {
+          "id": "b",
+          "label": "Kill the lights and slip through the kitchen",
+          "nextId": "kitchen",
+          "text": "Kill the lights and slip through the kitchen",
+          "next": "kitchen"
+        }
+      ]
+    },
+    {
+      "id": "exit_attempt",
+      "text": "The fire door shakes as bodies slam into the other side. The chain pin rattles loose and cold fingers start pushing through the gap.",
+      "tensionLevel": 4,
+      "choices": [
+        {
+          "id": "a",
+          "label": "Force the door open and blast through",
+          "nextId": "stairwell",
+          "text": "Force the door open and blast through",
+          "next": "stairwell"
+        },
+        {
+          "id": "b",
+          "label": "Drop into the service vents",
+          "nextId": "kitchen",
+          "text": "Drop into the service vents",
+          "next": "kitchen"
+        }
+      ]
+    },
+    {
+      "id": "kitchen",
+      "text": "Flies cloud the prep tables. A cracked radio repeats evacuation coordinates while footsteps scrape across the ceiling vents overhead.",
+      "tensionLevel": 4,
+      "choices": [
+        {
+          "id": "a",
+          "label": "Follow the radio to the rooftop signal point",
+          "nextId": "rooftop",
+          "text": "Follow the radio to the rooftop signal point",
+          "next": "rooftop"
+        },
+        {
+          "id": "b",
+          "label": "Barricade the freezer and wait for first light",
+          "nextId": "checkpoint_twist",
+          "text": "Barricade the freezer and wait for first light",
+          "next": "checkpoint_twist"
+        }
+      ]
+    },
+    {
+      "id": "stairwell",
+      "text": "Bodies pile on each landing, climbing over each other to reach you. The fire escape outside groans in the wind but still looks climbable.",
+      "tensionLevel": 5,
+      "choices": [
+        {
+          "id": "a",
+          "label": "Fight upward through the swarm",
+          "nextId": "checkpoint_twist",
+          "text": "Fight upward through the swarm",
+          "next": "checkpoint_twist"
+        },
+        {
+          "id": "b",
+          "label": "Leap through the glass to the fire escape",
+          "nextId": "rooftop",
+          "text": "Leap through the glass to the fire escape",
+          "next": "rooftop"
+        }
+      ]
+    },
+    {
+      "id": "rooftop",
+      "text": "Rotor blades thunder in the distance while flares burn out one by one. Below, the dead flood the streets and begin pouring onto your building.",
+      "tensionLevel": 5,
+      "choices": [
+        {
+          "id": "a",
+          "label": "Ignite your last flare and hold your ground",
+          "nextId": "checkpoint_twist",
+          "text": "Ignite your last flare and hold your ground",
+          "next": "checkpoint_twist"
+        },
+        {
+          "id": "b",
+          "label": "Jump across to the next roof in the dark",
+          "nextId": "ending_doom",
+          "text": "Jump across to the next roof in the dark",
+          "next": "ending_doom"
+        }
+      ]
+    },
+    {
+      "id": "checkpoint_twist",
+      "text": "Floodlights blast your faces. A military quarantine line has formed, and through loudspeakers they order everyone to kneel for 'containment processing'.",
+      "tensionLevel": 5,
+      "choices": [
+        {
+          "id": "a",
+          "label": "Run the decon lane under floodlights",
+          "nextId": "ending_survival",
+          "text": "Run the decon lane under floodlights",
+          "next": "ending_survival"
+        },
+        {
+          "id": "b",
+          "label": "Hijack the armored truck and punch through",
+          "nextId": "ending_triumph",
+          "text": "Hijack the armored truck and punch through",
+          "next": "ending_triumph"
+        }
+      ]
+    },
+    {
+      "id": "ending_triumph",
+      "text": "You gun the truck through the barricade and carve a path into open highway. Behind you, the quarantine line collapses as your crew escapes alive.",
+      "tensionLevel": 3,
+      "ending": true,
+      "endingType": "triumph"
+    },
+    {
+      "id": "ending_survival",
+      "text": "You endure decontamination in freezing floodlight glare and stagger into a guarded safe zone. The city is lost, but your crew still breathes.",
+      "tensionLevel": 2,
+      "ending": true,
+      "endingType": "survival"
+    },
+    {
+      "id": "ending_doom",
+      "text": "Your foot slips on wet concrete. The scream is brief, then swallowed by the roar of the horde.",
+      "tensionLevel": 5,
+      "ending": true,
+      "endingType": "doom"
+    }
+  ]
+}
