@@ -196,6 +196,14 @@ export default function LobbyPage() {
         }
       />
       <div className="content-wrap space-y-5">
+        <section className="panel space-y-2 p-5">
+          <p className="badge w-fit">Lobby Phase</p>
+          <h1 className="text-2xl font-black sm:text-3xl">Assemble Your Crew</h1>
+          <p className="text-sm text-zinc-300">
+            Invite friends, confirm everyone is connected, then start the Rift minigame.
+          </p>
+        </section>
+
         <RoomCodeCard
           code={code}
           players={playersForCard}
@@ -211,9 +219,9 @@ export default function LobbyPage() {
               <motion.div
                 key={player.id}
                 layout
-                className="flex items-center gap-3 rounded-xl border border-white/15 bg-black/30 p-3"
+                className="flex items-center gap-3 rounded-xl border border-white/20 bg-slate-950/50 p-3"
               >
-                <div className="grid h-11 w-11 place-items-center rounded-full bg-cyan-500/20 font-semibold uppercase">
+                <div className="grid h-11 w-11 place-items-center rounded-full border border-cyan-300/40 bg-cyan-500/15 font-semibold uppercase">
                   {player.name.slice(0, 1)}
                 </div>
                 <div>
@@ -244,7 +252,7 @@ export default function LobbyPage() {
           <div className="panel p-5">
             <button
               type="button"
-              className="btn btn-primary w-full py-4 text-lg font-semibold disabled:cursor-not-allowed disabled:opacity-40 sm:text-xl"
+              className="btn btn-primary w-full py-4 text-lg disabled:cursor-not-allowed disabled:opacity-40 sm:text-xl"
               onClick={startGame}
               disabled={!demoMode && (playerCount < 3 || starting)}
               title={!demoMode && playerCount < 3 ? "Need 3+ players" : "Start Game"}

@@ -47,6 +47,11 @@ function DemoRecap({ code }: DemoRecapProps) {
         playerName="Host"
       />
       <div className="content-wrap space-y-6">
+        <section className="panel space-y-2 p-5">
+          <p className="badge w-fit">Recap Phase</p>
+          <h1 className="text-2xl font-black sm:text-3xl">Session Debrief</h1>
+          <p className="text-sm text-zinc-300">Review every major call, every Rift spike, and who delivered under pressure.</p>
+        </section>
         <NarratorBanner line={session.latestNarration ?? null} />
         <section className="panel space-y-4 p-6 text-center">
           <p className="badge mx-auto">Demo Complete</p>
@@ -307,6 +312,11 @@ function RealtimeRecap({ code, playerId }: RealtimeRecapProps) {
         playerName={playerId || undefined}
       />
       <div className="content-wrap space-y-6">
+        <section className="panel space-y-2 p-5">
+          <p className="badge w-fit">Recap Phase</p>
+          <h1 className="text-2xl font-black sm:text-3xl">How The Night Ended</h1>
+          <p className="text-sm text-zinc-300">Share the timeline, compare outcomes, then run it back with the same room.</p>
+        </section>
         <NarratorBanner line={recap.latestNarration} />
         <section className="panel space-y-4 p-6 text-center">
           <p className="text-xs uppercase tracking-[0.2em] text-zinc-400">{recap.storyTitle ?? "Unknown Story"}</p>
@@ -360,7 +370,7 @@ function RealtimeRecap({ code, playerId }: RealtimeRecapProps) {
             You survived (or didn’t). Share the story.
           </p>
           <div className="flex flex-wrap gap-3">
-          <button type="button" className="btn btn-primary flex-1 min-w-[140px] py-3 text-lg font-semibold" onClick={copyShare}>
+          <button type="button" className="btn btn-primary flex-1 min-w-[140px] py-3 text-lg" onClick={copyShare}>
             Share Story
           </button>
           <button type="button" className="btn btn-secondary min-w-[120px] py-3" onClick={copyLinkOnly}>

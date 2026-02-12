@@ -381,6 +381,11 @@ function DemoMinigame({ code, playerId }: DemoProps) {
       />
 
       <div className="content-wrap flex min-h-dvh flex-col items-center justify-center gap-6">
+        <section className="panel w-full max-w-3xl space-y-2 p-5 text-center">
+          <p className="badge mx-auto">Rift Minigame</p>
+          <h1 className="text-3xl font-black sm:text-4xl">Pick a Pie. Spin Fate.</h1>
+          <p className="text-sm text-zinc-300">Winning genre sets tone. Winning player controls the first story turn.</p>
+        </section>
         <NarratorBanner line={narration} compact />
 
         <WheelView
@@ -393,7 +398,7 @@ function DemoMinigame({ code, playerId }: DemoProps) {
         />
 
         {phase === "picking" ? (
-          <button type="button" className="btn btn-primary w-full max-w-3xl py-4 text-lg font-semibold" onClick={spinWheel} disabled={!allPicked}>
+          <button type="button" className="btn btn-primary w-full max-w-3xl py-4 text-lg" onClick={spinWheel} disabled={!allPicked}>
             {allPicked ? "Spin Genre Wheel (Demo)" : "Waiting for all picks"}
           </button>
         ) : null}
@@ -412,7 +417,7 @@ function DemoMinigame({ code, playerId }: DemoProps) {
               <strong>{winner.name}</strong> goes first.
             </p>
             {outcome?.tieBreak ? <p className="text-sm text-zinc-300">Tie break resolved by name wheel.</p> : null}
-            <button type="button" className="btn btn-primary w-full py-4 text-lg font-semibold" onClick={finishDemo}>
+            <button type="button" className="btn btn-primary w-full py-4 text-lg" onClick={finishDemo}>
               Finish Demo Minigame
             </button>
           </section>
@@ -706,6 +711,11 @@ function RealtimeMinigame({ code, playerId }: RealtimeProps) {
       />
 
       <div className="content-wrap flex min-h-dvh flex-col items-center justify-center gap-6">
+        <section className="panel w-full max-w-3xl space-y-2 p-5 text-center">
+          <p className="badge mx-auto">Rift Minigame</p>
+          <h1 className="text-3xl font-black sm:text-4xl">Pick a Pie. Spin Fate.</h1>
+          <p className="text-sm text-zinc-300">A tie triggers a names-only wheel. Final winner goes first in story phase.</p>
+        </section>
         <NarratorBanner line={narration} compact />
         {toast ? <p className="text-sm text-cyan-300">{toast}</p> : null}
 
@@ -726,7 +736,7 @@ function RealtimeMinigame({ code, playerId }: RealtimeProps) {
         )}
 
         {phase === "picking" ? (
-          <button type="button" className="btn btn-primary w-full max-w-3xl py-4 text-lg font-semibold" onClick={spinGenreWheel} disabled={!isHost || !allPicked}>
+          <button type="button" className="btn btn-primary w-full max-w-3xl py-4 text-lg" onClick={spinGenreWheel} disabled={!isHost || !allPicked}>
             {isHost ? (allPicked ? "Spin Genre Wheel" : "Waiting for all picks") : "Host spins after all picks"}
           </button>
         ) : null}

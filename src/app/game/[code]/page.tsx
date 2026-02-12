@@ -84,6 +84,11 @@ function DemoGame({ code, playerId }: DemoGameProps) {
         playerName={viewer.name}
       />
       <div className="content-wrap space-y-4">
+        <section className="panel space-y-2 p-5">
+          <p className="badge w-fit">Story Phase</p>
+          <h1 className="text-2xl font-black sm:text-3xl">Decision Under Pressure</h1>
+          <p className="text-sm text-zinc-300">The clock runs, chaos rises, and each turn reshapes the ending.</p>
+        </section>
         <RoomCodeCard code={code} players={session.players} title="Demo Room" />
         <NarratorBanner line={narration} />
       <div className="grid min-h-[70dvh] gap-4 lg:grid-cols-[1fr_280px]">
@@ -115,7 +120,7 @@ function DemoGame({ code, playerId }: DemoGameProps) {
           ) : (
             <button
               type="button"
-              className="btn btn-primary w-full py-4 text-lg font-semibold"
+              className="btn btn-primary w-full py-4 text-lg"
               onClick={() => {
                 router.push(`/recap/${code}?demo=1`);
               }}
@@ -396,6 +401,11 @@ function RealtimeGame({ code, playerId }: RealtimeGameProps) {
       />
 
       <div className="content-wrap space-y-4">
+        <section className="panel space-y-2 p-5">
+          <p className="badge w-fit">Story Phase</p>
+          <h1 className="text-2xl font-black sm:text-3xl">Decision Under Pressure</h1>
+          <p className="text-sm text-zinc-300">Only one player acts per turn. Everyone else tracks the fallout in real time.</p>
+        </section>
         {timeoutNotice ? <p className="text-sm text-yellow-300">{timeoutNotice}</p> : null}
         {toast ? <p className="text-sm text-cyan-300">{toast}</p> : null}
         {isActivePlayer ? (
