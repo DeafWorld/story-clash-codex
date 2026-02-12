@@ -98,7 +98,7 @@ async function bootstrap() {
         nextReady = true;
         logger.info("server.next.prepared");
       })
-      .catch((error) => {
+      .catch((error: unknown) => {
         prepareError = error;
         logger.error("server.next.prepare_failed", { error });
       });
