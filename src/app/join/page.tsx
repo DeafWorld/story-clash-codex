@@ -1,5 +1,6 @@
 "use client";
 
+import { Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { apiFetch } from "../../lib/api-client";
@@ -9,7 +10,7 @@ import SessionTopBar from "../../components/session-top-bar";
 
 const CODE_REGEX = /^[A-HJ-NP-Z]{4}$/;
 
-export default function JoinRoomPage() {
+function JoinRoomContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [code, setCode] = useState("");
@@ -148,5 +149,22 @@ export default function JoinRoomPage() {
         </form>
       </div>
     </main>
+  );
+}
+
+export default function JoinRoomPage() {
+  return (
+    <Suspense
+      fallback={
+        <main className="page-shell page-with-top-bar">
+          <SessionTopBar backHref="/" backLabel="Back Home" phaseLabel="Join Room" />
+          <div className="content-wrap grid min-h-dvh place-items-center">
+            <div className="panel w-full max-w-lg p-6 text-center text-zinc-300">Loading join form...</div>
+          </div>
+        </main>
+      }
+    >
+      <JoinRoomContent />
+    </Suspense>
   );
 }
