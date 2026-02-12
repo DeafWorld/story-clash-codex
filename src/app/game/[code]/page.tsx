@@ -1,7 +1,7 @@
 "use client";
 
 import { useParams, useRouter, useSearchParams } from "next/navigation";
-import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import clsx from "clsx";
 import { getSocketClient } from "../../../lib/socket-client";
 import { apiFetch } from "../../../lib/api-client";
@@ -9,9 +9,9 @@ import { trackEvent } from "../../../lib/analytics";
 import Typewriter from "../../../components/typewriter";
 import RoomCodeCard from "../../../components/room-code-card";
 import NarratorBanner from "../../../components/narrator-banner";
+import RiftStatusCard from "../../../components/rift-status-card";
 import {
   advanceDemoStoryChoice,
-  advanceDemoStoryFreeChoice,
   getDemoSession,
   getDemoStoryTree,
 } from "../../../lib/demo-session";
@@ -40,8 +40,6 @@ type DemoGameProps = {
 
 function DemoGame({ code, playerId }: DemoGameProps) {
   const router = useRouter();
-  const [freeText, setFreeText] = useState("");
-  const [freeChoiceError, setFreeChoiceError] = useState<string | null>(null);
   const [, rerender] = useState(0);
 
   const session = getDemoSession();
@@ -60,21 +58,6 @@ function DemoGame({ code, playerId }: DemoGameProps) {
 
   function choose(choiceId: string) {
     advanceDemoStoryChoice(choiceId);
-    setFreeChoiceError(null);
-    setFreeText("");
-    rerender((value) => value + 1);
-  }
-
-  function submitFreeChoice(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const trimmed = freeText.trim();
-    if (trimmed.length < 4) {
-      setFreeChoiceError("Enter at least 4 characters for free choice.");
-      return;
-    }
-    advanceDemoStoryFreeChoice(trimmed);
-    setFreeChoiceError(null);
-    setFreeText("");
     rerender((value) => value + 1);
   }
 
@@ -128,24 +111,6 @@ function DemoGame({ code, playerId }: DemoGameProps) {
                   </button>
                 ))}
               </div>
-
-              <form className="space-y-2" onSubmit={submitFreeChoice}>
-                <label className="text-sm text-zinc-300" htmlFor="free-choice-demo">
-                  Or describe your own action
-                </label>
-                <textarea
-                  id="free-choice-demo"
-                  className="field min-h-22"
-                  maxLength={60}
-                  placeholder="Type your action..."
-                  value={freeText}
-                  onChange={(event) => setFreeText(event.target.value)}
-                />
-                {freeChoiceError ? <p className="text-sm text-red-300">{freeChoiceError}</p> : null}
-                <button type="submit" className="btn btn-primary w-full py-3 font-semibold">
-                  Submit Free Choice
-                </button>
-              </form>
             </div>
           ) : (
             <button
@@ -160,7 +125,12 @@ function DemoGame({ code, playerId }: DemoGameProps) {
           )}
         </section>
 
-        <aside className="panel p-4">
+        <aside className="panel space-y-4 p-4">
+          <RiftStatusCard
+            genrePower={session.genrePower}
+            chaosLevel={session.chaosLevel}
+            activeEvent={session.activeRiftEvent}
+          />
           <h2 className="mb-3 text-lg font-semibold">Turn Order</h2>
           <div className="space-y-2">
             {session.turnOrder.map((id, index) => {
@@ -200,7 +170,6 @@ function RealtimeGame({ code, playerId }: RealtimeGameProps) {
   const router = useRouter();
 
   const [room, setRoom] = useState<RoomView | null>(null);
-  const [freeText, setFreeText] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -258,7 +227,6 @@ function RealtimeGame({ code, playerId }: RealtimeGameProps) {
       setRoom(payload);
       setNarration(payload.latestNarration ?? null);
       setSubmitting(false);
-      setFreeText("");
       if (payload.turnDeadline) {
         setRemainingMs(Math.max(0, payload.turnDeadline - Date.now()));
       }
@@ -370,17 +338,6 @@ function RealtimeGame({ code, playerId }: RealtimeGameProps) {
     navigator.vibrate?.(28);
   }
 
-  function submitFreeChoice(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (!isActivePlayer || freeText.trim().length < 5) {
-      return;
-    }
-    setSubmitting(true);
-    // TODO(multiplayer): Add moderation + semantic routing for free text on the server.
-    getSocketClient().emit("submit_choice", { code, playerId, freeText: freeText.trim().slice(0, 60) });
-    navigator.vibrate?.(35);
-  }
-
   if (error) {
     return (
       <main className="page-shell page-with-top-bar">
@@ -488,37 +445,18 @@ function RealtimeGame({ code, playerId }: RealtimeGameProps) {
                   </button>
                 ))}
               </div>
-
-              <form onSubmit={submitFreeChoice} className="space-y-2">
-                <label className="text-sm text-zinc-300" htmlFor="free-choice">
-                  Or describe your own action
-                </label>
-                <textarea
-                  id="free-choice"
-                  className="field min-h-22"
-                  maxLength={60}
-                  value={freeText}
-                  onChange={(event) => setFreeText(event.target.value)}
-                  placeholder="Type custom action"
-                />
-                <div className="flex items-center justify-between">
-                  <span className="text-xs text-zinc-400">{freeText.length}/60</span>
-                  <button
-                    type="submit"
-                    className="btn btn-primary"
-                    disabled={submitting || freeText.trim().length < 5}
-                  >
-                    {submitting ? "Submitting..." : "Submit Choice"}
-                  </button>
-                </div>
-              </form>
             </div>
           ) : (
             <p className="text-zinc-300">Waiting for {activePlayer?.name ?? "player"} to decide...</p>
           )}
         </section>
 
-        <aside className="panel p-4">
+        <aside className="panel space-y-4 p-4">
+          <RiftStatusCard
+            genrePower={room.genrePower}
+            chaosLevel={room.chaosLevel}
+            activeEvent={room.activeRiftEvent}
+          />
           <h2 className="mb-3 text-lg font-semibold">Turn Order</h2>
           <div className="space-y-2">
             {room.turnOrder.map((id, index) => {

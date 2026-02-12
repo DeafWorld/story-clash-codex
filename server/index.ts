@@ -383,19 +383,17 @@ async function bootstrap() {
       }
     });
 
-    socket.on("submit_choice", (payload: { code: string; playerId: string; choiceId?: string; freeText?: string }) => {
+    socket.on("submit_choice", (payload: { code: string; playerId: string; choiceId?: string }) => {
       try {
         const code = payload.code.toUpperCase();
         logger.info("socket.submit_choice", {
           code,
           playerId: payload.playerId,
           choiceId: payload.choiceId ?? null,
-          hasFreeText: Boolean(payload.freeText),
         });
         const acquired = withRoomLock(code, () => {
           const result = submitChoice(code, payload.playerId, {
             choiceId: payload.choiceId,
-            freeText: payload.freeText,
           });
           trackEvent("choice_submitted", { code, ended: result.ended });
           emitNarration(code, result.narration);

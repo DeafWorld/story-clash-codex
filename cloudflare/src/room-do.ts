@@ -1,8 +1,14 @@
 import { containsProfanity, sanitizeDisplayName } from "./profanity";
 import { generateNarrationLine } from "./narrator";
 import {
+  applyGenrePowerShift,
+  computeChaosLevel,
+  createInitialGenrePower,
+  deriveChoiceGenreShift,
+  evaluateRiftEvent,
+} from "./rift";
+import {
   getNextSceneIdFromChoice,
-  getNextSceneIdFromFreeChoice,
   getScene,
   getStoryStartScene,
   getStoryTitle,
@@ -30,6 +36,7 @@ const TURN_DURATION_MS = 30 * 1000;
 const MAX_PLAYERS = 6;
 const MIN_PLAYERS = 3;
 const MAX_NARRATION_LOG = 30;
+const MAX_RIFT_HISTORY = 40;
 const DISCONNECT_TIMEOUT_MS = 10_000;
 
 const AVATARS = ["circle-cyan", "diamond-red", "hex-green", "triangle-blue", "square-gold", "ring-white"];
@@ -189,6 +196,10 @@ export class RoomDurableObject {
       currentSceneId: "start",
       tensionLevel: 1,
       history: [],
+      genrePower: createInitialGenrePower(null),
+      chaosLevel: 0,
+      riftHistory: [],
+      activeRiftEvent: null,
       latestNarration: null,
       narrationLog: [],
       turnDeadline: null,
@@ -376,8 +387,7 @@ export class RoomDurableObject {
 
       if (envelope.event === "submit_choice") {
         const choiceId = typeof payload.choiceId === "string" ? payload.choiceId : undefined;
-        const freeText = typeof payload.freeText === "string" ? payload.freeText : undefined;
-        const result = this.submitChoice(room, payloadPlayerId, { choiceId, freeText });
+        const result = this.submitChoice(room, payloadPlayerId, { choiceId });
         await this.saveRoom(room);
         if (result.narration) {
           await this.broadcast("narrator_update", { line: result.narration, roomCode: room.code }, envelope.id);
@@ -552,6 +562,16 @@ export class RoomDurableObject {
     room.currentNodeId = room.currentNodeId ?? room.currentSceneId;
     room.currentPlayerId = room.currentPlayerId ?? this.activePlayerId(room);
     room.tensionLevel = room.tensionLevel ?? this.getCurrentScene(room)?.tensionLevel ?? 1;
+    room.genrePower = room.genrePower ?? createInitialGenrePower(room.genre ?? null);
+    room.chaosLevel =
+      room.chaosLevel ??
+      computeChaosLevel({
+        genrePower: room.genrePower,
+        selectedGenre: room.genre ?? null,
+        tensionLevel: room.tensionLevel ?? 1,
+      });
+    room.riftHistory = (room.riftHistory ?? []).slice(-MAX_RIFT_HISTORY);
+    room.activeRiftEvent = room.activeRiftEvent ?? null;
     room.latestNarration = room.latestNarration ?? null;
     room.narrationLog = (room.narrationLog ?? []).slice(-MAX_NARRATION_LOG);
     room.players = room.players.map((player, index) => ({
@@ -785,6 +805,10 @@ export class RoomDurableObject {
     room.storyId = genre;
     this.setRoomPhase(room, "game");
     room.history = [];
+    room.genrePower = createInitialGenrePower(genre);
+    room.chaosLevel = 0;
+    room.riftHistory = [];
+    room.activeRiftEvent = null;
     room.endingScene = null;
     room.endingType = null;
     room.activePlayerIndex = 0;
@@ -794,6 +818,11 @@ export class RoomDurableObject {
     room.currentNodeId = startScene.id;
     room.turnDeadline = now() + TURN_DURATION_MS;
     room.tensionLevel = startScene.tensionLevel ?? 1;
+    room.chaosLevel = computeChaosLevel({
+      genrePower: room.genrePower,
+      selectedGenre: room.genre,
+      tensionLevel: room.tensionLevel,
+    });
     room.currentPlayerId = this.activePlayerId(room);
     const narration = this.appendNarration(room, "scene_enter", {
       sceneId: startScene.id,
@@ -813,7 +842,7 @@ export class RoomDurableObject {
   private submitChoice(
     room: RoomState,
     playerId: string,
-    payload: { choiceId?: string; freeText?: string; timeout?: boolean }
+    payload: { choiceId?: string; timeout?: boolean }
   ) {
     if (room.phase !== "game") {
       throw new Error("Game is not active");
@@ -828,29 +857,29 @@ export class RoomDurableObject {
     if (!scene || !scene.choices?.length) {
       throw new Error("Scene does not have choices");
     }
+    const sceneChoices = scene.choices;
+    if (!payload.timeout && !payload.choiceId) {
+      throw new Error("Choice is required");
+    }
 
-    const defaultChoice = scene.choices[0];
+    const defaultChoice = sceneChoices[0];
     let nextSceneId = defaultChoice.next ?? defaultChoice.nextId;
     let resolvedChoiceText = defaultChoice.text ?? defaultChoice.label ?? "Continue";
-    let freeChoice = false;
+    let selectedChoiceId = defaultChoice.id;
 
-    if (payload.freeText && payload.freeText.trim().length > 0) {
-      if (containsProfanity(payload.freeText)) {
-        throw new Error("Free choice contains blocked language");
-      }
-      freeChoice = true;
-      resolvedChoiceText = payload.freeText.trim().slice(0, 60);
-      nextSceneId = getNextSceneIdFromFreeChoice(scene, resolvedChoiceText) ?? nextSceneId;
-    } else if (payload.timeout) {
-      const randomChoice = scene.choices[Math.floor(Math.random() * scene.choices.length)] ?? defaultChoice;
+    if (payload.timeout) {
+      const randomChoice = sceneChoices[Math.floor(Math.random() * sceneChoices.length)] ?? defaultChoice;
       nextSceneId = randomChoice.next ?? randomChoice.nextId;
       resolvedChoiceText = randomChoice.text ?? randomChoice.label ?? resolvedChoiceText;
+      selectedChoiceId = randomChoice.id;
     } else if (payload.choiceId) {
       const selectedId = getNextSceneIdFromChoice(scene, payload.choiceId);
-      if (selectedId) {
-        nextSceneId = selectedId;
-        resolvedChoiceText = sceneChoiceLabel(scene, payload.choiceId);
+      if (!selectedId) {
+        throw new Error("Choice not found");
       }
+      nextSceneId = selectedId;
+      resolvedChoiceText = sceneChoiceLabel(scene, payload.choiceId);
+      selectedChoiceId = payload.choiceId;
     }
 
     const player = room.players.find((entry) => entry.id === playerId);
@@ -865,6 +894,42 @@ export class RoomDurableObject {
       throw new Error("Scene choice is missing a next node");
     }
 
+    room.genrePower = applyGenrePowerShift(
+      room.genrePower,
+      deriveChoiceGenreShift({
+        selectedGenre: room.genre,
+        scene,
+        choiceLabel: resolvedChoiceText,
+        timeout: payload.timeout,
+      })
+    );
+    room.chaosLevel = computeChaosLevel({
+      genrePower: room.genrePower,
+      selectedGenre: room.genre,
+      tensionLevel: scene.tensionLevel ?? 1,
+      timeout: payload.timeout,
+    });
+
+    const rift = evaluateRiftEvent({
+      roomCode: room.code,
+      step: room.history.length + 1,
+      scene,
+      choices: sceneChoices,
+      selectedChoiceId,
+      selectedNextSceneId: nextSceneId,
+      playerId,
+      genrePower: room.genrePower,
+      chaosLevel: room.chaosLevel,
+      timeout: payload.timeout,
+    });
+    nextSceneId = rift.nextSceneId;
+    room.genrePower = rift.genrePower;
+    room.chaosLevel = rift.chaosLevel;
+    room.activeRiftEvent = rift.event;
+    if (rift.event) {
+      room.riftHistory = [...room.riftHistory, rift.event].slice(-MAX_RIFT_HISTORY);
+    }
+
     room.history.push({
       sceneId: scene.id,
       sceneText: scene.text,
@@ -873,8 +938,7 @@ export class RoomDurableObject {
       playerName: player.name,
       choice: resolvedChoiceText,
       choiceLabel: resolvedChoiceText,
-      isFreeChoice: freeChoice,
-      freeText: freeChoice ? resolvedChoiceText : undefined,
+      isFreeChoice: false,
       nextNodeId: nextSceneId,
       tensionLevel: scene.tensionLevel ?? 1,
       timestamp: now(),
@@ -884,7 +948,6 @@ export class RoomDurableObject {
       sceneId: scene.id,
       playerId,
       choiceLabel: resolvedChoiceText,
-      freeText: payload.freeText ?? null,
       tensionLevel: scene.tensionLevel ?? 1,
     });
 
@@ -916,6 +979,7 @@ export class RoomDurableObject {
         endingScene: nextScene,
         endingType: room.endingType,
         history: room.history,
+        riftEvent: room.activeRiftEvent,
         narration,
         endingNarration,
       };
@@ -931,6 +995,7 @@ export class RoomDurableObject {
       activePlayerId: room.currentPlayerId,
       turnDeadline: room.turnDeadline,
       history: room.history,
+      riftEvent: room.activeRiftEvent,
       narration,
     };
   }
@@ -943,6 +1008,10 @@ export class RoomDurableObject {
     room.currentNodeId = "start";
     room.tensionLevel = 1;
     room.history = [];
+    room.genrePower = createInitialGenrePower(null);
+    room.chaosLevel = 0;
+    room.riftHistory = [];
+    room.activeRiftEvent = null;
     room.latestNarration = null;
     room.narrationLog = [];
     room.endingScene = null;
@@ -992,6 +1061,9 @@ export class RoomDurableObject {
       mvp: this.computeMVP(room),
       genre: room.genre,
       storyTitle: getStoryTitle(room.genre),
+      genrePower: room.genrePower,
+      chaosLevel: room.chaosLevel,
+      riftHistory: room.riftHistory,
       latestNarration: room.latestNarration ?? null,
       narrationLog: room.narrationLog ?? [],
     };

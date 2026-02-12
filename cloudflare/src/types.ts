@@ -3,6 +3,7 @@ export type EndingType = "triumph" | "survival" | "doom";
 export type RoomPhase = "lobby" | "minigame" | "game" | "recap";
 export type NarrationTone = "calm" | "uneasy" | "urgent" | "desperate" | "hopeful" | "grim";
 export type NarrationTrigger = "scene_enter" | "choice_submitted" | "turn_timeout" | "ending";
+export type RiftEventType = "genre_surge" | "scene_twist";
 
 export type NarrationLine = {
   id: string;
@@ -15,6 +16,27 @@ export type NarrationLine = {
   tensionLevel: number;
   genre: GenreId | null;
   endingType: EndingType | null;
+  createdAt: number;
+};
+
+export type GenrePower = {
+  zombie: number;
+  alien: number;
+  haunted: number;
+};
+
+export type RiftEventRecord = {
+  id: string;
+  type: RiftEventType;
+  title: string;
+  description: string;
+  sceneId: string;
+  playerId: string | null;
+  choiceId?: string | null;
+  originalNextSceneId?: string | null;
+  nextSceneId?: string | null;
+  targetGenre?: GenreId | null;
+  chaosLevel: number;
   createdAt: number;
 };
 
@@ -89,6 +111,10 @@ export type RoomState = {
   currentSceneId: string;
   tensionLevel: number;
   history: HistoryEntry[];
+  genrePower: GenrePower;
+  chaosLevel: number;
+  riftHistory: RiftEventRecord[];
+  activeRiftEvent: RiftEventRecord | null;
   latestNarration: NarrationLine | null;
   narrationLog: NarrationLine[];
   turnDeadline: number | null;
@@ -114,6 +140,9 @@ export type RecapPayload = {
   mvp: MVP;
   genre: GenreId | null;
   storyTitle: string | null;
+  genrePower: GenrePower;
+  chaosLevel: number;
+  riftHistory: RiftEventRecord[];
   latestNarration: NarrationLine | null;
   narrationLog: NarrationLine[];
 };

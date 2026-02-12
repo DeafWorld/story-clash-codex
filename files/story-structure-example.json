@@ -1,0 +1,441 @@
+{
+  "episodeData": {
+    "episodeNumber": 1,
+    "title": "The First Fracture",
+    "summary": "The Rift opens for the first time, and reality begins to unravel.",
+    "unlockRequirements": null,
+    "genrePool": ["Horror", "Romance", "Sci-Fi", "Fantasy", "Comedy"]
+  },
+
+  "persistentData": {
+    "worldScars": {
+      "description": "Changes to the world that persist across episodes",
+      "scars": [
+        {
+          "id": "forest_corruption",
+          "condition": "IF Horror dominance > 40% at episode end",
+          "effect": "The forest becomes permanently darker in future episodes",
+          "unlocks": ["dark_path_ep2", "cursed_character"]
+        },
+        {
+          "id": "romantic_bond",
+          "condition": "IF Romance choice selected AND unanimous vote",
+          "effect": "The mysterious figure becomes a recurring character",
+          "unlocks": ["companion_system", "relationship_scenes"]
+        },
+        {
+          "id": "tech_discovery",
+          "condition": "IF Sci-Fi dominance > 50% at episode end",
+          "effect": "Player gains 'Rift Scanner' artifact for future use",
+          "unlocks": ["scanner_scenes", "quantum_paths"]
+        }
+      ]
+    },
+
+    "characterMemory": {
+      "description": "NPCs remember player interactions",
+      "characters": [
+        {
+          "id": "mysterious_figure",
+          "name": "???",
+          "firstAppearance": "episode_1_scene_3",
+          "memoryTracking": {
+            "trustLevel": 0,
+            "emotionalBond": 0,
+            "knownSecrets": [],
+            "playerChoices": []
+          },
+          "futureImpact": "Returns in Episode 5 as ally or antagonist based on trust"
+        }
+      ]
+    },
+
+    "hiddenStats": {
+      "chaosLevel": {
+        "current": 42,
+        "description": "Overall reality instability",
+        "effects": {
+          "0-30": "Stable - Fewer Rift Events",
+          "31-60": "Unstable - Normal Rift Event frequency",
+          "61-80": "Volatile - More frequent Rift Events, genre contamination",
+          "81-100": "Critical - Reality collapse imminent, special ending unlocked"
+        }
+      },
+      "genreContamination": {
+        "Horror+Romance": 0,
+        "Sci-Fi+Fantasy": 0,
+        "Comedy+Horror": 0,
+        "description": "When two genres appear together frequently, they merge"
+      },
+      "playerArchetype": {
+        "description": "Based on choice patterns",
+        "current": "undetermined",
+        "types": ["The Romantic", "The Scientist", "The Survivor", "The Comedian", "The Mystic"]
+      }
+    },
+
+    "storyArtifacts": {
+      "description": "Collectibles that unlock abilities/paths",
+      "artifacts": [
+        {
+          "id": "rift_fragment",
+          "name": "Rift Fragment",
+          "description": "A shard of crystallized reality",
+          "howToEarn": "Complete Episode 1 with Chaos > 60%",
+          "ability": "Once per episode, force a Rift Event at chosen moment",
+          "rarity": "common"
+        },
+        {
+          "id": "lovers_token",
+          "name": "Lover's Token",
+          "description": "A memento from a moment of connection",
+          "howToEarn": "Choose all Romance options in Episode 1",
+          "ability": "Unlock romance subplots in any story",
+          "rarity": "uncommon"
+        },
+        {
+          "id": "scanner_mk1",
+          "name": "Reality Scanner Mk.I",
+          "description": "Detects genre anomalies",
+          "howToEarn": "Choose Sci-Fi path and scan 3+ times",
+          "ability": "Reveal hidden choice consequences before selecting",
+          "rarity": "rare"
+        }
+      ]
+    }
+  },
+
+  "storyStructure": {
+    "scenes": [
+      {
+        "id": "scene_1",
+        "title": "The Edge of the Forest",
+        "triggers": ["episode_start"],
+        "activeGenres": ["All"],
+        "text": "You stand at the edge of an ancient forest. The air shimmers with unstable energy—the Rift is active. Multiple realities are bleeding into each other.\n\nA path leads deeper into the woods, where strange lights flicker between the trees.",
+        
+        "choices": [
+          {
+            "id": "choice_1a",
+            "text": "Investigate the lights cautiously",
+            "flavorText": "Something feels wrong about those lights...",
+            "genreShift": {
+              "Horror": 2,
+              "Mystery": 1
+            },
+            "consequences": {
+              "immediate": "Player approaches lights, tension builds",
+              "sceneTransition": "scene_2_horror",
+              "hiddenStats": {
+                "chaosLevel": 5,
+                "trustLevel": -1
+              },
+              "setFlag": "investigated_lights"
+            },
+            "votingImpact": {
+              "unanimousBonus": "Extra scene detail, stronger genre shift",
+              "splitVote": "Fractured outcome - both investigation and hesitation happen"
+            }
+          },
+          {
+            "id": "choice_1b",
+            "text": "Call out to see if anyone's there",
+            "flavorText": "Maybe someone needs help?",
+            "genreShift": {
+              "Romance": 2,
+              "Comedy": 1
+            },
+            "consequences": {
+              "immediate": "Voice echoes, someone responds",
+              "sceneTransition": "scene_2_romance",
+              "hiddenStats": {
+                "chaosLevel": -2,
+                "trustLevel": 2
+              },
+              "setFlag": "made_contact"
+            }
+          },
+          {
+            "id": "choice_1c",
+            "text": "Scan the area with your device",
+            "flavorText": "Technology might explain this phenomenon",
+            "genreShift": {
+              "Sci-Fi": 3
+            },
+            "consequences": {
+              "immediate": "Scanner reveals quantum anomalies",
+              "sceneTransition": "scene_2_scifi",
+              "hiddenStats": {
+                "chaosLevel": 3
+              },
+              "setFlag": "used_scanner",
+              "earnArtifact": "scanner_usage_count+1"
+            }
+          }
+        ],
+
+        "riftEventChance": 0.3,
+        "possibleRiftEvents": [
+          {
+            "id": "sudden_genre_shift",
+            "trigger": "After choice selected, before next scene",
+            "effect": "Random genre surges, altering the outcome",
+            "implementation": "Roll random genre, boost it by 5 points, modify scene_2 accordingly"
+          }
+        ]
+      },
+
+      {
+        "id": "scene_2_horror",
+        "title": "Shadows and Light",
+        "triggers": ["choice_1a"],
+        "requiredFlags": ["investigated_lights"],
+        "activeGenres": ["Horror", "Mystery"],
+        "text": "You creep toward the lights, every shadow seeming to reach for you. The forest holds its breath. As you get closer, the lights resolve into something impossible—floating orbs of pure darkness surrounded by halos of sickly green luminescence.",
+
+        "riftEvent": {
+          "id": "romantic_surge",
+          "description": "RIFT EVENT - Romance genre forces its way in!",
+          "effect": "The scene dramatically shifts tone",
+          "modifiedText": "You creep toward the lights, every shadow seeming to reach for you. The forest holds its breath.\n\n**RIFT EVENT!** A surge of romantic energy floods the scene!\n\nThe shadows transform into flower petals, swirling around you. A figure emerges from the light—beautiful, ethereal, and somehow familiar. Their eyes meet yours, and reality bends around this moment.",
+          "genreShift": {
+            "Romance": 4,
+            "Horror": -2
+          },
+          "genreContamination": {
+            "Horror+Romance": 1
+          }
+        },
+
+        "choices": [
+          {
+            "id": "choice_2a",
+            "text": "\"Do I... know you?\"",
+            "availableIf": "rift_event_occurred",
+            "genreShift": {
+              "Romance": 3,
+              "Horror": -1
+            },
+            "consequences": {
+              "sceneTransition": "scene_3_romance_horror",
+              "characterMemory": {
+                "mysterious_figure": {
+                  "trustLevel": 2,
+                  "emotionalBond": 3,
+                  "knownSecrets": ["player_feels_connection"]
+                }
+              }
+            }
+          },
+          {
+            "id": "choice_2b",
+            "text": "Step back defensively",
+            "genreShift": {
+              "Horror": 2
+            },
+            "consequences": {
+              "sceneTransition": "scene_3_horror_pure",
+              "characterMemory": {
+                "mysterious_figure": {
+                  "trustLevel": -1,
+                  "emotionalBond": 0
+                }
+              }
+            }
+          },
+          {
+            "id": "choice_2c",
+            "text": "Reach out to touch them",
+            "flavorText": "Something draws you forward...",
+            "availableIf": "rift_event_occurred AND romance_dominance > 30%",
+            "genreShift": {
+              "Romance": 5
+            },
+            "consequences": {
+              "sceneTransition": "scene_3_romance_pure",
+              "unlockArtifact": "lovers_token",
+              "worldScar": "romantic_bond_formed"
+            }
+          }
+        ]
+      },
+
+      {
+        "id": "scene_3_romance_horror",
+        "title": "Beautiful and Terrible",
+        "triggers": ["choice_2a"],
+        "activeGenres": ["Romance", "Horror"],
+        "genreContamination": "active",
+        "text": "\"You do,\" they whisper, and their voice is both a lullaby and a dirge. \"We've met in a thousand timelines, loved and lost across infinite realities.\"\n\nTheir hand reaches for yours. In the darkness, you see flashes: moments of tenderness and tragedy, passion and pain, all bleeding together.\n\nThis is what genre contamination creates—romance that hurts, horror that attracts.",
+
+        "dynamicElements": {
+          "description": "This scene changes based on genre balance",
+          "variations": [
+            {
+              "condition": "Romance > Horror by 10+",
+              "textModifier": "The romantic elements dominate, horror becomes bittersweet longing"
+            },
+            {
+              "condition": "Horror > Romance by 10+",
+              "textModifier": "The horror dominates, romance becomes twisted obsession"
+            },
+            {
+              "condition": "Balanced within 10 points",
+              "textModifier": "Perfect contamination - neither dominates, creating something new"
+            }
+          ]
+        },
+
+        "choices": [
+          {
+            "id": "choice_3a",
+            "text": "Take their hand",
+            "genreShift": {
+              "Romance": 3
+            },
+            "consequences": {
+              "sceneTransition": "episode_1_ending_romance",
+              "episodeConclusion": true,
+              "unlocks": ["episode_2_romance_path"],
+              "characterMemory": {
+                "mysterious_figure": {
+                  "trustLevel": 5,
+                  "emotionalBond": 8,
+                  "relationship_status": "bound_across_timelines"
+                }
+              }
+            }
+          },
+          {
+            "id": "choice_3b",
+            "text": "Pull away - this isn't real",
+            "genreShift": {
+              "Horror": 3,
+              "Sci-Fi": 1
+            },
+            "consequences": {
+              "sceneTransition": "episode_1_ending_horror",
+              "episodeConclusion": true,
+              "unlocks": ["episode_2_mystery_path"],
+              "worldScar": "trust_broken"
+            }
+          }
+        ]
+      }
+    ]
+  },
+
+  "endingVariations": {
+    "description": "Episode 1 has 5+ possible endings based on genre dominance",
+    "endings": [
+      {
+        "id": "romance_ending",
+        "trigger": "Romance dominance > 40%",
+        "title": "Hearts Entwined",
+        "text": "Connection sparks between you. Time seems to slow. The Rift stabilizes around romantic energy, reality bending to create the perfect moment.\n\nBut beneath the surface, you sense something darker waiting...",
+        "unlocks": ["episode_2_romance_path", "companion_mechanic"],
+        "artifacts_earned": ["lovers_token"],
+        "nextEpisodeHook": "The bond you've formed is strong, but the Rift has plans of its own..."
+      },
+      {
+        "id": "horror_ending",
+        "trigger": "Horror dominance > 40%",
+        "title": "The Dark Woods",
+        "text": "Your instincts were right. The figure's smile twists into something wrong. The petals turn to ash. The forest whispers secrets that should never be known.\n\nThe Rift pulses with dark energy.",
+        "unlocks": ["episode_2_horror_path", "cursed_status"],
+        "worldScars": ["forest_corruption"],
+        "nextEpisodeHook": "You escaped the forest, but something followed you home..."
+      },
+      {
+        "id": "scifi_ending",
+        "trigger": "Sci-Fi dominance > 40%",
+        "title": "Quantum Revelation",
+        "text": "Your readings reveal the truth: this forest is a convergence point for parallel realities. You've found the Rift's epicenter.\n\nWith this knowledge, you could control which reality dominates—or destroy them all.",
+        "unlocks": ["episode_2_science_path", "scanner_upgraded"],
+        "artifacts_earned": ["scanner_mk1", "rift_fragment"],
+        "nextEpisodeHook": "Knowledge is power, but some truths are dangerous to know..."
+      },
+      {
+        "id": "chaos_ending",
+        "trigger": "Chaos level > 70%",
+        "title": "Reality Fractures",
+        "text": "Too many genres fought for control. The Rift couldn't stabilize. Reality itself begins to crack.\n\nYou're standing in three timelines at once. This shouldn't be possible, but here you are—a living paradox.",
+        "unlocks": ["episode_2_chaos_path", "paradox_abilities"],
+        "special": true,
+        "nextEpisodeHook": "You've broken the rules of reality. Now you must face the consequences..."
+      }
+    ]
+  },
+
+  "episodeRewards": {
+    "baseRewards": {
+      "echoPoints": 150,
+      "experience": 100
+    },
+    "bonusRewards": [
+      {
+        "condition": "Unanimous votes on 3+ choices",
+        "reward": "Resonance Bonus: +50 Echo Points, unlock 'Unified Front' achievement"
+      },
+      {
+        "condition": "Trigger 3+ Rift Events",
+        "reward": "Chaos Master: +1 Rift Fragment"
+      },
+      {
+        "condition": "Pure genre ending (one genre >60%)",
+        "reward": "Genre specialist artifact for that genre"
+      },
+      {
+        "condition": "Contamination ending (two genres within 5% of each other)",
+        "reward": "Hybrid artifact combining both genres"
+      }
+    ]
+  },
+
+  "continuitySystem": {
+    "description": "How choices from Episode 1 affect Episode 2+",
+    "carryForward": {
+      "worldState": [
+        "All world scars persist",
+        "Genre dominance influences starting balance of next episode",
+        "Character relationships carry over"
+      ],
+      "playerProgression": [
+        "All artifacts available for use",
+        "Echo Points accumulate",
+        "Player archetype becomes more defined"
+      ],
+      "narrativeThreads": [
+        "Unresolved mysteries from Ep1 appear in Ep2",
+        "NPCs reference previous choices",
+        "Locations change based on past events"
+      ]
+    }
+  },
+
+  "meta_features": {
+    "storyDNA": {
+      "description": "Unique code generated from playthrough",
+      "components": [
+        "Genre balance signature",
+        "Choice path hash",
+        "Ending achieved",
+        "Chaos level",
+        "Artifacts earned"
+      ],
+      "shareable": true,
+      "allows_replay": "Others can input your DNA to experience your exact story variant"
+    },
+
+    "globalStats": {
+      "description": "Track across all players",
+      "metrics": [
+        "Most common ending",
+        "Rarest choice combinations",
+        "Average chaos level",
+        "Most popular genre",
+        "Highest contamination achieved"
+      ]
+    }
+  }
+}

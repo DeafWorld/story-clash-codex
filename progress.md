@@ -120,3 +120,39 @@ TODO:
 Validation notes:
 - JSON story files parse cleanly via Node (`JSON_OK`).
 - Full lint/typecheck/build/e2e commands still intermittently hang in this shell environment; unable to complete full gate run in this turn.
+
+- Story depth pass implemented for all genres to strengthen immersion and reduce abrupt endings:
+  - Added explicit twist nodes and extended branch depth to a minimum shortest-path of 4 choices.
+  - `zombie.json`: new `checkpoint_twist` military quarantine reversal; early branches now route through this high-stakes beat before non-doom endings.
+  - `alien.json`: new `echo_chamber` (voice-mimic trap) and `uplink_spire` finale gate; removed early direct endings.
+  - `haunted.json`: new `undercroft` and `ritual_vault` beats; chapel no longer short-circuits to endings.
+- Updated choice-path tests to match new zombie flow:
+  - `/Users/deafgod/Desktop/Codex/tests/e2e/live-multiplayer.spec.ts` now performs 4 decisions to recap.
+  - `/Users/deafgod/Desktop/Codex/tests/store-flow.test.ts` now expects game end on 4th decision via `checkpoint_twist`.
+- Sanity checks executed via Node scripts:
+  - All story JSON parses successfully.
+  - All `nextId`, `freeChoiceTargetId`, and `freeChoiceKeywords` targets resolve to existing nodes.
+  - Shortest ending depth now: zombie=4, alien=4, haunted=4.
+
+- Removed free-answer mode for current gameplay phase (choice-only flow).
+- UI: deleted free-text inputs/actions from game screens:
+  - `/Users/deafgod/Desktop/Codex/src/app/game/[code]/page.tsx` (demo + realtime)
+  - players now progress only through explicit choice buttons.
+- Stories: removed all free-choice metadata from story JSON trees:
+  - `/Users/deafgod/Desktop/Codex/src/data/stories/zombie.json`
+  - `/Users/deafgod/Desktop/Codex/src/data/stories/alien.json`
+  - `/Users/deafgod/Desktop/Codex/src/data/stories/haunted.json`
+- Server authority hardened to choice-only:
+  - `/Users/deafgod/Desktop/Codex/src/lib/store.ts`: `submitChoice` no longer accepts `freeText`, requires valid `choiceId` unless timeout.
+  - `/Users/deafgod/Desktop/Codex/server/index.ts`: socket payload and logging no longer include free text.
+  - `/Users/deafgod/Desktop/Codex/cloudflare/src/room-do.ts`: DO submit flow no longer accepts free text; enforces valid `choiceId` unless timeout.
+- Demo session cleanup:
+  - `/Users/deafgod/Desktop/Codex/src/lib/demo-session.ts`: removed demo free-choice advance path.
+- UX text cleanup:
+  - `/Users/deafgod/Desktop/Codex/src/components/tutorial-overlay.tsx` step 2 now reflects choice-only play.
+  - `/Users/deafgod/Desktop/Codex/src/app/recap/[code]/page.tsx` removed free-choice recap lines.
+- Test alignment:
+  - `/Users/deafgod/Desktop/Codex/tests/story-utils.test.ts` free-choice utility test now uses synthetic scene data (independent of production story JSON).
+- Data validation script run:
+  - confirmed no `freeChoiceTargetId`/`freeChoiceKeywords` remain in story JSON.
+  - confirmed all endings remain reachable via explicit choices in all three stories.

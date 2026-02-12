@@ -8,6 +8,8 @@ import { apiFetch } from "../../../lib/api-client";
 import { trackEvent } from "../../../lib/analytics";
 import Typewriter from "../../../components/typewriter";
 import NarratorBanner from "../../../components/narrator-banner";
+import RiftStatusCard from "../../../components/rift-status-card";
+import RiftEventTimeline from "../../../components/rift-event-timeline";
 import { getDemoEndingText, getDemoSession, getDemoStoryTree, initDemoRoom } from "../../../lib/demo-session";
 import SessionTopBar from "../../../components/session-top-bar";
 import type { EndingType, RecapPayload } from "../../../types/game";
@@ -73,12 +75,18 @@ function DemoRecap({ code }: DemoRecapProps) {
                 <p className="mt-2 text-sm">
                   <strong>{entry.playerName}</strong> chose: <span className="text-cyan-300">{entry.choiceLabel}</span>
                 </p>
-                {entry.isFreeChoice && entry.freeText ? (
-                  <p className="mt-1 text-xs text-green-300">Free choice text: &quot;{entry.freeText}&quot;</p>
-                ) : null}
               </motion.article>
             ))}
           </div>
+        </section>
+
+        <section className="space-y-4">
+          <RiftStatusCard
+            genrePower={session.genrePower}
+            chaosLevel={session.chaosLevel}
+            activeEvent={session.activeRiftEvent}
+          />
+          <RiftEventTimeline events={session.riftHistory} />
         </section>
 
         <section className="panel p-5">
@@ -309,7 +317,8 @@ function RealtimeRecap({ code, playerId }: RealtimeRecapProps) {
         </section>
 
         {showTimeline ? (
-          <section className="panel p-5">
+          <section className="space-y-4">
+            <section className="panel p-5">
             <h2 className="mb-3 text-2xl font-semibold">How your story unfolded</h2>
             <div className="max-h-[48dvh] space-y-3 overflow-y-auto pr-2 [scroll-snap-type:y_mandatory]">
               {recap.history.map((entry, index) => (
@@ -325,11 +334,8 @@ function RealtimeRecap({ code, playerId }: RealtimeRecapProps) {
                   <p className="mt-1 text-sm text-zinc-300">{entry.sceneText.slice(0, 120)}...</p>
                   <p className="mt-2 text-sm">
                     <strong>{entry.player}</strong> chose:{" "}
-                    <span className={entry.isFreeChoice ? "text-green-300" : "text-cyan-300"}>{entry.choice}</span>
+                    <span className="text-cyan-300">{entry.choice}</span>
                   </p>
-                  {entry.isFreeChoice && entry.freeText ? (
-                    <p className="mt-1 text-xs text-green-300">Free choice text: &quot;{entry.freeText}&quot;</p>
-                  ) : null}
                 </motion.article>
               ))}
             </div>
@@ -338,6 +344,14 @@ function RealtimeRecap({ code, playerId }: RealtimeRecapProps) {
               <p className="font-semibold">{recap.mvp.player} was MVP</p>
               <p className="text-sm text-zinc-200">{recap.mvp.reason}</p>
             </div>
+            </section>
+
+            <RiftStatusCard
+              genrePower={recap.genrePower}
+              chaosLevel={recap.chaosLevel}
+              activeEvent={recap.riftHistory.at(-1) ?? null}
+            />
+            <RiftEventTimeline events={recap.riftHistory} />
           </section>
         ) : null}
 

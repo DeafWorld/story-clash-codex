@@ -26,9 +26,21 @@ describe("story-utils", () => {
   });
 
   it("maps free choice text using scene keywords", () => {
-    const start = getStoryStartNode(zombie);
-    const nextFight = getNextNodeIdFromFreeChoice(start, "grab a weapon and fight");
-    const nextEscape = getNextNodeIdFromFreeChoice(start, "run to the exit now");
+    const scene = normalizeSceneNode({
+      id: "branch",
+      text: "branch",
+      choices: [
+        { id: "a", text: "fight", next: "armed" },
+        { id: "b", text: "run", next: "exit_attempt" },
+      ],
+      freeChoiceKeywords: {
+        "weapon|fight|attack": "armed",
+        "run|escape|door": "exit_attempt",
+        default: "exit_attempt",
+      },
+    });
+    const nextFight = getNextNodeIdFromFreeChoice(scene, "grab a weapon and fight");
+    const nextEscape = getNextNodeIdFromFreeChoice(scene, "run to the exit now");
 
     expect(nextFight).toBe("armed");
     expect(nextEscape).toBe("exit_attempt");

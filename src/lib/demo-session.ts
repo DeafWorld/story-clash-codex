@@ -3,12 +3,25 @@ import alienSource from "../data/stories/alien.json";
 import hauntedSource from "../data/stories/haunted.json";
 import { generateNarrationLine } from "./narrator";
 import {
+  applyGenrePowerShift,
+  computeChaosLevel,
+  createInitialGenrePower,
+  deriveChoiceGenreShift,
+  evaluateRiftEvent,
+} from "./rift";
+import {
   getNextNodeIdFromChoice,
-  getNextNodeIdFromFreeChoice,
   getNodeById,
   getStoryStartNode,
 } from "./story-utils";
-import type { GenreId, NarrationLine, Player, StoryTree } from "../types/game";
+import type {
+  GenreId,
+  GenrePower,
+  NarrationLine,
+  Player,
+  RiftEventRecord,
+  StoryTree,
+} from "../types/game";
 
 export type DemoPlayer = Player;
 
@@ -36,6 +49,10 @@ export type DemoSessionState = {
   currentPlayerId: string;
   currentNodeId: string;
   history: DemoStoryEntry[];
+  genrePower: GenrePower;
+  chaosLevel: number;
+  riftHistory: RiftEventRecord[];
+  activeRiftEvent: RiftEventRecord | null;
   latestNarration: NarrationLine | null;
   narrationLog: NarrationLine[];
 };
@@ -66,6 +83,10 @@ function createSession(): DemoSessionState {
     currentPlayerId: "demo-host",
     currentNodeId: startNode.id,
     history: [],
+    genrePower: createInitialGenrePower(null),
+    chaosLevel: 0,
+    riftHistory: [],
+    activeRiftEvent: null,
     latestNarration: null,
     narrationLog: [],
   };
@@ -107,7 +128,7 @@ function markStoryOrRecap(nextNodeId: string) {
   session.status = node.ending ? "recap" : "story";
 }
 
-function pushHistory(nextNodeId: string, choiceLabel: string, isFreeChoice: boolean, freeText?: string) {
+function pushHistory(nextNodeId: string, choiceLabel: string) {
   const storyTree = storyTrees[session.storyId];
   const node = getNodeById(storyTree, session.currentNodeId);
   if (!node) {
@@ -121,8 +142,7 @@ function pushHistory(nextNodeId: string, choiceLabel: string, isFreeChoice: bool
     sceneId: node.id,
     sceneText: node.text,
     choiceLabel,
-    isFreeChoice,
-    freeText,
+    isFreeChoice: false,
     nextNodeId,
     tensionLevel: node.tensionLevel,
     playerId: player.id,
@@ -160,6 +180,14 @@ export function setDemoMinigameOrder(order: string[], genre: GenreId = "zombie")
     ...player,
     orderIndex: order.indexOf(player.id) >= 0 ? order.indexOf(player.id) : player.orderIndex,
   }));
+  session.genrePower = createInitialGenrePower(genre);
+  session.chaosLevel = computeChaosLevel({
+    genrePower: session.genrePower,
+    selectedGenre: genre,
+    tensionLevel: startNode.tensionLevel,
+  });
+  session.riftHistory = [];
+  session.activeRiftEvent = null;
   session.status = "story";
   session.currentPlayerId = order[0] ?? "demo-host";
   appendNarration("scene_enter", { playerId: session.currentPlayerId, sceneId: session.currentNodeId });
@@ -171,47 +199,51 @@ export function advanceDemoStoryChoice(choiceId: string) {
   if (!scene || scene.ending || !scene.choices.length) {
     return session;
   }
+  const sceneChoices = scene.choices;
 
-  const nextNodeId = getNextNodeIdFromChoice(scene, choiceId);
+  let nextNodeId = getNextNodeIdFromChoice(scene, choiceId);
   if (!nextNodeId) {
     return session;
   }
 
-  const choice = scene.choices.find((entry) => entry.id === choiceId) ?? scene.choices[0];
-  pushHistory(nextNodeId, choice.label, false);
+  const choice = sceneChoices.find((entry) => entry.id === choiceId) ?? sceneChoices[0];
+  session.genrePower = applyGenrePowerShift(
+    session.genrePower,
+    deriveChoiceGenreShift({
+      selectedGenre: session.storyId,
+      scene,
+      choiceLabel: choice.label,
+    })
+  );
+  session.chaosLevel = computeChaosLevel({
+    genrePower: session.genrePower,
+    selectedGenre: session.storyId,
+    tensionLevel: scene.tensionLevel,
+  });
+  const rift = evaluateRiftEvent({
+    roomCode: session.roomCode,
+    step: session.history.length + 1,
+    scene,
+    choices: sceneChoices,
+    selectedChoiceId: choice.id,
+    selectedNextSceneId: nextNodeId,
+    playerId: session.currentPlayerId,
+    genrePower: session.genrePower,
+    chaosLevel: session.chaosLevel,
+  });
+  nextNodeId = rift.nextSceneId;
+  session.genrePower = rift.genrePower;
+  session.chaosLevel = rift.chaosLevel;
+  session.activeRiftEvent = rift.event;
+  if (rift.event) {
+    session.riftHistory = [...session.riftHistory, rift.event].slice(-40);
+  }
+
+  pushHistory(nextNodeId, choice.label);
   appendNarration("choice_submitted", {
     sceneId: scene.id,
     playerId: session.currentPlayerId,
     choiceLabel: choice.label,
-  });
-
-  session.currentNodeId = nextNodeId;
-  markStoryOrRecap(nextNodeId);
-  const nextScene = getNodeById(storyTree, nextNodeId);
-  if (nextScene?.ending) {
-    appendNarration("ending", { sceneId: nextScene.id, playerId: session.currentPlayerId });
-  }
-  return session;
-}
-
-export function advanceDemoStoryFreeChoice(freeText: string) {
-  const storyTree = storyTrees[session.storyId];
-  const scene = getDemoScene();
-  if (!scene || scene.ending) {
-    return session;
-  }
-
-  const nextNodeId = getNextNodeIdFromFreeChoice(scene, freeText);
-  if (!nextNodeId) {
-    return session;
-  }
-
-  pushHistory(nextNodeId, "Free Choice", true, freeText.trim().slice(0, 120));
-  appendNarration("choice_submitted", {
-    sceneId: scene.id,
-    playerId: session.currentPlayerId,
-    choiceLabel: "Free Choice",
-    freeText,
   });
 
   session.currentNodeId = nextNodeId;

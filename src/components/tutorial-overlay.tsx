@@ -21,7 +21,7 @@ export default function TutorialOverlay({ open, onClose }: TutorialOverlayProps)
           </li>
           <li className="rounded-xl border border-white/15 bg-black/30 p-3">
             <span className="block text-xs uppercase tracking-[0.2em] text-cyan-300">Step 2</span>
-            Take turns making choices or writing your own.
+            Take turns making high-stakes choices.
           </li>
           <li className="rounded-xl border border-white/15 bg-black/30 p-3">
             <span className="block text-xs uppercase tracking-[0.2em] text-cyan-300">Step 3</span>

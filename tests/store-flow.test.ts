@@ -92,19 +92,34 @@ describe("store multiplayer flow", () => {
       throw new Error("No active player for third turn");
     }
     const three = submitChoice(code, thirdTurn.activePlayerId, { choiceId: "a" });
-    expect(three.ended).toBe(true);
-    if (!three.ended) {
-      throw new Error("Expected game to end at third decision");
+    expect(three.ended).toBe(false);
+    if (three.ended) {
+      throw new Error("Game unexpectedly ended at third decision");
     }
-    expect(three.endingType).toBe("survival");
-    expect(three.history.length).toBe(3);
-    expect(three.narration?.trigger).toBe("choice_submitted");
-    expect(three.endingNarration?.trigger).toBe("ending");
+    expect(three.nextScene?.id).toBe("checkpoint_twist");
+
+    const fourthTurn = getGameState(code);
+    if (!fourthTurn.activePlayerId) {
+      throw new Error("No active player for fourth turn");
+    }
+    const four = submitChoice(code, fourthTurn.activePlayerId, { choiceId: "a" });
+    expect(four.ended).toBe(true);
+    if (!four.ended) {
+      throw new Error("Expected game to end at fourth decision");
+    }
+    expect(four.nextScene?.id).toBe("ending_survival");
+    expect(four.endingType).toBe("survival");
+    expect(four.history.length).toBe(4);
+    expect(four.narration?.trigger).toBe("choice_submitted");
+    expect(four.endingNarration?.trigger).toBe("ending");
 
     const recap = getRecapState(code);
     expect(recap.genre).toBe("zombie");
     expect(recap.endingType).toBe("survival");
-    expect(recap.history.length).toBe(3);
+    expect(recap.history.length).toBe(4);
+    expect(recap.genrePower.zombie).toBeGreaterThanOrEqual(0);
+    expect(recap.chaosLevel).toBeGreaterThanOrEqual(0);
+    expect(recap.riftHistory.length).toBeGreaterThan(0);
     expect(recap.latestNarration?.trigger).toBe("ending");
     expect(recap.narrationLog.length).toBeGreaterThan(0);
 
@@ -112,6 +127,8 @@ describe("store multiplayer flow", () => {
     expect(restarted.phase).toBe("lobby");
     expect(restarted.history.length).toBe(0);
     expect(restarted.genre).toBeNull();
+    expect(restarted.chaosLevel).toBe(0);
+    expect(restarted.riftHistory.length).toBe(0);
     expect(restarted.latestNarration).toBeNull();
     expect(restarted.narrationLog.length).toBe(0);
   });

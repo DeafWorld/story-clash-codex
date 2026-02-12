@@ -1,0 +1,659 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Rift - Story Clash Reimagined</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            color: #fff;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        header {
+            text-align: center;
+            padding: 40px 20px;
+            position: relative;
+        }
+
+        h1 {
+            font-size: 3em;
+            background: linear-gradient(45deg, #ff6b6b, #4ecdc4, #45b7d1);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 10px;
+            animation: glow 3s ease-in-out infinite;
+        }
+
+        @keyframes glow {
+            0%, 100% { filter: drop-shadow(0 0 10px rgba(255,107,107,0.5)); }
+            50% { filter: drop-shadow(0 0 20px rgba(78,205,196,0.8)); }
+        }
+
+        .tagline {
+            font-size: 1.2em;
+            opacity: 0.8;
+            margin-bottom: 20px;
+        }
+
+        .stats-bar {
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            margin: 20px 0;
+            flex-wrap: wrap;
+        }
+
+        .stat {
+            background: rgba(255,255,255,0.1);
+            padding: 15px 25px;
+            border-radius: 10px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+
+        .stat-label {
+            font-size: 0.8em;
+            opacity: 0.7;
+            text-transform: uppercase;
+        }
+
+        .stat-value {
+            font-size: 1.5em;
+            font-weight: bold;
+            margin-top: 5px;
+        }
+
+        .game-area {
+            display: grid;
+            grid-template-columns: 1fr 2fr;
+            gap: 30px;
+            margin-top: 40px;
+        }
+
+        @media (max-width: 968px) {
+            .game-area {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .rift-section {
+            background: rgba(255,255,255,0.05);
+            padding: 30px;
+            border-radius: 20px;
+            backdrop-filter: blur(10px);
+            border: 2px solid rgba(255,255,255,0.1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .rift-section::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: conic-gradient(
+                from 0deg,
+                transparent 0deg,
+                rgba(255,107,107,0.1) 90deg,
+                transparent 180deg,
+                rgba(78,205,196,0.1) 270deg,
+                transparent 360deg
+            );
+            animation: rotate 10s linear infinite;
+        }
+
+        @keyframes rotate {
+            100% { transform: rotate(360deg); }
+        }
+
+        .rift-content {
+            position: relative;
+            z-index: 1;
+        }
+
+        .wheel-container {
+            position: relative;
+            width: 300px;
+            height: 300px;
+            margin: 20px auto;
+        }
+
+        .wheel {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            position: relative;
+            box-shadow: 0 0 40px rgba(78,205,196,0.5);
+            animation: pulse 2s ease-in-out infinite;
+            transition: transform 0.5s ease-out;
+        }
+
+        @keyframes pulse {
+            0%, 100% { box-shadow: 0 0 40px rgba(78,205,196,0.5); }
+            50% { box-shadow: 0 0 60px rgba(255,107,107,0.8); }
+        }
+
+        .wheel.spinning {
+            animation: spin 3s cubic-bezier(0.25, 0.1, 0.25, 1);
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(1800deg); }
+        }
+
+        .genre-segment {
+            position: absolute;
+            width: 50%;
+            height: 50%;
+            transform-origin: 100% 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.9em;
+            font-weight: bold;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.5);
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .genre-segment:hover {
+            filter: brightness(1.2);
+        }
+
+        .spin-button {
+            margin: 20px auto;
+            padding: 15px 40px;
+            font-size: 1.2em;
+            background: linear-gradient(45deg, #ff6b6b, #4ecdc4);
+            border: none;
+            border-radius: 50px;
+            color: white;
+            font-weight: bold;
+            cursor: pointer;
+            display: block;
+            transition: all 0.3s;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+        }
+
+        .spin-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 7px 20px rgba(0,0,0,0.4);
+        }
+
+        .spin-button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .genre-balance {
+            margin-top: 20px;
+        }
+
+        .genre-bar {
+            margin: 10px 0;
+            background: rgba(255,255,255,0.1);
+            border-radius: 10px;
+            overflow: hidden;
+            position: relative;
+            height: 30px;
+        }
+
+        .genre-bar-fill {
+            height: 100%;
+            transition: width 0.5s ease;
+            display: flex;
+            align-items: center;
+            padding: 0 10px;
+            font-size: 0.85em;
+            font-weight: bold;
+        }
+
+        .story-section {
+            background: rgba(255,255,255,0.05);
+            padding: 30px;
+            border-radius: 20px;
+            backdrop-filter: blur(10px);
+            border: 2px solid rgba(255,255,255,0.1);
+        }
+
+        .story-text {
+            font-size: 1.1em;
+            line-height: 1.8;
+            margin-bottom: 30px;
+            padding: 20px;
+            background: rgba(0,0,0,0.3);
+            border-radius: 10px;
+            min-height: 200px;
+            transition: all 0.5s ease;
+            position: relative;
+        }
+
+        .story-text.horror {
+            background: linear-gradient(135deg, rgba(139,0,0,0.3), rgba(0,0,0,0.5));
+            border-left: 4px solid #8b0000;
+            color: #ffcccc;
+            text-shadow: 0 0 5px rgba(139,0,0,0.5);
+        }
+
+        .story-text.romance {
+            background: linear-gradient(135deg, rgba(255,182,193,0.2), rgba(255,105,180,0.2));
+            border-left: 4px solid #ff69b4;
+            color: #ffe4e1;
+            font-style: italic;
+        }
+
+        .story-text.scifi {
+            background: linear-gradient(135deg, rgba(0,255,255,0.1), rgba(0,0,139,0.3));
+            border-left: 4px solid #00ffff;
+            color: #e0ffff;
+            font-family: 'Courier New', monospace;
+            text-shadow: 0 0 3px rgba(0,255,255,0.5);
+        }
+
+        .story-text.fantasy {
+            background: linear-gradient(135deg, rgba(218,165,32,0.2), rgba(139,69,19,0.2));
+            border-left: 4px solid #daa520;
+            color: #fff8dc;
+            font-family: 'Georgia', serif;
+        }
+
+        .story-text.comedy {
+            background: linear-gradient(135deg, rgba(255,215,0,0.2), rgba(255,140,0,0.2));
+            border-left: 4px solid #ffd700;
+            color: #fffacd;
+            animation: bounce 2s ease-in-out infinite;
+        }
+
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-5px); }
+        }
+
+        .rift-event {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            padding: 15px;
+            background: linear-gradient(45deg, #ff6b6b, #4ecdc4);
+            text-align: center;
+            font-weight: bold;
+            animation: riftAlert 0.5s ease;
+            z-index: 10;
+        }
+
+        @keyframes riftAlert {
+            0%, 100% { transform: translateY(0); }
+            25%, 75% { transform: translateY(-5px); }
+            50% { transform: translateY(5px); }
+        }
+
+        .choices {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .choice-button {
+            padding: 20px;
+            background: rgba(255,255,255,0.1);
+            border: 2px solid rgba(255,255,255,0.3);
+            border-radius: 15px;
+            color: white;
+            font-size: 1em;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-align: left;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .choice-button::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+            transition: left 0.5s;
+        }
+
+        .choice-button:hover::before {
+            left: 100%;
+        }
+
+        .choice-button:hover {
+            background: rgba(255,255,255,0.2);
+            border-color: rgba(255,255,255,0.5);
+            transform: translateX(10px);
+        }
+
+        .choice-label {
+            font-weight: bold;
+            margin-bottom: 5px;
+            display: block;
+        }
+
+        .choice-effect {
+            font-size: 0.85em;
+            opacity: 0.7;
+            margin-top: 5px;
+        }
+
+        .info-panel {
+            margin-top: 20px;
+            padding: 15px;
+            background: rgba(0,0,0,0.3);
+            border-radius: 10px;
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+
+        .info-title {
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: #4ecdc4;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>⚡ THE RIFT ⚡</h1>
+            <p class="tagline">Where Stories Collide and Reality Fractures</p>
+            <div class="stats-bar">
+                <div class="stat">
+                    <div class="stat-label">Episode</div>
+                    <div class="stat-value" id="episode">1</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-label">Chaos Level</div>
+                    <div class="stat-value" id="chaos">42%</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-label">Echo Points</div>
+                    <div class="stat-value" id="points">127</div>
+                </div>
+            </div>
+        </header>
+
+        <div class="game-area">
+            <div class="rift-section">
+                <div class="rift-content">
+                    <h2 style="text-align: center; margin-bottom: 20px;">Genre Rift</h2>
+                    
+                    <div class="wheel-container">
+                        <div class="wheel" id="wheel"></div>
+                    </div>
+
+                    <button class="spin-button" id="spinBtn">Activate Rift</button>
+
+                    <div class="genre-balance">
+                        <h3 style="margin-bottom: 15px; color: #4ecdc4;">Active Genres</h3>
+                        <div id="genreBalances"></div>
+                    </div>
+
+                    <div class="info-panel">
+                        <div class="info-title">💡 Pro Tip</div>
+                        <p>Genres fight for control! Each choice shifts the balance. When genres clash, expect the unexpected...</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="story-section">
+                <div class="story-text" id="storyText">
+                    <p><strong>Welcome to The Rift.</strong></p>
+                    <p>Reality is unstable. Multiple genres are fighting for control of this narrative, and only your choices can determine which one dominates.</p>
+                    <p><em>Click "Activate Rift" to begin your journey...</em></p>
+                </div>
+
+                <div class="choices" id="choices"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Genre data
+        const genres = [
+            { name: 'Horror', color: '#8b0000', power: 20 },
+            { name: 'Romance', color: '#ff69b4', power: 15 },
+            { name: 'Sci-Fi', color: '#00ffff', power: 25 },
+            { name: 'Fantasy', color: '#daa520', power: 10 },
+            { name: 'Comedy', color: '#ffd700', power: 30 }
+        ];
+
+        // Story states
+        const storyStates = {
+            intro: {
+                text: "You stand at the edge of an ancient forest. The air shimmers with unstable energy—the Rift is active. Multiple realities are bleeding into each other.\n\nA path leads deeper into the woods, where strange lights flicker between the trees.",
+                choices: [
+                    {
+                        label: "A) Investigate the lights cautiously",
+                        effect: "Horror +2, Mystery +1",
+                        genreShift: { Horror: 2 },
+                        next: 'investigate'
+                    },
+                    {
+                        label: "B) Call out to see if anyone's there",
+                        effect: "Romance +2, Comedy +1",
+                        genreShift: { Romance: 2, Comedy: 1 },
+                        next: 'callout'
+                    },
+                    {
+                        label: "C) Scan the area with your device",
+                        effect: "Sci-Fi +3",
+                        genreShift: { 'Sci-Fi': 3 },
+                        next: 'scan'
+                    }
+                ]
+            },
+            investigate: {
+                text: "You creep toward the lights, every shadow seeming to reach for you. The forest holds its breath.\n\n**RIFT EVENT!** A surge of romantic energy floods the scene!\n\nThe shadows transform into flower petals, swirling around you. A figure emerges from the light—beautiful, ethereal, and somehow familiar.",
+                riftEvent: true,
+                choices: [
+                    {
+                        label: "A) \"Do I... know you?\"",
+                        effect: "Romance +3, Horror -1",
+                        genreShift: { Romance: 3, Horror: -1 },
+                        next: 'romance_path'
+                    },
+                    {
+                        label: "B) Step back defensively",
+                        effect: "Horror +2, Trust -1",
+                        genreShift: { Horror: 2 },
+                        next: 'horror_path'
+                    }
+                ]
+            },
+            callout: {
+                text: "\"Hello? Anyone there?\" your voice echoes.\n\nA cheerful voice responds: \"Oh thank goodness! I've been stuck in this narrative loop for DAYS!\"\n\nA person stumbles out from behind a tree, covered in leaves and looking exasperated.",
+                choices: [
+                    {
+                        label: "A) Help them brush off the leaves",
+                        effect: "Romance +2, Comedy +1",
+                        genreShift: { Romance: 2, Comedy: 1 },
+                        next: 'romance_path'
+                    },
+                    {
+                        label: "B) \"What do you mean, narrative loop?\"",
+                        effect: "Sci-Fi +2, Mystery +1",
+                        genreShift: { 'Sci-Fi': 2 },
+                        next: 'scan'
+                    }
+                ]
+            },
+            scan: {
+                text: "Your scanner beeps rapidly. The readings are... impossible. This forest exists in multiple quantum states simultaneously.\n\n**RIFT EVENT!** Comedy genre surges!\n\nYour ultra-serious scanning device suddenly plays a jaunty tune and displays: \"Yep, it's weird. Really weird. Like, SUPER weird. Want me to science it?\"",
+                riftEvent: true,
+                choices: [
+                    {
+                        label: "A) \"Yes, please 'science it'\"",
+                        effect: "Comedy +3, Sci-Fi +1",
+                        genreShift: { Comedy: 3, 'Sci-Fi': 1 },
+                        next: 'comedy_ending'
+                    },
+                    {
+                        label: "B) Recalibrate the device (ignore the weirdness)",
+                        effect: "Sci-Fi +3",
+                        genreShift: { 'Sci-Fi': 3 },
+                        next: 'scifi_ending'
+                    }
+                ]
+            },
+            romance_path: {
+                text: "Connection sparks between you. Time seems to slow. The Rift stabilizes around romantic energy, reality bending to create the perfect moment.\n\nBut beneath the surface, you sense something darker waiting...\n\n✨ Episode 1 Complete! Your choices have shaped this reality. Return for Episode 2 to see what consequences await.",
+                choices: []
+            },
+            horror_path: {
+                text: "Your instincts were right. The figure's smile twists into something wrong. The petals turn to ash. The forest whispers secrets that should never be known.\n\nThe Rift pulses with dark energy.\n\n🌑 Episode 1 Complete! Horror has taken root. What horrors await in Episode 2?",
+                choices: []
+            },
+            comedy_ending: {
+                text: "The device shoots confetti and plays a victory jingle. Suddenly, everything makes perfect sense—or no sense at all. The Rift stabilizes into delightful absurdity.\n\nA narrator voice announces: \"Congratulations! You've won... ONE WEIRD FOREST! Tell them what they've won, Bob!\"\n\n😄 Episode 1 Complete! Chaos reigns. Will Episode 2 be equally ridiculous?",
+                choices: []
+            },
+            scifi_ending: {
+                text: "Your readings reveal the truth: this forest is a convergence point for parallel realities. You've found the Rift's epicenter.\n\nWith this knowledge, you could control which reality dominates—or destroy them all.\n\n🚀 Episode 1 Complete! Knowledge is power. Use it wisely in Episode 2.",
+                choices: []
+            }
+        };
+
+        let currentState = null;
+        let currentGenrePower = {...genres.reduce((acc, g) => ({...acc, [g.name]: g.power}), {})};
+        let wheelRotation = 0;
+
+        // Initialize wheel
+        function initWheel() {
+            const wheel = document.getElementById('wheel');
+            const segmentAngle = 360 / genres.length;
+            
+            genres.forEach((genre, index) => {
+                const segment = document.createElement('div');
+                segment.className = 'genre-segment';
+                segment.style.background = genre.color;
+                segment.style.transform = `rotate(${index * segmentAngle}deg) skew(${90 - segmentAngle}deg)`;
+                segment.innerHTML = `<span style="transform: skew(${segmentAngle - 90}deg) rotate(${segmentAngle / 2}deg); display: inline-block;">${genre.name}</span>`;
+                wheel.appendChild(segment);
+            });
+
+            updateGenreBalances();
+        }
+
+        // Update genre balance display
+        function updateGenreBalances() {
+            const container = document.getElementById('genreBalances');
+            const total = Object.values(currentGenrePower).reduce((a, b) => a + b, 0);
+            
+            container.innerHTML = Object.entries(currentGenrePower)
+                .sort((a, b) => b[1] - a[1])
+                .map(([name, power]) => {
+                    const genre = genres.find(g => g.name === name);
+                    const percentage = (power / total * 100).toFixed(0);
+                    return `
+                        <div class="genre-bar">
+                            <div class="genre-bar-fill" style="width: ${percentage}%; background: ${genre.color};">
+                                ${name}: ${percentage}%
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+        }
+
+        // Spin the wheel
+        function spinWheel() {
+            const wheel = document.getElementById('wheel');
+            const spinBtn = document.getElementById('spinBtn');
+            
+            spinBtn.disabled = true;
+            wheel.classList.add('spinning');
+            
+            setTimeout(() => {
+                wheel.classList.remove('spinning');
+                spinBtn.disabled = false;
+                loadStory('intro');
+            }, 3000);
+        }
+
+        // Load story state
+        function loadStory(stateKey) {
+            currentState = storyStates[stateKey];
+            const storyText = document.getElementById('storyText');
+            const choicesContainer = document.getElementById('choices');
+            
+            // Update story text with genre styling
+            const dominantGenre = Object.entries(currentGenrePower)
+                .sort((a, b) => b[1] - a[1])[0][0].toLowerCase().replace('-', '');
+            
+            storyText.className = `story-text ${dominantGenre}`;
+            storyText.innerHTML = currentState.text.split('\n').map(p => `<p>${p}</p>`).join('');
+            
+            // Show rift event if present
+            if (currentState.riftEvent) {
+                const riftAlert = document.createElement('div');
+                riftAlert.className = 'rift-event';
+                riftAlert.textContent = '⚡ RIFT EVENT ⚡';
+                storyText.prepend(riftAlert);
+                
+                setTimeout(() => riftAlert.remove(), 3000);
+            }
+            
+            // Update choices
+            choicesContainer.innerHTML = currentState.choices.map((choice, index) => `
+                <button class="choice-button" onclick="makeChoice(${index})">
+                    <span class="choice-label">${choice.label}</span>
+                    <span class="choice-effect">⚡ ${choice.effect}</span>
+                </button>
+            `).join('');
+
+            // Update stats
+            document.getElementById('chaos').textContent = 
+                Math.min(100, Object.values(currentGenrePower).reduce((a,b) => Math.abs(a-b)) * 2) + '%';
+        }
+
+        // Make a choice
+        function makeChoice(index) {
+            const choice = currentState.choices[index];
+            
+            // Update genre power
+            Object.entries(choice.genreShift).forEach(([genre, shift]) => {
+                currentGenrePower[genre] = Math.max(0, (currentGenrePower[genre] || 0) + shift);
+            });
+            
+            updateGenreBalances();
+            
+            // Award points
+            const currentPoints = parseInt(document.getElementById('points').textContent);
+            document.getElementById('points').textContent = currentPoints + Math.floor(Math.random() * 20) + 10;
+            
+            // Load next state
+            if (choice.next) {
+                setTimeout(() => loadStory(choice.next), 500);
+            }
+        }
+
+        // Initialize
+        document.getElementById('spinBtn').addEventListener('click', spinWheel);
+        initWheel();
+    </script>
+</body>
+</html>

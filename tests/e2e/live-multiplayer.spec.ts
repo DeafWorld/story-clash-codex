@@ -93,7 +93,7 @@ test.describe("Live Multiplayer Flow (Cloudflare Worker)", () => {
     await expect(host.getByRole("button", { name: "Invite" })).toBeVisible();
     await expect(host.getByText(/narrator/i)).toBeVisible();
 
-    // Three turns to reach ending: start -> armed -> stairwell -> ending_survival
+    // Four turns to reach ending: start -> armed -> stairwell -> checkpoint_twist -> ending_survival
     const gamePages: any[] = [host, p2, p3];
 
     let active = await waitForActiveTurn(gamePages);
@@ -106,6 +106,10 @@ test.describe("Live Multiplayer Flow (Cloudflare Worker)", () => {
 
     active = await waitForActiveTurn(gamePages);
     await active.getByRole("button", { name: "Fight upward through the swarm" }).click();
+    await host.waitForTimeout(1200);
+
+    active = await waitForActiveTurn(gamePages);
+    await active.getByRole("button", { name: "Run the decon lane under floodlights" }).click();
 
     await host.waitForURL(new RegExp(`/recap/${code}`), { timeout: 30_000 });
     await p2.waitForURL(new RegExp(`/recap/${code}`), { timeout: 30_000 });
