@@ -200,3 +200,67 @@ TODO:
   - `npm run lint`
   - `npx vitest run tests/store-flow.test.ts tests/evolution-engine.test.ts`
   - `npm run build`
+
+---
+
+- Implemented Motion Excellence + Narrative Director coupling pass (Cinematic Rift layer) across app + Cloudflare paths.
+- Added motion foundation modules:
+  - `/Users/deafgod/Desktop/Codex/src/lib/motion/tokens.ts`
+  - `/Users/deafgod/Desktop/Codex/src/lib/motion/presets.ts`
+  - `/Users/deafgod/Desktop/Codex/src/lib/motion/orchestrator.ts`
+  - `/Users/deafgod/Desktop/Codex/src/lib/motion/reduced-motion.ts`
+  - `/Users/deafgod/Desktop/Codex/src/lib/motion/perf-monitor.ts`
+  - `/Users/deafgod/Desktop/Codex/src/lib/motion/asset-registry.ts`
+- Added shared motion components and integrated across core flow:
+  - `/Users/deafgod/Desktop/Codex/src/components/motion/scene-shell.tsx`
+  - `/Users/deafgod/Desktop/Codex/src/components/motion/page-transition.tsx`
+  - `/Users/deafgod/Desktop/Codex/src/components/motion/pressure-pulse-layer.tsx`
+  - `/Users/deafgod/Desktop/Codex/src/components/motion/impact-flash.tsx`
+  - `/Users/deafgod/Desktop/Codex/src/components/motion/parallax-field.tsx`
+  - `/Users/deafgod/Desktop/Codex/src/components/motion/rive-layer.tsx`
+  - `/Users/deafgod/Desktop/Codex/src/components/motion/lottie-stinger.tsx`
+- Added motion-enabled scene wrapper usage to:
+  - `/Users/deafgod/Desktop/Codex/src/app/page.tsx`
+  - `/Users/deafgod/Desktop/Codex/src/app/create/page.tsx`
+  - `/Users/deafgod/Desktop/Codex/src/app/join/page.tsx`
+  - `/Users/deafgod/Desktop/Codex/src/app/lobby/[code]/page.tsx`
+  - `/Users/deafgod/Desktop/Codex/src/app/minigame/[code]/page.tsx`
+  - `/Users/deafgod/Desktop/Codex/src/app/game/[code]/page.tsx`
+  - `/Users/deafgod/Desktop/Codex/src/app/recap/[code]/page.tsx`
+- Added deterministic Narrative Director layer and motion cue output:
+  - `/Users/deafgod/Desktop/Codex/src/lib/narrative-director.ts`
+  - `/Users/deafgod/Desktop/Codex/cloudflare/src/narrative-director.ts`
+- Expanded type contracts for `MotionCue`, `DirectedSceneView`, and `DirectorBeatRecord`:
+  - `/Users/deafgod/Desktop/Codex/src/types/game.ts`
+  - `/Users/deafgod/Desktop/Codex/cloudflare/src/types.ts`
+- Wired director outputs into authoritative state paths:
+  - `/Users/deafgod/Desktop/Codex/src/lib/store.ts`
+  - `/Users/deafgod/Desktop/Codex/src/lib/demo-session.ts`
+  - `/Users/deafgod/Desktop/Codex/cloudflare/src/room-do.ts`
+- Added recap beat visualization:
+  - `/Users/deafgod/Desktop/Codex/src/components/director-beat-timeline.tsx`
+  - integrated into `/Users/deafgod/Desktop/Codex/src/app/recap/[code]/page.tsx`
+- Added benchmark notes doc:
+  - `/Users/deafgod/Desktop/Codex/docs/motion-benchmarks.md`
+- Added motion/director tests:
+  - `/Users/deafgod/Desktop/Codex/tests/motion-cue-mapper.test.ts`
+  - `/Users/deafgod/Desktop/Codex/tests/narrative-director-motion.test.ts`
+  - updated `/Users/deafgod/Desktop/Codex/tests/store-flow.test.ts`
+  - updated e2e assertions in `/Users/deafgod/Desktop/Codex/tests/e2e/smoke.spec.ts` and `/Users/deafgod/Desktop/Codex/tests/e2e/live-multiplayer.spec.ts` for motion-state class presence and recap timeline visibility.
+
+Validation outcomes this pass:
+- `npm run typecheck:worker` passes after fixing world-state literal typing in `/Users/deafgod/Desktop/Codex/cloudflare/src/room-do.ts` (`createInitialWorldState(): RoomState["worldState"]`).
+- Full app `npm run typecheck`, `npm run build`, and `vitest` intermittently stall in this shell environment due lingering process/lock behavior; repeated cleanup was performed.
+- Executed direct runtime smoke scripts via `node --import tsx`:
+  - Narrative Director deterministic smoke (`director-smoke-ok`).
+  - End-to-end store flow smoke including recap + motion cue timeline (`store-flow-smoke-ok`).
+
+TODO:
+- In a clean terminal/session, rerun full gates:
+  - `npm run lint`
+  - `npm run typecheck`
+  - `npm run build`
+  - `npx vitest run tests/motion-cue-mapper.test.ts tests/narrative-director-motion.test.ts tests/store-flow.test.ts`
+- Run Playwright smoke/live suites to confirm no regressions in browser runtime:
+  - `npx playwright test tests/e2e/smoke.spec.ts`
+  - `RUN_LIVE_E2E=1 npx playwright test tests/e2e/live-multiplayer.spec.ts`

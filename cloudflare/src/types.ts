@@ -4,6 +4,18 @@ export type RoomPhase = "lobby" | "minigame" | "game" | "recap";
 export type NarrationTone = "calm" | "uneasy" | "urgent" | "desperate" | "hopeful" | "grim";
 export type NarrationTrigger = "scene_enter" | "choice_submitted" | "turn_timeout" | "ending";
 export type RiftEventType = "genre_surge" | "scene_twist";
+export type FactionId = "survivors" | "scientists" | "military";
+export type ResourceId = "food" | "medicine" | "ammunition" | "fuel";
+export type ResourceTrend = "stable" | "declining" | "critical";
+export type WorldTensionId = "food_shortage" | "faction_conflict" | "external_threat" | "morale_crisis" | "disease_outbreak";
+export type WorldEventType = "resource_crisis" | "faction_conflict" | "tension_overflow" | "thread_seeded" | "thread_resolved";
+export type WorldEventSeverity = "low" | "medium" | "high" | "critical";
+export type NarrativeThreadType = "mystery" | "conflict" | "relationship" | "quest" | "survival";
+export type NarrativeThreadStatus = "active" | "resolved" | "abandoned" | "dormant";
+export type DirectorBeatType = "setup" | "escalation" | "payoff" | "cooldown" | "fracture";
+export type MotionIntensityBand = "calm" | "rising" | "critical";
+export type TransitionStyle = "hard_cut" | "drift" | "surge";
+export type EffectProfile = "rift_drift" | "shockwave" | "void_hum" | "cooldown_breath";
 
 export type MinigameOutcome = {
   winningGenre: GenreId;
@@ -23,6 +35,77 @@ export type NarrationLine = {
   tensionLevel: number;
   genre: GenreId | null;
   endingType: EndingType | null;
+  createdAt: number;
+};
+
+export type FactionState = {
+  loyalty: number;
+  power: number;
+  leader: string | null;
+  traits: string[];
+  relationships: Partial<Record<FactionId, number>>;
+};
+
+export type ResourceState = {
+  amount: number;
+  trend: ResourceTrend;
+  crisisPoint: number;
+};
+
+export type WorldTimelineEvent = {
+  id: string;
+  type: WorldEventType;
+  title: string;
+  detail: string;
+  severity: WorldEventSeverity;
+  createdAt: number;
+};
+
+export type WorldMetaState = {
+  gamesPlayed: number;
+  mostCommonEnding: EndingType | null;
+  rarePath: boolean;
+  communityChoiceInfluence: number;
+};
+
+export type WorldState = {
+  factions: Record<FactionId, FactionState>;
+  resources: Record<ResourceId, ResourceState>;
+  scars: string[];
+  tensions: Record<WorldTensionId, number>;
+  timeline: WorldTimelineEvent[];
+  meta: WorldMetaState;
+};
+
+export type MotionCue = {
+  intensity: number;
+  beat: DirectorBeatType;
+  effectProfile: EffectProfile;
+  transitionStyle: TransitionStyle;
+  pressureBand: MotionIntensityBand;
+};
+
+export type DirectedSceneView = {
+  sceneId: string;
+  baseText: string;
+  renderedText: string;
+  beatType: DirectorBeatType;
+  pressureBand: MotionIntensityBand;
+  intensity: number;
+  activeThreadId: string | null;
+  payoffThreadId: string | null;
+  motionCue: MotionCue;
+  updatedAt: number;
+};
+
+export type DirectorBeatRecord = {
+  id: string;
+  sceneId: string;
+  beatType: DirectorBeatType;
+  pressureBand: MotionIntensityBand;
+  intensity: number;
+  effectProfile: EffectProfile;
+  payoffThreadId: string | null;
   createdAt: number;
 };
 
@@ -85,6 +168,29 @@ export type Player = {
   joinedAt?: number;
 };
 
+export type NarrativeThreadMoment = {
+  sceneId: string;
+  detail: string;
+  timestamp: number;
+};
+
+export type NarrativeThread = {
+  id: string;
+  type: NarrativeThreadType;
+  priority: number;
+  status: NarrativeThreadStatus;
+  seeds: NarrativeThreadMoment[];
+  developments: NarrativeThreadMoment[];
+  payoff: NarrativeThreadMoment | null;
+  clues: string[];
+  playerAwareness: number;
+  metadata: {
+    created: number;
+    lastMention: number;
+    scenesSinceMention: number;
+  };
+};
+
 export type HistoryEntry = {
   sceneId: string;
   sceneText: string;
@@ -124,6 +230,11 @@ export type RoomState = {
   activeRiftEvent: RiftEventRecord | null;
   latestNarration: NarrationLine | null;
   narrationLog: NarrationLine[];
+  worldState: WorldState;
+  narrativeThreads: NarrativeThread[];
+  activeThreadId: string | null;
+  directedScene: DirectedSceneView | null;
+  directorTimeline: DirectorBeatRecord[];
   turnDeadline: number | null;
   endingScene: Scene | null;
   endingType: EndingType | null;
@@ -152,6 +263,11 @@ export type RecapPayload = {
   riftHistory: RiftEventRecord[];
   latestNarration: NarrationLine | null;
   narrationLog: NarrationLine[];
+  worldState: WorldState;
+  narrativeThreads: NarrativeThread[];
+  activeThreadId: string | null;
+  directedScene: DirectedSceneView | null;
+  directorTimeline: DirectorBeatRecord[];
 };
 
 export type NarratorUpdatePayload = {

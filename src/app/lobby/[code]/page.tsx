@@ -8,6 +8,7 @@ import { apiFetch } from "../../../lib/api-client";
 import { getDemoSession, initDemoRoom } from "../../../lib/demo-session";
 import RoomCodeCard from "../../../components/room-code-card";
 import SessionTopBar from "../../../components/session-top-bar";
+import SceneShell from "../../../components/motion/scene-shell";
 import type { RoomView } from "../../../types/game";
 
 export default function LobbyPage() {
@@ -154,18 +155,18 @@ export default function LobbyPage() {
 
   if (loading) {
     return (
-      <main className="page-shell page-with-top-bar">
+      <SceneShell className="page-with-top-bar">
         <SessionTopBar backHref="/" backLabel="Back Home" phaseLabel="Lobby" />
         <div className="content-wrap grid min-h-dvh place-items-center">
           <p>Loading lobby...</p>
         </div>
-      </main>
+      </SceneShell>
     );
   }
 
   if (error) {
     return (
-      <main className="page-shell page-with-top-bar">
+      <SceneShell className="page-with-top-bar">
         <SessionTopBar backHref="/" backLabel="Back Home" phaseLabel="Lobby" />
         <div className="content-wrap grid min-h-dvh place-items-center">
           <div className="panel max-w-lg p-6">
@@ -175,12 +176,12 @@ export default function LobbyPage() {
             </button>
           </div>
         </div>
-      </main>
+      </SceneShell>
     );
   }
 
   return (
-    <main className="page-shell page-with-top-bar">
+    <SceneShell className="page-with-top-bar">
       <div className="suspense-wash" aria-hidden />
       <SessionTopBar
         backHref="/"
@@ -252,7 +253,9 @@ export default function LobbyPage() {
           <div className="panel p-5">
             <button
               type="button"
-              className="btn btn-primary w-full py-4 text-lg disabled:cursor-not-allowed disabled:opacity-40 sm:text-xl"
+              className={`btn btn-primary w-full py-4 text-lg motion-cta disabled:cursor-not-allowed disabled:opacity-40 sm:text-xl ${
+                !demoMode && playerCount >= 3 ? "lobby-ready-ring" : ""
+              }`}
               onClick={startGame}
               disabled={!demoMode && (playerCount < 3 || starting)}
               title={!demoMode && playerCount < 3 ? "Need 3+ players" : "Start Game"}
@@ -265,6 +268,6 @@ export default function LobbyPage() {
           <div className="panel p-5 text-zinc-300">Waiting for host to start the game.</div>
         )}
       </div>
-    </main>
+    </SceneShell>
   );
 }

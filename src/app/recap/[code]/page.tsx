@@ -11,6 +11,9 @@ import NarratorBanner from "../../../components/narrator-banner";
 import RiftStatusCard from "../../../components/rift-status-card";
 import RiftEventTimeline from "../../../components/rift-event-timeline";
 import WorldEventTimeline from "../../../components/world-event-timeline";
+import DirectorBeatTimeline from "../../../components/director-beat-timeline";
+import SceneShell from "../../../components/motion/scene-shell";
+import LottieStinger from "../../../components/motion/lottie-stinger";
 import { getDemoEndingText, getDemoSession, getDemoStoryTree, initDemoRoom } from "../../../lib/demo-session";
 import SessionTopBar from "../../../components/session-top-bar";
 import type { EndingType, RecapPayload } from "../../../types/game";
@@ -35,7 +38,7 @@ function DemoRecap({ code }: DemoRecapProps) {
   const story = getDemoStoryTree();
 
   return (
-    <main className="page-shell page-with-top-bar">
+    <SceneShell cue={session.directedScene?.motionCue ?? null} className="page-with-top-bar">
       <div className="suspense-wash" aria-hidden />
       <SessionTopBar
         backHref="/"
@@ -92,6 +95,7 @@ function DemoRecap({ code }: DemoRecapProps) {
             chaosLevel={session.chaosLevel}
             activeEvent={session.activeRiftEvent}
           />
+          <DirectorBeatTimeline beats={session.directorTimeline ?? []} />
           <RiftEventTimeline events={session.riftHistory} />
           <WorldEventTimeline events={session.worldState.timeline} />
         </section>
@@ -132,6 +136,9 @@ function DemoRecap({ code }: DemoRecapProps) {
         </section>
 
         <section className="panel p-5">
+          <div className="mb-3 h-14 w-full">
+            <LottieStinger assetId="share_success" className="mx-auto h-14 w-14" loop={false} autoplay />
+          </div>
           <button
             type="button"
             className="btn btn-primary w-full py-4 text-lg font-semibold sm:text-xl"
@@ -145,7 +152,7 @@ function DemoRecap({ code }: DemoRecapProps) {
           <p className="mt-2 text-center text-xs text-zinc-500">Room: {code}</p>
         </section>
       </div>
-    </main>
+    </SceneShell>
   );
 }
 
@@ -322,7 +329,7 @@ function RealtimeRecap({ code, playerId }: RealtimeRecapProps) {
 
   if (error) {
     return (
-      <main className="page-shell page-with-top-bar">
+      <SceneShell cue={recap?.directedScene?.motionCue ?? null} className="page-with-top-bar">
         <SessionTopBar
           backHref="/"
           backLabel="Back Home"
@@ -338,13 +345,13 @@ function RealtimeRecap({ code, playerId }: RealtimeRecapProps) {
             </button>
           </div>
         </div>
-      </main>
+      </SceneShell>
     );
   }
 
   if (!recap) {
     return (
-      <main className="page-shell page-with-top-bar">
+      <SceneShell cue={recap?.directedScene?.motionCue ?? null} className="page-with-top-bar">
         <SessionTopBar
           backHref="/"
           backLabel="Back Home"
@@ -355,12 +362,12 @@ function RealtimeRecap({ code, playerId }: RealtimeRecapProps) {
         <div className="content-wrap grid min-h-dvh place-items-center">
           <p>Loading recap...</p>
         </div>
-      </main>
+      </SceneShell>
     );
   }
 
   return (
-    <main className="page-shell page-with-top-bar">
+    <SceneShell cue={recap.directedScene?.motionCue ?? null} className="page-with-top-bar">
       <div className="suspense-wash" aria-hidden />
       <SessionTopBar
         backHref="/"
@@ -421,6 +428,7 @@ function RealtimeRecap({ code, playerId }: RealtimeRecapProps) {
               chaosLevel={recap.chaosLevel}
               activeEvent={recap.riftHistory.at(-1) ?? null}
             />
+            <DirectorBeatTimeline beats={recap.directorTimeline ?? []} />
             <RiftEventTimeline events={recap.riftHistory} />
             <WorldEventTimeline events={recap.worldState?.timeline ?? []} />
 
@@ -475,6 +483,9 @@ function RealtimeRecap({ code, playerId }: RealtimeRecapProps) {
           <p className="text-center text-sm font-medium text-cyan-200">
             You survived (or didn’t). Share the story.
           </p>
+          <div className="mx-auto h-14 w-14">
+            <LottieStinger assetId="share_success" className="h-14 w-14" loop={false} autoplay />
+          </div>
           <div className="flex flex-wrap gap-3">
           <button type="button" className="btn btn-primary flex-1 min-w-[140px] py-3 text-lg" onClick={copyShare}>
             Share Story
@@ -511,7 +522,7 @@ function RealtimeRecap({ code, playerId }: RealtimeRecapProps) {
 
         {toast ? <p className="text-sm text-cyan-300">{toast}</p> : null}
       </div>
-    </main>
+    </SceneShell>
   );
 }
 

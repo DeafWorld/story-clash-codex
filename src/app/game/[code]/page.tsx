@@ -9,8 +9,8 @@ import { trackEvent } from "../../../lib/analytics";
 import Typewriter from "../../../components/typewriter";
 import RoomCodeCard from "../../../components/room-code-card";
 import NarratorBanner from "../../../components/narrator-banner";
-import RiftStatusCard from "../../../components/rift-status-card";
-import WorldEventTimeline from "../../../components/world-event-timeline";
+import SceneShell from "../../../components/motion/scene-shell";
+import ImpactFlash from "../../../components/motion/impact-flash";
 import {
   advanceDemoStoryChoice,
   getDemoSession,
@@ -56,7 +56,9 @@ function DemoGame({ code, playerId }: DemoGameProps) {
   const tensionHigh = tensionLevel >= 4;
   const tensionMedium = tensionLevel === 3;
   const narration = session.latestNarration ?? null;
-  const worldEvents = session.worldState.timeline ?? [];
+  const directed = session.directedScene;
+  const cue = directed?.motionCue ?? null;
+  const showImpact = directed?.beatType === "payoff" || directed?.beatType === "fracture";
 
   function choose(choiceId: string) {
     advanceDemoStoryChoice(choiceId);
@@ -64,7 +66,7 @@ function DemoGame({ code, playerId }: DemoGameProps) {
   }
 
   return (
-    <main className="page-shell page-with-top-bar">
+    <SceneShell cue={cue} className="page-with-top-bar">
       <div
         className={clsx(
           "absolute inset-0 opacity-80",
@@ -75,6 +77,7 @@ function DemoGame({ code, playerId }: DemoGameProps) {
         aria-hidden
       />
       <div className="suspense-wash" aria-hidden />
+      <ImpactFlash active={Boolean(showImpact)} />
       <SessionTopBar
         backHref={`/lobby/${code}?player=${viewer.id}&demo=1`}
         backLabel="Back to Lobby"
@@ -102,7 +105,7 @@ function DemoGame({ code, playerId }: DemoGameProps) {
             </p>
           </header>
 
-          <Typewriter text={scene?.text ?? "Demo story unavailable."} charsPerSecond={30} />
+          <Typewriter text={directed?.renderedText ?? scene?.text ?? "Demo story unavailable."} charsPerSecond={30} />
 
           {!isDone ? (
             <div className="space-y-3">
@@ -133,11 +136,9 @@ function DemoGame({ code, playerId }: DemoGameProps) {
         </section>
 
         <aside className="panel space-y-4 p-4">
-          <RiftStatusCard
-            genrePower={session.genrePower}
-            chaosLevel={session.chaosLevel}
-            activeEvent={session.activeRiftEvent}
-          />
+          <div className="rounded-xl border border-white/20 bg-black/25 px-3 py-2 text-xs uppercase tracking-[0.18em] text-cyan-200">
+            {directed?.beatType ?? "setup"} • {directed?.pressureBand ?? "calm"}
+          </div>
           <h2 className="mb-3 text-lg font-semibold">Turn Order</h2>
           <div className="space-y-2">
             {session.turnOrder.map((id, index) => {
@@ -161,11 +162,10 @@ function DemoGame({ code, playerId }: DemoGameProps) {
           </div>
 
           <p className="mt-4 text-xs text-zinc-400">Step {session.history.length + 1} - branching demo story</p>
-          <WorldEventTimeline events={worldEvents} compact />
         </aside>
       </div>
       </div>
-    </main>
+    </SceneShell>
   );
 }
 
@@ -199,7 +199,8 @@ function RealtimeGame({ code, playerId }: RealtimeGameProps) {
   const seconds = Math.max(0, Math.ceil(remainingMs / 1000));
   const timerColor = seconds > 15 ? "#39ff14" : seconds > 10 ? "#ffd166" : "#ff3b3b";
   const tensionHigh = seconds <= 10;
-  const worldEvents = room?.worldState?.timeline ?? [];
+  const cue = room?.directedScene?.motionCue ?? null;
+  const showImpact = room?.directedScene?.beatType === "payoff" || room?.directedScene?.beatType === "fracture";
 
   useEffect(() => {
     roomRef.current = room;
@@ -375,7 +376,7 @@ function RealtimeGame({ code, playerId }: RealtimeGameProps) {
 
   if (error) {
     return (
-      <main className="page-shell page-with-top-bar">
+      <SceneShell cue={cue} className="page-with-top-bar">
         <SessionTopBar
           backHref={`/lobby/${code}?player=${playerId}`}
           backLabel="Back to Lobby"
@@ -393,13 +394,13 @@ function RealtimeGame({ code, playerId }: RealtimeGameProps) {
             </button>
           </div>
         </div>
-      </main>
+      </SceneShell>
     );
   }
 
   if (!room || !scene) {
     return (
-      <main className="page-shell page-with-top-bar">
+      <SceneShell cue={cue} className="page-with-top-bar">
         <SessionTopBar
           backHref={`/lobby/${code}?player=${playerId}`}
           backLabel="Back to Lobby"
@@ -412,14 +413,15 @@ function RealtimeGame({ code, playerId }: RealtimeGameProps) {
         <div className="content-wrap grid min-h-dvh place-items-center">
           <p>Loading game state...</p>
         </div>
-      </main>
+      </SceneShell>
     );
   }
 
   return (
-    <main className="page-shell page-with-top-bar">
+    <SceneShell cue={cue} className="page-with-top-bar">
       <div className={clsx("absolute inset-0 opacity-80", genreOverlay(genre), tensionHigh ? "animate-pulse" : "")} aria-hidden />
       <div className="suspense-wash" aria-hidden />
+      <ImpactFlash active={Boolean(showImpact)} />
       <SessionTopBar
         backHref={`/lobby/${code}?player=${playerId}`}
         backLabel="Back to Lobby"
@@ -461,8 +463,11 @@ function RealtimeGame({ code, playerId }: RealtimeGameProps) {
               {isActivePlayer ? `Your Turn, ${activePlayer?.name ?? "Player"}` : `Waiting for ${activePlayer?.name ?? "Player"}`}
             </p>
           </header>
+          <p className="text-xs uppercase tracking-[0.16em] text-cyan-200">
+            {(room.directedScene?.beatType ?? "setup").replaceAll("_", " ")} • {(room.directedScene?.pressureBand ?? "calm").replaceAll("_", " ")}
+          </p>
 
-          <Typewriter text={scene.text} charsPerSecond={30} />
+          <Typewriter text={room.directedScene?.renderedText ?? scene.text} charsPerSecond={30} />
 
           {isActivePlayer ? (
             <div className="space-y-3">
@@ -491,11 +496,6 @@ function RealtimeGame({ code, playerId }: RealtimeGameProps) {
         </section>
 
         <aside className="panel space-y-4 p-4">
-          <RiftStatusCard
-            genrePower={room.genrePower}
-            chaosLevel={room.chaosLevel}
-            activeEvent={room.activeRiftEvent}
-          />
           <h2 className="mb-3 text-lg font-semibold">Turn Order</h2>
           <div className="space-y-2">
             {room.turnOrder.map((id, index) => {
@@ -518,11 +518,10 @@ function RealtimeGame({ code, playerId }: RealtimeGameProps) {
               );
             })}
           </div>
-          <WorldEventTimeline events={worldEvents} compact />
         </aside>
       </div>
       </div>
-    </main>
+    </SceneShell>
   );
 }
 

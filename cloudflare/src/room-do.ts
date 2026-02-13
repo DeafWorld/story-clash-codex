@@ -1,5 +1,6 @@
 import { containsProfanity, sanitizeDisplayName } from "./profanity";
 import { generateNarrationLine } from "./narrator";
+import { applyNarrativeDirector, defaultMotionCue } from "./narrative-director";
 import {
   applyGenrePowerShift,
   computeChaosLevel,
@@ -20,6 +21,7 @@ import type {
   MinigameOutcome,
   MVP,
   NarrationLine,
+  NarrativeThread,
   Player,
   RecapPayload,
   RoomState,
@@ -38,6 +40,7 @@ const MAX_PLAYERS = 6;
 const MIN_PLAYERS = 3;
 const MAX_NARRATION_LOG = 30;
 const MAX_RIFT_HISTORY = 40;
+const MAX_DIRECTOR_TIMELINE = 40;
 const DISCONNECT_TIMEOUT_MS = 10_000;
 
 const AVATARS = ["circle-cyan", "diamond-red", "hex-green", "triangle-blue", "square-gold", "ring-white"];
@@ -56,6 +59,64 @@ const PICK_SCORE_TO_GENRE: Record<number, GenreId> = Object.entries(MINIGAME_PIC
   },
   {} as Record<number, GenreId>
 );
+
+function createInitialWorldState(): RoomState["worldState"] {
+  return {
+    factions: {
+      survivors: {
+        loyalty: 50,
+        power: 30,
+        leader: null,
+        traits: ["desperate", "paranoid"],
+        relationships: {
+          scientists: -20,
+          military: 15,
+        },
+      },
+      scientists: {
+        loyalty: 70,
+        power: 40,
+        leader: "Dr. Chen",
+        traits: ["rational", "secretive"],
+        relationships: {
+          survivors: -20,
+          military: 30,
+        },
+      },
+      military: {
+        loyalty: 80,
+        power: 60,
+        leader: "Commander Shaw",
+        traits: ["authoritarian", "pragmatic"],
+        relationships: {
+          survivors: 15,
+          scientists: 30,
+        },
+      },
+    },
+    resources: {
+      food: { amount: 45, trend: "declining", crisisPoint: 20 },
+      medicine: { amount: 30, trend: "stable", crisisPoint: 15 },
+      ammunition: { amount: 60, trend: "declining", crisisPoint: 25 },
+      fuel: { amount: 20, trend: "critical", crisisPoint: 10 },
+    },
+    scars: [],
+    tensions: {
+      food_shortage: 0,
+      faction_conflict: 0,
+      external_threat: 0,
+      morale_crisis: 0,
+      disease_outbreak: 0,
+    },
+    timeline: [],
+    meta: {
+      gamesPlayed: 0,
+      mostCommonEnding: null,
+      rarePath: false,
+      communityChoiceInfluence: 0,
+    },
+  };
+}
 
 function now(): number {
   return Date.now();
@@ -247,6 +308,11 @@ export class RoomDurableObject {
       activeRiftEvent: null,
       latestNarration: null,
       narrationLog: [],
+      worldState: createInitialWorldState(),
+      narrativeThreads: [],
+      activeThreadId: null,
+      directedScene: null,
+      directorTimeline: [],
       turnDeadline: null,
       endingScene: null,
       endingType: null,
@@ -631,10 +697,32 @@ export class RoomDurableObject {
     room.activeRiftEvent = room.activeRiftEvent ?? null;
     room.latestNarration = room.latestNarration ?? null;
     room.narrationLog = (room.narrationLog ?? []).slice(-MAX_NARRATION_LOG);
+    room.worldState = room.worldState ?? createInitialWorldState();
+    room.narrativeThreads = room.narrativeThreads ?? [];
+    room.activeThreadId = room.activeThreadId ?? null;
+    room.directorTimeline = (room.directorTimeline ?? []).slice(-MAX_DIRECTOR_TIMELINE);
+    room.directedScene = room.directedScene ?? null;
     room.players = room.players.map((player, index) => ({
       ...player,
       orderIndex: player.orderIndex ?? player.turnOrder ?? index,
     }));
+    if (!room.directedScene) {
+      const scene = this.getCurrentScene(room);
+      if (scene) {
+        room.directedScene = {
+          sceneId: scene.id,
+          baseText: scene.text,
+          renderedText: scene.text,
+          beatType: "setup",
+          pressureBand: "calm",
+          intensity: 20,
+          activeThreadId: room.activeThreadId,
+          payoffThreadId: null,
+          motionCue: defaultMotionCue(),
+          updatedAt: now(),
+        };
+      }
+    }
 
     return room;
   }
@@ -792,6 +880,84 @@ export class RoomDurableObject {
     return line;
   }
 
+  private bumpThreadAges(threads: NarrativeThread[]) {
+    return threads.map((thread) => ({
+      ...thread,
+      metadata: {
+        ...thread.metadata,
+        scenesSinceMention: thread.metadata.scenesSinceMention + 1,
+      },
+    }));
+  }
+
+  private upsertThread(room: RoomState, input: { id: string; sceneId: string; detail: string; priority: number; clue?: string }) {
+    const nowTs = now();
+    const threads = this.bumpThreadAges(room.narrativeThreads ?? []);
+    const existingIndex = threads.findIndex((thread) => thread.id === input.id);
+
+    if (existingIndex >= 0) {
+      const existing = threads[existingIndex];
+      threads[existingIndex] = {
+        ...existing,
+        status: "active",
+        priority: Math.max(existing.priority, input.priority),
+        developments: [
+          ...existing.developments,
+          {
+            sceneId: input.sceneId,
+            detail: input.detail,
+            timestamp: nowTs,
+          },
+        ].slice(-16),
+        clues: input.clue ? [...existing.clues, input.clue].slice(-18) : existing.clues,
+        playerAwareness: Math.min(100, existing.playerAwareness + 6),
+        metadata: {
+          ...existing.metadata,
+          lastMention: nowTs,
+          scenesSinceMention: 0,
+        },
+      };
+      room.narrativeThreads = threads.slice(-40);
+      return;
+    }
+
+    const created: NarrativeThread = {
+      id: input.id,
+      type: "conflict",
+      priority: input.priority,
+      status: "active",
+      seeds: [
+        {
+          sceneId: input.sceneId,
+          detail: input.detail,
+          timestamp: nowTs,
+        },
+      ],
+      developments: [],
+      payoff: null,
+      clues: input.clue ? [input.clue] : [],
+      playerAwareness: 22,
+      metadata: {
+        created: nowTs,
+        lastMention: nowTs,
+        scenesSinceMention: 0,
+      },
+    };
+    room.narrativeThreads = [...threads, created].slice(-40);
+  }
+
+  private deriveActiveThread(room: RoomState) {
+    const active = (room.narrativeThreads ?? [])
+      .filter((thread) => thread.status === "active")
+      .sort((left, right) => {
+        if (left.priority !== right.priority) {
+          return right.priority - left.priority;
+        }
+        return right.metadata.scenesSinceMention - left.metadata.scenesSinceMention;
+      });
+    room.activeThreadId = active[0]?.id ?? null;
+  }
+
   private getRoomView(room: RoomState): RoomView {
     return {
       ...room,
@@ -936,6 +1102,8 @@ export class RoomDurableObject {
     room.chaosLevel = 0;
     room.riftHistory = [];
     room.activeRiftEvent = null;
+    room.directorTimeline = [];
+    room.directedScene = null;
     room.endingScene = null;
     room.endingType = null;
     room.activePlayerIndex = 0;
@@ -956,6 +1124,12 @@ export class RoomDurableObject {
       playerId: room.currentPlayerId,
       tensionLevel: room.tensionLevel,
     });
+    const directed = applyNarrativeDirector(room, startScene, room.history.length + 1);
+    room.directedScene = directed.directedScene;
+    room.directorTimeline = directed.directorTimeline;
+    if (directed.timelineEvents.length > 0) {
+      room.worldState.timeline = [...room.worldState.timeline, ...directed.timelineEvents].slice(-60);
+    }
 
     return {
       genre,
@@ -1055,7 +1229,22 @@ export class RoomDurableObject {
     room.activeRiftEvent = rift.event;
     if (rift.event) {
       room.riftHistory = [...room.riftHistory, rift.event].slice(-MAX_RIFT_HISTORY);
+      this.upsertThread(room, {
+        id: `thread-rift-${rift.event.type}`,
+        sceneId: scene.id,
+        detail: rift.event.description,
+        priority: rift.event.type === "scene_twist" ? 9 : 7,
+        clue: rift.event.title,
+      });
+    } else if (room.chaosLevel >= 58) {
+      this.upsertThread(room, {
+        id: "thread-rift-escalation",
+        sceneId: scene.id,
+        detail: "Rift pressure keeps compounding between choices.",
+        priority: 6,
+      });
     }
+    this.deriveActiveThread(room);
 
     room.history.push({
       sceneId: scene.id,
@@ -1087,6 +1276,12 @@ export class RoomDurableObject {
     room.currentNodeId = nextScene.id;
     room.tensionLevel = nextScene.tensionLevel ?? 1;
     room.currentPlayerId = this.activePlayerId(room);
+    const directed = applyNarrativeDirector(room, nextScene, room.history.length + 1);
+    room.directedScene = directed.directedScene;
+    room.directorTimeline = directed.directorTimeline;
+    if (directed.timelineEvents.length > 0) {
+      room.worldState.timeline = [...room.worldState.timeline, ...directed.timelineEvents].slice(-60);
+    }
 
     if (nextScene.ending) {
       this.setRoomPhase(room, "recap");
@@ -1141,6 +1336,10 @@ export class RoomDurableObject {
     room.activeRiftEvent = null;
     room.latestNarration = null;
     room.narrationLog = [];
+    room.narrativeThreads = [];
+    room.activeThreadId = null;
+    room.directorTimeline = [];
+    room.directedScene = null;
     room.endingScene = null;
     room.endingType = null;
     room.turnOrder = room.players.map((player) => player.id);
@@ -1193,6 +1392,11 @@ export class RoomDurableObject {
       riftHistory: room.riftHistory,
       latestNarration: room.latestNarration ?? null,
       narrationLog: room.narrationLog ?? [],
+      worldState: room.worldState,
+      narrativeThreads: room.narrativeThreads,
+      activeThreadId: room.activeThreadId,
+      directedScene: room.directedScene,
+      directorTimeline: room.directorTimeline,
     };
   }
 

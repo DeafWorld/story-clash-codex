@@ -19,8 +19,11 @@ import {
   getNodeById,
   getStoryStartNode,
 } from "./story-utils";
+import { applyNarrativeDirector, defaultMotionCue } from "./narrative-director";
 import type {
   Choice,
+  DirectedSceneView,
+  DirectorBeatRecord,
   GenreId,
   GenrePower,
   NarrativeThread,
@@ -68,6 +71,8 @@ export type DemoSessionState = {
   playerProfiles: Record<string, PlayerProfile>;
   narrativeThreads: NarrativeThread[];
   activeThreadId: string | null;
+  directedScene: DirectedSceneView | null;
+  directorTimeline: DirectorBeatRecord[];
 };
 
 const storyTrees: Record<GenreId, StoryTree> = {
@@ -106,6 +111,19 @@ function createSession(): DemoSessionState {
     playerProfiles: ensurePlayerProfiles(DEMO_PLAYERS, {}),
     narrativeThreads: [],
     activeThreadId: null,
+    directedScene: {
+      sceneId: startNode.id,
+      baseText: startNode.text,
+      renderedText: startNode.text,
+      beatType: "setup",
+      pressureBand: "calm",
+      intensity: 20,
+      activeThreadId: null,
+      payoffThreadId: null,
+      motionCue: defaultMotionCue(),
+      updatedAt: Date.now(),
+    },
+    directorTimeline: [],
   };
 }
 
@@ -209,9 +227,53 @@ export function setDemoMinigameOrder(order: string[], genre: GenreId = "zombie")
   session.playerProfiles = ensurePlayerProfiles(session.players, session.playerProfiles);
   session.narrativeThreads = [];
   session.activeThreadId = null;
+  session.directedScene = {
+    sceneId: startNode.id,
+    baseText: startNode.text,
+    renderedText: startNode.text,
+    beatType: "setup",
+    pressureBand: "calm",
+    intensity: 20,
+    activeThreadId: null,
+    payoffThreadId: null,
+    motionCue: defaultMotionCue(),
+    updatedAt: Date.now(),
+  };
+  session.directorTimeline = [];
   session.status = "story";
   session.currentPlayerId = order[0] ?? "demo-host";
   appendNarration("scene_enter", { playerId: session.currentPlayerId, sceneId: session.currentNodeId });
+  const directed = applyNarrativeDirector({
+    roomCode: session.roomCode,
+    scene: {
+      id: startNode.id,
+      text: startNode.text,
+      tensionLevel: startNode.tensionLevel,
+      choices: startNode.choices.map((entry) => ({
+        id: entry.id,
+        label: entry.label,
+        text: entry.label,
+        nextId: entry.nextId,
+        next: entry.nextId,
+      })),
+      ending: startNode.ending,
+      endingType: startNode.endingType,
+    },
+    chaosLevel: session.chaosLevel,
+    tensionLevel: startNode.tensionLevel,
+    historyLength: session.history.length + 1,
+    actorProfile: session.currentPlayerId ? (session.playerProfiles[session.currentPlayerId] ?? null) : null,
+    narrativeThreads: session.narrativeThreads,
+    activeThreadId: session.activeThreadId,
+    directorTimeline: session.directorTimeline,
+  });
+  session.narrativeThreads = directed.narrativeThreads;
+  session.activeThreadId = directed.activeThreadId;
+  session.directedScene = directed.directedScene;
+  session.directorTimeline = directed.directorTimeline;
+  if (directed.timelineEvents.length > 0) {
+    session.worldState.timeline = [...session.worldState.timeline, ...directed.timelineEvents].slice(-60);
+  }
 }
 
 export function advanceDemoStoryChoice(choiceId: string) {
@@ -304,6 +366,37 @@ export function advanceDemoStoryChoice(choiceId: string) {
   session.narrativeThreads = evolution.narrativeThreads;
   session.activeThreadId = evolution.activeThreadId;
   session.chaosLevel = evolution.chaosLevel;
+  const directed = applyNarrativeDirector({
+    roomCode: session.roomCode,
+    scene: {
+      id: nextScene?.id ?? nextNodeId,
+      text: nextScene?.text ?? scene.text,
+      tensionLevel: nextScene?.tensionLevel ?? scene.tensionLevel,
+      choices: nextScene?.choices?.map((entry) => ({
+        id: entry.id,
+        label: entry.label,
+        text: entry.label,
+        nextId: entry.nextId,
+        next: entry.nextId,
+      })),
+      ending: nextScene?.ending,
+      endingType: nextScene?.endingType,
+    },
+    chaosLevel: session.chaosLevel,
+    tensionLevel: nextScene?.tensionLevel ?? scene.tensionLevel,
+    historyLength: session.history.length + 1,
+    actorProfile: session.currentPlayerId ? (session.playerProfiles[session.currentPlayerId] ?? null) : null,
+    narrativeThreads: session.narrativeThreads,
+    activeThreadId: session.activeThreadId,
+    directorTimeline: session.directorTimeline,
+  });
+  session.narrativeThreads = directed.narrativeThreads;
+  session.activeThreadId = directed.activeThreadId;
+  session.directedScene = directed.directedScene;
+  session.directorTimeline = directed.directorTimeline;
+  if (directed.timelineEvents.length > 0) {
+    session.worldState.timeline = [...session.worldState.timeline, ...directed.timelineEvents].slice(-60);
+  }
 
   session.currentNodeId = nextNodeId;
   markStoryOrRecap(nextNodeId);

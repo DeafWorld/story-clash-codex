@@ -2,9 +2,11 @@
 
 import { FormEvent, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { motion } from "framer-motion";
 import { apiFetch } from "../../lib/api-client";
 import { initDemoRoom } from "../../lib/demo-session";
 import SessionTopBar from "../../components/session-top-bar";
+import SceneShell from "../../components/motion/scene-shell";
 
 export default function CreateRoomPage() {
   const router = useRouter();
@@ -44,11 +46,17 @@ export default function CreateRoomPage() {
   }
 
   return (
-    <main className="page-shell page-with-top-bar">
+    <SceneShell className="page-with-top-bar">
       <div className="suspense-wash" aria-hidden />
       <SessionTopBar backHref="/" backLabel="Back Home" phaseLabel="Create Room" />
       <div className="content-wrap grid min-h-dvh place-items-center">
-        <form onSubmit={createLiveRoom} className="panel w-full max-w-lg space-y-6 p-5 sm:p-7">
+        <motion.form
+          onSubmit={createLiveRoom}
+          className="panel w-full max-w-lg space-y-6 p-5 sm:p-7"
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.36 }}
+        >
           <p className="badge">Host Session</p>
           <h1 className="text-3xl font-black sm:text-4xl">Create Room</h1>
           <p className="text-base text-zinc-200">
@@ -76,8 +84,8 @@ export default function CreateRoomPage() {
           <button type="button" className="btn btn-secondary w-full py-3" onClick={startDemoRoom}>
             Start Demo Room
           </button>
-        </form>
+        </motion.form>
       </div>
-    </main>
+    </SceneShell>
   );
 }

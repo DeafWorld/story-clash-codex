@@ -15,6 +15,10 @@
   --red: #ff4d6d;
   --amber: #ffb454;
   --green: #69ffa7;
+  --motion-intensity: 24;
+  --motion-multiplier: 1;
+  --motion-pulse-alpha: 0.14;
+  --motion-shimmer-alpha: 0.1;
 }
 
 * {
@@ -87,6 +91,7 @@ textarea {
   font-weight: 700;
   cursor: pointer;
   transition: transform 160ms ease, box-shadow 180ms ease, opacity 180ms ease, border-color 180ms ease;
+  will-change: transform, opacity, box-shadow;
 }
 
 .btn:hover {
@@ -263,6 +268,58 @@ textarea:focus-visible {
   line-height: 1.45;
 }
 
+.motion-cta {
+  transition: transform 180ms cubic-bezier(0.2, 0.95, 0.23, 1), box-shadow 220ms ease, border-color 200ms ease;
+}
+
+.magnetic-hover:hover {
+  transform: translate3d(0, -1px, 0) scale(1.01);
+  box-shadow: 0 10px 36px rgba(83, 244, 255, 0.34);
+}
+
+.lobby-ready-ring {
+  animation: lobbyReadyPulse 1.3s ease-in-out infinite;
+}
+
+.motion-band-calm .suspense-wash {
+  animation-duration: 14s;
+}
+
+.motion-band-rising .suspense-wash {
+  animation-duration: 10s;
+}
+
+.motion-band-critical .suspense-wash,
+.motion-band-fracture .suspense-wash,
+.motion-band-payoff .suspense-wash {
+  animation-duration: 6.5s;
+}
+
+.motion-band-critical::before,
+.motion-band-fracture::before,
+.motion-band-payoff::before {
+  content: "";
+  position: absolute;
+  inset: -10%;
+  pointer-events: none;
+  z-index: 1;
+  background:
+    radial-gradient(circle at 50% 35%, rgba(255, 77, 109, calc(var(--motion-pulse-alpha) * 1.2)), transparent 46%),
+    radial-gradient(circle at 55% 65%, rgba(83, 244, 255, calc(var(--motion-shimmer-alpha) * 1.1)), transparent 58%);
+  mix-blend-mode: screen;
+  animation: riftPulse 1.35s ease-in-out infinite;
+}
+
+.motion-band-cooldown::before {
+  content: "";
+  position: absolute;
+  inset: -8%;
+  pointer-events: none;
+  z-index: 1;
+  background: radial-gradient(circle at 50% 25%, rgba(173, 198, 255, 0.12), transparent 58%);
+  animation: cooldownBreath 3.2s ease-in-out infinite;
+}
+
 .suspense-wash {
   position: absolute;
   inset: -20%;
@@ -301,6 +358,40 @@ textarea:focus-visible {
   }
   50% {
     box-shadow: 0 0 0 7px rgba(255, 77, 109, 0.18);
+  }
+}
+
+@keyframes riftPulse {
+  0%,
+  100% {
+    opacity: 0.55;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.03);
+  }
+}
+
+@keyframes cooldownBreath {
+  0%,
+  100% {
+    opacity: 0.32;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.56;
+    transform: scale(1.02);
+  }
+}
+
+@keyframes lobbyReadyPulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 rgba(83, 244, 255, 0.25);
+  }
+  50% {
+    box-shadow: 0 0 0 8px rgba(83, 244, 255, 0.08);
   }
 }
 

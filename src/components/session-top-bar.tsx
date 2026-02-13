@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
+import { AnimatePresence, motion } from "framer-motion";
 import { trackEvent } from "../lib/analytics";
 import { buildInviteUrl, shareInvite } from "../lib/invite";
 
@@ -96,45 +97,72 @@ export default function SessionTopBar({
 
   return (
     <header className="session-top-bar">
-      <div className="session-top-inner">
+      <motion.div
+        className="session-top-inner"
+        initial={{ opacity: 0, y: -10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.24 }}
+      >
         <Link
           href={backHref}
-          className="btn btn-secondary py-2"
+          className="btn btn-secondary py-2 motion-cta"
           onClick={() => trackEvent("back_clicked", { roomCode: roomCode ?? null, phaseLabel: phaseLabel ?? null })}
         >
           {backLabel}
         </Link>
         <div className="flex gap-2">
-          <button
+          <motion.button
+            whileHover={{ scale: 1.015 }}
+            whileTap={{ scale: 0.98 }}
             type="button"
-            className="btn btn-secondary py-2"
+            className="btn btn-secondary py-2 motion-cta"
             onClick={handleCopyLink}
             disabled={!showInvite || !roomCode}
           >
             Copy link
-          </button>
-          <button
+          </motion.button>
+          <motion.button
+            whileHover={{ scale: 1.015 }}
+            whileTap={{ scale: 0.98 }}
             type="button"
-            className="btn btn-primary py-2 disabled:cursor-not-allowed disabled:opacity-45"
+            className="btn btn-primary py-2 motion-cta disabled:cursor-not-allowed disabled:opacity-45"
             onClick={handleInvite}
             disabled={sharing || !showInvite || !roomCode}
           >
             {sharing ? "Sharing..." : "Invite"}
-          </button>
+          </motion.button>
         </div>
-      </div>
+      </motion.div>
 
       {chips.length > 0 ? (
-        <div className="session-chip-row">
+        <motion.div
+          className="session-chip-row"
+          initial={{ opacity: 0, y: -6 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.2, delay: 0.06 }}
+        >
           {chips.map((chip) => (
             <span key={`${chip.label}-${chip.value}`} className="session-chip">
               {chip.label}: {chip.value}
             </span>
           ))}
-        </div>
+        </motion.div>
       ) : null}
 
-      {message ? <p className="session-toast">{message}</p> : null}
+      <AnimatePresence initial={false}>
+        {message ? (
+          <motion.p
+            key={message}
+            className="session-toast"
+            initial={{ opacity: 0, y: -4 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -4 }}
+            transition={{ duration: 0.18 }}
+          >
+            {message}
+          </motion.p>
+        ) : null}
+      </AnimatePresence>
     </header>
   );
 }

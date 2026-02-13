@@ -9,7 +9,10 @@ import { generateNarrationLine } from "../../../lib/narrator";
 import { setDemoMinigameOrder } from "../../../lib/demo-session";
 import NarratorBanner from "../../../components/narrator-banner";
 import SessionTopBar from "../../../components/session-top-bar";
-import type { GenreId, MinigameOutcome, NarrationLine, Player } from "../../../types/game";
+import SceneShell from "../../../components/motion/scene-shell";
+import ImpactFlash from "../../../components/motion/impact-flash";
+import RiveLayer from "../../../components/motion/rive-layer";
+import type { GenreId, MinigameOutcome, MotionCue, NarrationLine, Player } from "../../../types/game";
 import type { NarratorUpdatePayload } from "../../../types/realtime";
 
 type Phase =
@@ -27,6 +30,52 @@ type SpinOutcome = {
   winnerId: string;
   tieBreak: boolean;
 };
+
+function cueFromPhase(phase: Phase, tieBreak: boolean): MotionCue {
+  if (phase === "spinning_tie") {
+    return {
+      intensity: 82,
+      beat: "payoff",
+      effectProfile: "shockwave",
+      transitionStyle: "surge",
+      pressureBand: "critical",
+    };
+  }
+  if (phase === "spinning_genre") {
+    return {
+      intensity: 70,
+      beat: "escalation",
+      effectProfile: "void_hum",
+      transitionStyle: "surge",
+      pressureBand: "rising",
+    };
+  }
+  if (phase === "results") {
+    return {
+      intensity: tieBreak ? 68 : 56,
+      beat: "payoff",
+      effectProfile: "shockwave",
+      transitionStyle: "drift",
+      pressureBand: tieBreak ? "critical" : "rising",
+    };
+  }
+  if (phase === "countdown") {
+    return {
+      intensity: 36,
+      beat: "setup",
+      effectProfile: "rift_drift",
+      transitionStyle: "drift",
+      pressureBand: "calm",
+    };
+  }
+  return {
+    intensity: 48,
+    beat: "escalation",
+    effectProfile: "rift_drift",
+    transitionStyle: "drift",
+    pressureBand: "rising",
+  };
+}
 
 const GENRES: Array<{ id: GenreId; name: string; icon: string; color: string }> = [
   { id: "zombie", name: "Zombie Outbreak", icon: "Z", color: "#ef4444" },
@@ -365,10 +414,12 @@ function DemoMinigame({ code, playerId }: DemoProps) {
   const tieNames = outcome
     ? outcome.contenders.map((id) => players.find((player) => player.id === id)?.name ?? "Player")
     : [];
+  const cue = cueFromPhase(phase, Boolean(outcome?.tieBreak));
 
   return (
-    <main className="page-shell page-with-top-bar">
+    <SceneShell cue={cue} className="page-with-top-bar">
       <div className="suspense-wash" aria-hidden />
+      <ImpactFlash active={phase === "results"} />
       <SessionTopBar
         backHref={`/lobby/${code}?player=${self.id}&demo=1`}
         backLabel="Back to Lobby"
@@ -385,6 +436,9 @@ function DemoMinigame({ code, playerId }: DemoProps) {
           <p className="badge mx-auto">Rift Minigame</p>
           <h1 className="text-3xl font-black sm:text-4xl">Pick a Pie. Spin Fate.</h1>
           <p className="text-sm text-zinc-300">Winning genre sets tone. Winning player controls the first story turn.</p>
+          <div className="mx-auto h-14 w-36">
+            <RiveLayer assetId="pulse_field_loop" className="h-full w-full" />
+          </div>
         </section>
         <NarratorBanner line={narration} compact />
 
@@ -423,7 +477,7 @@ function DemoMinigame({ code, playerId }: DemoProps) {
           </section>
         ) : null}
       </div>
-    </main>
+    </SceneShell>
   );
 }
 
@@ -662,10 +716,11 @@ function RealtimeMinigame({ code, playerId }: RealtimeProps) {
   const tieNames = outcome
     ? outcome.contenders.map((id) => players.find((player) => player.id === id)?.name ?? "Player")
     : [];
+  const cue = cueFromPhase(phase, Boolean(outcome?.tieBreak));
 
   if (error) {
     return (
-      <main className="page-shell page-with-top-bar">
+      <SceneShell cue={cue} className="page-with-top-bar">
         <SessionTopBar
           backHref={`/lobby/${code}?player=${playerId}`}
           backLabel="Back to Lobby"
@@ -683,13 +738,14 @@ function RealtimeMinigame({ code, playerId }: RealtimeProps) {
             </button>
           </div>
         </div>
-      </main>
+      </SceneShell>
     );
   }
 
   return (
-    <main className="page-shell page-with-top-bar">
+    <SceneShell cue={cue} className="page-with-top-bar">
       <div className="suspense-wash" aria-hidden />
+      <ImpactFlash active={phase === "results" || phase === "revealed"} />
       <SessionTopBar
         backHref={`/lobby/${code}?player=${playerId}`}
         backLabel="Back to Lobby"
@@ -705,6 +761,9 @@ function RealtimeMinigame({ code, playerId }: RealtimeProps) {
           <p className="badge mx-auto">Rift Minigame</p>
           <h1 className="text-3xl font-black sm:text-4xl">Pick a Pie. Spin Fate.</h1>
           <p className="text-sm text-zinc-300">A tie triggers a names-only wheel. Final winner goes first in story phase.</p>
+          <div className="mx-auto h-14 w-36">
+            <RiveLayer assetId="pulse_field_loop" className="h-full w-full" />
+          </div>
         </section>
         <NarratorBanner line={narration} compact />
         {toast ? <p className="text-sm text-cyan-300">{toast}</p> : null}
@@ -780,7 +839,7 @@ function RealtimeMinigame({ code, playerId }: RealtimeProps) {
           </motion.div>
         ) : null}
       </div>
-    </main>
+    </SceneShell>
   );
 }
 

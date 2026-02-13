@@ -20,6 +20,7 @@ export type AnalyticsEventName =
   | "recap_shared"
   | "play_again_clicked"
   | "back_clicked"
+  | "motion_perf_sample"
   | "share_link_created"
   | "og_image_requested"
   | "cron_daily";

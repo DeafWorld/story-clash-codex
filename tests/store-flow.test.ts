@@ -62,6 +62,7 @@ describe("store multiplayer flow", () => {
     expect(selected.genre).toBe("zombie");
     expect(selected.scene.id).toBe("start");
     expect(selected.narration?.trigger).toBe("scene_enter");
+    expect(getGameState(code).directedScene?.sceneId).toBe("start");
 
     const firstTurn = getGameState(code);
     const firstPlayer = firstTurn.activePlayerId;
@@ -123,6 +124,8 @@ describe("store multiplayer flow", () => {
     expect(recap.riftHistory.length).toBeGreaterThan(0);
     expect(recap.latestNarration?.trigger).toBe("ending");
     expect(recap.narrationLog.length).toBeGreaterThan(0);
+    expect(recap.directedScene?.sceneId).toBe("ending_survival");
+    expect(recap.directorTimeline.length).toBeGreaterThan(0);
     expect(recap.worldState.resources.food.amount).toBeGreaterThanOrEqual(0);
     expect(Object.keys(recap.playerProfiles).length).toBeGreaterThanOrEqual(3);
     expect(recap.narrativeThreads.length).toBeGreaterThanOrEqual(1);

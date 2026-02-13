@@ -9,6 +9,7 @@ import {
   createInitialWorldState,
   ensurePlayerProfiles,
 } from "./evolution-engine";
+import { applyNarrativeDirector, defaultMotionCue } from "./narrative-director";
 import {
   computeChaosLevel,
   createInitialGenrePower,
@@ -36,6 +37,7 @@ const MAX_PLAYERS = 6;
 const MIN_PLAYERS = 3;
 const MAX_NARRATION_LOG = 30;
 const MAX_RIFT_HISTORY = 40;
+const MAX_DIRECTOR_TIMELINE = 40;
 
 const AVATARS = ["circle-cyan", "diamond-red", "hex-green", "triangle-blue", "square-gold", "ring-white"];
 const ROUND_TWO_SCORES = [940, 760, 670, 610, 560, 520];
@@ -157,10 +159,29 @@ function ensureFreshRoom(code: string): RoomState {
   room.playerProfiles = ensurePlayerProfiles(room.players, room.playerProfiles ?? {});
   room.narrativeThreads = room.narrativeThreads ?? [];
   room.activeThreadId = room.activeThreadId ?? null;
+  room.directorTimeline = (room.directorTimeline ?? []).slice(-MAX_DIRECTOR_TIMELINE);
+  room.directedScene = room.directedScene ?? null;
   room.players = room.players.map((player, index) => ({
     ...player,
     orderIndex: player.orderIndex ?? player.turnOrder ?? index,
   }));
+  if (!room.directedScene) {
+    const scene = getCurrentScene(room);
+    if (scene) {
+      room.directedScene = {
+        sceneId: scene.id,
+        baseText: scene.text,
+        renderedText: scene.text,
+        beatType: "setup",
+        pressureBand: "calm",
+        intensity: 22,
+        activeThreadId: room.activeThreadId,
+        payoffThreadId: null,
+        motionCue: defaultMotionCue(),
+        updatedAt: now(),
+      };
+    }
+  }
 
   return room;
 }
@@ -360,6 +381,8 @@ export function createRoom(hostName: string) {
     },
     narrativeThreads: [],
     activeThreadId: null,
+    directedScene: null,
+    directorTimeline: [],
     turnDeadline: null,
     endingScene: null,
     endingType: null,
@@ -570,6 +593,8 @@ export function selectGenre(code: string, playerId: string, genre: GenreId) {
   room.chaosLevel = 0;
   room.riftHistory = [];
   room.activeRiftEvent = null;
+  room.directorTimeline = [];
+  room.directedScene = null;
   room.endingScene = null;
   room.endingType = null;
   room.activePlayerIndex = 0;
@@ -602,6 +627,24 @@ export function selectGenre(code: string, playerId: string, genre: GenreId) {
     playerId: room.currentPlayerId,
     tensionLevel: room.tensionLevel,
   });
+  const directed = applyNarrativeDirector({
+    roomCode: room.code,
+    scene,
+    chaosLevel: room.chaosLevel,
+    tensionLevel: room.tensionLevel,
+    historyLength: room.history.length + 1,
+    actorProfile: room.currentPlayerId ? (room.playerProfiles[room.currentPlayerId] ?? null) : null,
+    narrativeThreads: room.narrativeThreads,
+    activeThreadId: room.activeThreadId,
+    directorTimeline: room.directorTimeline,
+  });
+  room.narrativeThreads = directed.narrativeThreads;
+  room.activeThreadId = directed.activeThreadId;
+  room.directedScene = directed.directedScene;
+  room.directorTimeline = directed.directorTimeline;
+  if (directed.timelineEvents.length > 0) {
+    room.worldState.timeline = [...room.worldState.timeline, ...directed.timelineEvents].slice(-60);
+  }
 
   return {
     genre,
@@ -764,6 +807,24 @@ export function submitChoice(
   room.narrativeThreads = evolution.narrativeThreads;
   room.activeThreadId = evolution.activeThreadId;
   room.chaosLevel = evolution.chaosLevel;
+  const directed = applyNarrativeDirector({
+    roomCode: room.code,
+    scene: nextScene,
+    chaosLevel: room.chaosLevel,
+    tensionLevel: room.tensionLevel,
+    historyLength: room.history.length + 1,
+    actorProfile: room.playerProfiles[playerId] ?? null,
+    narrativeThreads: room.narrativeThreads,
+    activeThreadId: room.activeThreadId,
+    directorTimeline: room.directorTimeline,
+  });
+  room.narrativeThreads = directed.narrativeThreads;
+  room.activeThreadId = directed.activeThreadId;
+  room.directedScene = directed.directedScene;
+  room.directorTimeline = directed.directorTimeline;
+  if (directed.timelineEvents.length > 0) {
+    room.worldState.timeline = [...room.worldState.timeline, ...directed.timelineEvents].slice(-60);
+  }
 
   if (nextScene.ending) {
     setRoomPhase(room, "recap");
@@ -840,6 +901,8 @@ export function getRecapState(code: string) {
     playerProfiles: room.playerProfiles,
     narrativeThreads: room.narrativeThreads,
     activeThreadId: room.activeThreadId,
+    directedScene: room.directedScene,
+    directorTimeline: room.directorTimeline,
   };
 }
 
@@ -870,6 +933,8 @@ export function restartSession(code: string) {
     },
   }));
   room.activeThreadId = null;
+  room.directedScene = null;
+  room.directorTimeline = [];
   room.turnOrder = room.players.map((player) => player.id);
   room.players = room.players.map((player, index) => ({
     ...player,

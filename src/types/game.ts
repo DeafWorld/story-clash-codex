@@ -23,6 +23,10 @@ export type PlayerArchetype =
   | "The Pragmatist";
 export type NarrativeThreadType = "mystery" | "conflict" | "relationship" | "quest" | "survival";
 export type NarrativeThreadStatus = "active" | "resolved" | "abandoned" | "dormant";
+export type DirectorBeatType = "setup" | "escalation" | "payoff" | "cooldown" | "fracture";
+export type MotionIntensityBand = "calm" | "rising" | "critical";
+export type TransitionStyle = "hard_cut" | "drift" | "surge";
+export type EffectProfile = "rift_drift" | "shockwave" | "void_hum" | "cooldown_breath";
 
 export interface MinigameOutcome {
   winningGenre: GenreId;
@@ -159,6 +163,38 @@ export interface NarrationLine {
   createdAt: number;
 }
 
+export interface MotionCue {
+  intensity: number;
+  beat: DirectorBeatType;
+  effectProfile: EffectProfile;
+  transitionStyle: TransitionStyle;
+  pressureBand: MotionIntensityBand;
+}
+
+export interface DirectedSceneView {
+  sceneId: string;
+  baseText: string;
+  renderedText: string;
+  beatType: DirectorBeatType;
+  pressureBand: MotionIntensityBand;
+  intensity: number;
+  activeThreadId: string | null;
+  payoffThreadId: string | null;
+  motionCue: MotionCue;
+  updatedAt: number;
+}
+
+export interface DirectorBeatRecord {
+  id: string;
+  sceneId: string;
+  beatType: DirectorBeatType;
+  pressureBand: MotionIntensityBand;
+  intensity: number;
+  effectProfile: EffectProfile;
+  payoffThreadId: string | null;
+  createdAt: number;
+}
+
 export interface GenrePower {
   zombie: number;
   alien: number;
@@ -256,6 +292,8 @@ export interface StoryState {
   playerProfiles: Record<string, PlayerProfile>;
   narrativeThreads: NarrativeThread[];
   activeThreadId: string | null;
+  directedScene: DirectedSceneView | null;
+  directorTimeline: DirectorBeatRecord[];
 }
 
 export interface RoomState extends Room, StoryState {
@@ -300,6 +338,8 @@ export interface RecapPayload {
   playerProfiles: Record<string, PlayerProfile>;
   narrativeThreads: NarrativeThread[];
   activeThreadId: string | null;
+  directedScene: DirectedSceneView | null;
+  directorTimeline: DirectorBeatRecord[];
 }
 
 export interface StoryChoiceNode {

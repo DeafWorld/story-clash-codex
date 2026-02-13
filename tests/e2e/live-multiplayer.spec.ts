@@ -101,6 +101,7 @@ test.describe("Live Multiplayer Flow (Cloudflare Worker)", () => {
     await expect(host.getByRole("link", { name: "Back to Lobby" })).toBeVisible();
     await expect(host.getByRole("button", { name: "Invite" })).toBeVisible();
     await expect(host.getByText(/narrator/i)).toBeVisible();
+    await expect(host.locator("main.page-shell")).toHaveClass(/motion-band-/);
 
     // Four turns to reach ending: start -> armed -> stairwell -> checkpoint_twist -> ending_survival
     const gamePages: any[] = [host, p2, p3];
@@ -128,6 +129,7 @@ test.describe("Live Multiplayer Flow (Cloudflare Worker)", () => {
 
     // Timeline fades in after a short delay; ensure recap page is actually populated.
     await expect(host.getByRole("heading", { name: "How your story unfolded" })).toBeVisible({ timeout: 30_000 });
+    await expect(host.getByRole("heading", { name: "Director Beat Timeline" })).toBeVisible();
 
     await hostContext.close();
     await p2Context.close();
@@ -180,6 +182,7 @@ test.describe("Live Multiplayer Flow (Cloudflare Worker)", () => {
     await host.waitForURL(new RegExp(`/game/${code}`), { timeout: 45_000 });
     await p2.waitForURL(new RegExp(`/game/${code}`), { timeout: 45_000 });
     await p3.waitForURL(new RegExp(`/game/${code}`), { timeout: 45_000 });
+    await expect(host.locator("main.page-shell")).toHaveClass(/motion-band-/);
 
     const pages: Page[] = [host, p2, p3];
     const active = await waitForActiveTurn(pages);

@@ -3,10 +3,12 @@
 import { Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
+import { motion } from "framer-motion";
 import { apiFetch } from "../../lib/api-client";
 import { trackEvent } from "../../lib/analytics";
 import { initDemoRoom } from "../../lib/demo-session";
 import SessionTopBar from "../../components/session-top-bar";
+import SceneShell from "../../components/motion/scene-shell";
 
 const CODE_REGEX = /^[A-HJ-NP-Z]{4}$/;
 
@@ -94,10 +96,16 @@ function JoinRoomContent() {
   }
 
   return (
-    <main className="page-shell page-with-top-bar">
+    <SceneShell className="page-with-top-bar">
       <SessionTopBar backHref="/" backLabel="Back Home" phaseLabel="Join Room" />
       <div className="content-wrap grid min-h-dvh place-items-center">
-        <form onSubmit={onSubmit} className="panel w-full max-w-lg space-y-5 p-6">
+        <motion.form
+          onSubmit={onSubmit}
+          className="panel w-full max-w-lg space-y-5 p-6"
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.34 }}
+        >
           <h1 className="text-3xl font-bold">Join Room</h1>
           <p className="text-zinc-300">Enter a 4-letter room code and your display name to join a live session.</p>
           {inviteBanner.fromInvite && inviteCodeLabel ? (
@@ -146,9 +154,9 @@ function JoinRoomContent() {
           </button>
 
           <p className="text-center text-xs text-zinc-500">Dev shortcut: use code DEMO1 for local demo mode.</p>
-        </form>
+        </motion.form>
       </div>
-    </main>
+    </SceneShell>
   );
 }
 
@@ -156,12 +164,12 @@ export default function JoinRoomPage() {
   return (
     <Suspense
       fallback={
-        <main className="page-shell page-with-top-bar">
+        <SceneShell className="page-with-top-bar">
           <SessionTopBar backHref="/" backLabel="Back Home" phaseLabel="Join Room" />
           <div className="content-wrap grid min-h-dvh place-items-center">
             <div className="panel w-full max-w-lg p-6 text-center text-zinc-300">Loading join form...</div>
           </div>
-        </main>
+        </SceneShell>
       }
     >
       <JoinRoomContent />

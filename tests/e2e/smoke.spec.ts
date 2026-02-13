@@ -37,6 +37,8 @@ test("demo game shows narrator banner", async ({ page }) => {
   await page.getByRole("button", { name: "Finish Demo Minigame" }).click();
   await page.waitForURL(/\/game\/DEMO1\?/);
   await expect(page.getByText(/narrator/i)).toBeVisible();
+  await expect(page.locator("main.page-shell")).toHaveClass(/motion-band-/);
+  await expect(page.locator(".suspense-wash")).toBeVisible();
 });
 
 test("health endpoint is reachable", async ({ request }) => {
