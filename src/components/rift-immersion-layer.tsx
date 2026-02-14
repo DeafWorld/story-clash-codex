@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import clsx from "clsx";
 import { motion, AnimatePresence } from "framer-motion";
 import { useReducedMotionPreference } from "../lib/motion/reduced-motion";
@@ -21,6 +21,46 @@ type RiftImmersionLayerProps = {
 
 type RiftStage = "idle" | "phase1" | "phase2" | "phase3" | "phase4";
 
+function accentForEvent(event: RiftEventRecord): string {
+  if (event.type === "rift_reality_fracture") {
+    return "#ff4d6d";
+  }
+  if (event.targetGenre === "zombie") {
+    return "#57ff3a";
+  }
+  if (event.targetGenre === "alien") {
+    return "#53f4ff";
+  }
+  if (event.targetGenre === "haunted") {
+    return "#d0a4ff";
+  }
+  return "#d946ef";
+}
+
+function burstCountForTier(tier: RiftVisualTier): number {
+  if (tier === "high") {
+    return 52;
+  }
+  if (tier === "medium") {
+    return 32;
+  }
+  return 14;
+}
+
+function driftCountForTier(tier: RiftVisualTier): number {
+  if (tier === "high") {
+    return 16;
+  }
+  if (tier === "medium") {
+    return 10;
+  }
+  return 0;
+}
+
+function accentStyle(color: string): CSSProperties {
+  return { ["--rift-accent" as string]: color };
+}
+
 export default function RiftImmersionLayer({
   event,
   chaosLevel,
@@ -34,27 +74,37 @@ export default function RiftImmersionLayer({
   const reducedMotion = useReducedMotionPreference();
   const [stage, setStage] = useState<RiftStage>(chaosLevel >= 52 ? "phase1" : "idle");
   const [bannerVisible, setBannerVisible] = useState(false);
+  const [contaminationAccent, setContaminationAccent] = useState<string | null>(null);
   const activeEventRef = useRef<string | null>(null);
-  const timersRef = useRef<number[]>([]);
+  const stageTimersRef = useRef<number[]>([]);
+  const contaminationTimerRef = useRef<number | null>(null);
 
   const canRunHeavy = !reducedMotion && tier !== "low" && !interactionBusy;
   const fracture = event?.type === "rift_reality_fracture";
+  const burstCount = burstCountForTier(tier);
+  const driftCount = driftCountForTier(tier);
+  const activeAccent = event ? accentForEvent(event) : contaminationAccent ?? "#d946ef";
+  const contaminationVisible = !reducedMotion && Boolean(contaminationAccent);
 
   useEffect(() => {
     return () => {
-      timersRef.current.forEach((timerId) => window.clearTimeout(timerId));
-      timersRef.current = [];
+      stageTimersRef.current.forEach((timerId) => window.clearTimeout(timerId));
+      stageTimersRef.current = [];
+      if (contaminationTimerRef.current) {
+        window.clearTimeout(contaminationTimerRef.current);
+        contaminationTimerRef.current = null;
+      }
     };
   }, []);
 
   useEffect(() => {
-    timersRef.current.forEach((timerId) => window.clearTimeout(timerId));
-    timersRef.current = [];
+    stageTimersRef.current.forEach((timerId) => window.clearTimeout(timerId));
+    stageTimersRef.current = [];
 
     if (!event) {
       activeEventRef.current = null;
       setBannerVisible(false);
-      setStage(chaosLevel >= 58 ? "phase1" : "idle");
+      setStage(chaosLevel >= 52 ? "phase1" : "idle");
       return;
     }
 
@@ -63,6 +113,15 @@ export default function RiftImmersionLayer({
     }
 
     activeEventRef.current = event.id;
+    setContaminationAccent(accentForEvent(event));
+    if (contaminationTimerRef.current) {
+      window.clearTimeout(contaminationTimerRef.current);
+      contaminationTimerRef.current = null;
+    }
+    contaminationTimerRef.current = window.setTimeout(() => {
+      setContaminationAccent(null);
+      contaminationTimerRef.current = null;
+    }, 15_000);
 
     if (reducedMotion) {
       setStage("phase1");
@@ -72,20 +131,20 @@ export default function RiftImmersionLayer({
         setBannerVisible(false);
         onOverlayResolved?.(event);
       }, 2200);
-      timersRef.current.push(hideBanner);
+      stageTimersRef.current.push(hideBanner);
       return;
     }
 
     try {
       setStage("phase2");
       onOverlayRendered?.(event);
-      const toRupture = window.setTimeout(() => setStage("phase3"), canRunHeavy ? 260 : 140);
-      const toAftermath = window.setTimeout(() => setStage("phase4"), canRunHeavy ? 1860 : 980);
+      const toRupture = window.setTimeout(() => setStage("phase3"), canRunHeavy ? 520 : 260);
+      const toAftermath = window.setTimeout(() => setStage("phase4"), canRunHeavy ? 2700 : 1400);
       const toIdle = window.setTimeout(() => {
         setStage(chaosLevel >= 52 ? "phase1" : "idle");
         onOverlayResolved?.(event);
-      }, canRunHeavy ? 3200 : 1900);
-      timersRef.current.push(toRupture, toAftermath, toIdle);
+      }, canRunHeavy ? 5100 : 2700);
+      stageTimersRef.current.push(toRupture, toAftermath, toIdle);
     } catch {
       onOverlayFallback?.(event);
       setStage("phase1");
@@ -110,6 +169,48 @@ export default function RiftImmersionLayer({
 
   return (
     <>
+      <AnimatePresence>
+        {contaminationVisible ? (
+          <motion.div
+            className="pointer-events-none absolute inset-0 z-[10] rift-contamination-layer"
+            style={accentStyle(contaminationAccent ?? "#d946ef")}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: stage === "idle" ? 0.5 : 0.72 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.8, ease: "easeOut" }}
+            aria-hidden
+          >
+            <div className="rift-contamination-vignette" />
+            <div className="absolute inset-0 overflow-hidden">
+              {Array.from({ length: driftCount }).map((_, index) => (
+                <motion.span
+                  key={`drift-${index}`}
+                  className="rift-drift-particle"
+                  style={{
+                    left: `${(index * 53) % 100}%`,
+                    top: `${(index * 29) % 100}%`,
+                    backgroundColor: contaminationAccent ?? "#d946ef",
+                  }}
+                  initial={{ opacity: 0, scale: 0.4 }}
+                  animate={{
+                    x: [0, (index % 2 === 0 ? 12 : -14), 7, -8, 0],
+                    y: [0, -22, 10, -18, 6],
+                    opacity: [0.08, 0.32, 0.2, 0.1, 0.06],
+                    scale: [0.4, 1, 0.7, 0.95, 0.5],
+                  }}
+                  transition={{
+                    duration: 8 + (index % 4) * 1.9,
+                    repeat: Infinity,
+                    ease: "easeInOut",
+                    delay: (index % 5) * 0.33,
+                  }}
+                />
+              ))}
+            </div>
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
+
       <div
         className={clsx(
           "pointer-events-none absolute inset-0 z-[12] transition-opacity duration-300",
@@ -128,28 +229,96 @@ export default function RiftImmersionLayer({
             animate={{ opacity: stage === "phase1" ? 0.78 : 1, scale: 1 }}
             exit={{ opacity: 0, scale: 1.015 }}
             transition={{ duration: 0.22 }}
+            style={accentStyle(activeAccent)}
             aria-hidden
           >
             <motion.div
-              className={clsx(
-                "max-w-xl rounded-2xl border px-5 py-4 text-center shadow-2xl backdrop-blur-sm",
-                fracture
-                  ? "border-red-300/70 bg-red-950/65"
-                  : "border-cyan-300/70 bg-cyan-950/60",
-                stage === "phase3" ? "ring-2 ring-white/40" : "ring-1 ring-white/20"
-              )}
-              initial={{ scale: 0.9, y: 10 }}
-              animate={{ scale: stage === "phase3" ? 1.04 : 1, y: 0 }}
-              transition={{ duration: 0.2, ease: "easeOut" }}
+              className="relative grid place-items-center"
+              animate={
+                stage === "phase3" && canRunHeavy
+                  ? {
+                      x: [0, -10, 8, -7, 6, -3, 0],
+                      y: [0, 8, -7, 5, -4, 2, 0],
+                    }
+                  : { x: 0, y: 0 }
+              }
+              transition={{ duration: 0.52, ease: "easeInOut" }}
             >
-              <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-zinc-100">Rift Event</p>
-              <p className="mt-1 text-2xl font-black text-white">{event.title}</p>
-              <p className="mt-2 text-base text-zinc-50">{event.description}</p>
               {stage === "phase3" ? (
-                <p className="mt-3 text-xs font-semibold uppercase tracking-[0.2em] text-amber-200">
-                  Reality destabilizing
-                </p>
+                <motion.div
+                  className="pointer-events-none absolute inset-0"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: [0, 1, 0.2] }}
+                  transition={{ duration: 0.75, ease: "easeOut" }}
+                >
+                  <motion.div
+                    className="absolute inset-0 rift-impact-flash"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: [0, 0.95, 0] }}
+                    transition={{ duration: 0.36, ease: "easeOut" }}
+                  />
+                  <motion.div
+                    className="absolute inset-0 rift-crack-overlay"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: [0, 0.85, 0.25] }}
+                    transition={{ duration: 0.7, ease: "easeOut" }}
+                  />
+                  <div className="absolute inset-0 overflow-hidden">
+                    {Array.from({ length: burstCount }).map((_, index) => {
+                      const angle = (Math.PI * 2 * index) / burstCount;
+                      const distance = 110 + (index % 7) * 16;
+                      const jitter = ((index % 5) - 2) * 3;
+                      const x = Math.cos(angle) * distance + jitter;
+                      const y = Math.sin(angle) * distance - jitter;
+                      return (
+                        <motion.span
+                          key={`burst-${index}`}
+                          className="rift-burst-particle"
+                          style={{ backgroundColor: activeAccent }}
+                          initial={{ x: 0, y: 0, opacity: 1, scale: 1 }}
+                          animate={{ x, y, opacity: 0, scale: 0.25 }}
+                          transition={{
+                            duration: 0.9 + (index % 4) * 0.06,
+                            ease: "easeOut",
+                            delay: (index % 8) * 0.016,
+                          }}
+                        />
+                      );
+                    })}
+                  </div>
+                </motion.div>
               ) : null}
+              <motion.div
+                className={clsx(
+                  "max-w-xl rounded-3xl border px-6 py-5 text-center shadow-2xl backdrop-blur-sm",
+                  fracture
+                    ? "border-red-300/80 bg-red-950/70"
+                    : "border-cyan-300/80 bg-cyan-950/68",
+                  stage === "phase3" ? "ring-2 ring-white/45" : "ring-1 ring-white/22"
+                )}
+                initial={{ scale: 0.86, y: -120, rotate: -2, opacity: 0 }}
+                animate={
+                  stage === "phase2"
+                    ? { scale: [0.86, 1.08, 1], y: [-120, 10, 0], rotate: [-2, 1, 0], opacity: [0, 1, 1] }
+                    : stage === "phase3"
+                      ? { scale: [1, 1.06, 1], y: [0, -2, 0], rotate: 0, opacity: 1 }
+                      : stage === "phase4"
+                        ? { scale: 0.98, y: 4, rotate: 0, opacity: 0.88 }
+                        : { scale: 0.96, y: -6, rotate: 0, opacity: 0.76 }
+                }
+                transition={{ duration: stage === "phase2" ? 0.62 : 0.35, ease: [0.22, 1, 0.36, 1] }}
+              >
+                <p className="text-xs font-semibold uppercase tracking-[0.24em] text-zinc-100">Rift Event</p>
+                <p className="mt-2 text-3xl font-black tracking-[0.05em] text-white">
+                  <span className="text-amber-200">⚡</span> {event.title} <span className="text-amber-200">⚡</span>
+                </p>
+                <p className="mt-2 text-base text-zinc-50">{event.description}</p>
+                {stage === "phase3" ? (
+                  <p className="mt-3 text-xs font-semibold uppercase tracking-[0.22em] text-amber-200">
+                    Reality destabilizing
+                  </p>
+                ) : null}
+              </motion.div>
             </motion.div>
           </motion.div>
         ) : null}
