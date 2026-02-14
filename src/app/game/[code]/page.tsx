@@ -548,7 +548,7 @@ function RealtimeGame({ code, playerId }: RealtimeGameProps) {
       <RiftImmersionLayer
         event={room.activeRiftEvent}
         chaosLevel={room.chaosLevel}
-        sceneId={room.currentScene.id}
+        sceneId={scene.id}
         tier={riftTier}
         interactionBusy={Boolean(isActivePlayer && !submitting)}
         onOverlayRendered={(event) =>
