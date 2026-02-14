@@ -19,7 +19,7 @@ type RiftImmersionLayerProps = {
   onOverlayResolved?: (event: RiftEventRecord) => void;
 };
 
-type RiftStage = "idle" | "phase1" | "phase2" | "phase3" | "phase4";
+type RiftStage = "idle" | "phase1" | "prelude" | "phase2" | "phase3" | "phase4";
 
 function accentForEvent(event: RiftEventRecord): string {
   if (event.type === "rift_reality_fracture") {
@@ -136,15 +136,18 @@ export default function RiftImmersionLayer({
     }
 
     try {
-      setStage("phase2");
+      // Narrative-first pacing: force a short silent hold before the Rift reveal.
+      const preludeMs = canRunHeavy ? 2000 : 1200;
+      setStage("prelude");
       onOverlayRendered?.(event);
-      const toRupture = window.setTimeout(() => setStage("phase3"), canRunHeavy ? 520 : 260);
-      const toAftermath = window.setTimeout(() => setStage("phase4"), canRunHeavy ? 2700 : 1400);
+      const toReveal = window.setTimeout(() => setStage("phase2"), preludeMs);
+      const toRupture = window.setTimeout(() => setStage("phase3"), preludeMs + (canRunHeavy ? 520 : 260));
+      const toAftermath = window.setTimeout(() => setStage("phase4"), preludeMs + (canRunHeavy ? 2700 : 1400));
       const toIdle = window.setTimeout(() => {
         setStage(chaosLevel >= 52 ? "phase1" : "idle");
         onOverlayResolved?.(event);
-      }, canRunHeavy ? 5100 : 2700);
-      stageTimersRef.current.push(toRupture, toAftermath, toIdle);
+      }, preludeMs + (canRunHeavy ? 5100 : 2700));
+      stageTimersRef.current.push(toReveal, toRupture, toAftermath, toIdle);
     } catch {
       onOverlayFallback?.(event);
       setStage("phase1");
@@ -152,6 +155,9 @@ export default function RiftImmersionLayer({
   }, [event, chaosLevel, reducedMotion, canRunHeavy, onOverlayFallback, onOverlayRendered, onOverlayResolved]);
 
   const layerClass = useMemo(() => {
+    if (stage === "prelude") {
+      return "rift-layer-anticipation";
+    }
     if (stage === "phase3") {
       return "rift-layer-rupture";
     }
@@ -221,7 +227,7 @@ export default function RiftImmersionLayer({
       />
 
       <AnimatePresence>
-        {stage !== "idle" && event ? (
+        {stage !== "idle" && stage !== "prelude" && event ? (
           <motion.div
             key={`${event.id}-${sceneId}`}
             className="pointer-events-none absolute inset-0 z-[25] grid place-items-center px-6"
