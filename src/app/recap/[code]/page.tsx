@@ -334,7 +334,7 @@ function RealtimeRecap({ code, playerId }: RealtimeRecapProps) {
 
   if (error) {
     return (
-      <SceneShell cue={recap?.directedScene?.motionCue ?? null} className="page-with-top-bar">
+      <SceneShell cue={null} className="page-with-top-bar">
         <SessionTopBar
           backHref="/"
           backLabel="Back Home"
@@ -356,7 +356,7 @@ function RealtimeRecap({ code, playerId }: RealtimeRecapProps) {
 
   if (!recap) {
     return (
-      <SceneShell cue={recap?.directedScene?.motionCue ?? null} className="page-with-top-bar">
+      <SceneShell cue={null} className="page-with-top-bar">
         <SessionTopBar
           backHref="/"
           backLabel="Back Home"
