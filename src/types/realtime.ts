@@ -1,4 +1,4 @@
-import type { NarrationLine } from "./game";
+import type { NarrationLine, WorldEvent } from "./game";
 
 export type ClientEventName =
   | "join_room"
@@ -34,8 +34,15 @@ export type NarratorUpdatePayload = {
   roomCode: string;
 };
 
+export type WorldEventPayload = {
+  latestWorldEvent: WorldEvent | null;
+  roomCode: string;
+};
+
 export type ServerEventPayloadMap = {
   narrator_update: NarratorUpdatePayload;
+  room_updated: WorldEventPayload;
+  scene_update: WorldEventPayload;
 };
 
 export type ClientEnvelope = {

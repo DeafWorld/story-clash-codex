@@ -8,11 +8,16 @@ import {
   ensurePlayerProfiles,
 } from "./evolution-engine";
 import {
+  appendWorldEvent,
   applyGenrePowerShift,
   computeChaosLevel,
   createInitialGenrePower,
   deriveChoiceGenreShift,
+  deriveRecentTensionDelta,
+  deriveVoteSplitSeverity,
   evaluateRiftEvent,
+  scenesSinceLastRift,
+  toWorldEventFromRift,
 } from "./rift";
 import {
   getNextNodeIdFromChoice,
@@ -68,6 +73,7 @@ export type DemoSessionState = {
   latestNarration: NarrationLine | null;
   narrationLog: NarrationLine[];
   worldState: WorldState;
+  latestWorldEvent: WorldState["timeline"][number] | null;
   playerProfiles: Record<string, PlayerProfile>;
   narrativeThreads: NarrativeThread[];
   activeThreadId: string | null;
@@ -108,6 +114,7 @@ function createSession(): DemoSessionState {
     latestNarration: null,
     narrationLog: [],
     worldState: createInitialWorldState(),
+    latestWorldEvent: null,
     playerProfiles: ensurePlayerProfiles(DEMO_PLAYERS, {}),
     narrativeThreads: [],
     activeThreadId: null,
@@ -224,6 +231,7 @@ export function setDemoMinigameOrder(order: string[], genre: GenreId = "zombie")
   session.riftHistory = [];
   session.activeRiftEvent = null;
   session.worldState = createInitialWorldState();
+  session.latestWorldEvent = null;
   session.playerProfiles = ensurePlayerProfiles(session.players, session.playerProfiles);
   session.narrativeThreads = [];
   session.activeThreadId = null;
@@ -273,6 +281,7 @@ export function setDemoMinigameOrder(order: string[], genre: GenreId = "zombie")
   session.directorTimeline = directed.directorTimeline;
   if (directed.timelineEvents.length > 0) {
     session.worldState.timeline = [...session.worldState.timeline, ...directed.timelineEvents].slice(-60);
+    session.latestWorldEvent = session.worldState.timeline.at(-1) ?? session.latestWorldEvent;
   }
 }
 
@@ -320,6 +329,22 @@ export function advanceDemoStoryChoice(choiceId: string) {
     playerId: session.currentPlayerId,
     genrePower: session.genrePower,
     chaosLevel: session.chaosLevel,
+    voteSplitSeverity: deriveVoteSplitSeverity({
+      availableChoices: sceneChoices.length,
+      recentChoiceTargets: session.history
+        .slice(-4)
+        .map((entry) => entry.nextNodeId)
+        .filter((value): value is string => Boolean(value)),
+      selectedNextSceneId: nextNodeId,
+    }),
+    scenesSinceLastRift: scenesSinceLastRift({
+      historyLength: session.history.length,
+      riftHistory: session.riftHistory,
+    }),
+    recentTensionDelta: deriveRecentTensionDelta({
+      currentTension: scene.tensionLevel,
+      recentTensions: session.history.slice(-3).map((entry) => entry.tensionLevel),
+    }),
   });
   nextNodeId = rift.nextSceneId;
   session.genrePower = rift.genrePower;
@@ -327,6 +352,9 @@ export function advanceDemoStoryChoice(choiceId: string) {
   session.activeRiftEvent = rift.event;
   if (rift.event) {
     session.riftHistory = [...session.riftHistory, rift.event].slice(-40);
+    const worldUpdate = appendWorldEvent(session.worldState.timeline, toWorldEventFromRift(rift.event), 60);
+    session.worldState.timeline = worldUpdate.timeline;
+    session.latestWorldEvent = worldUpdate.latest;
   }
 
   pushHistory(nextNodeId, choice.label);
@@ -396,6 +424,7 @@ export function advanceDemoStoryChoice(choiceId: string) {
   session.directorTimeline = directed.directorTimeline;
   if (directed.timelineEvents.length > 0) {
     session.worldState.timeline = [...session.worldState.timeline, ...directed.timelineEvents].slice(-60);
+    session.latestWorldEvent = session.worldState.timeline.at(-1) ?? session.latestWorldEvent;
   }
 
   session.currentNodeId = nextNodeId;

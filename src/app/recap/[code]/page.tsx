@@ -98,6 +98,11 @@ function DemoRecap({ code }: DemoRecapProps) {
           <DirectorBeatTimeline beats={session.directorTimeline ?? []} />
           <RiftEventTimeline events={session.riftHistory} />
           <WorldEventTimeline events={session.worldState.timeline} />
+          {session.latestWorldEvent ? (
+            <div className="rounded-xl border border-fuchsia-300/40 bg-fuchsia-500/10 p-3 text-sm text-fuchsia-100">
+              Latest shift: <strong>{session.latestWorldEvent.title}</strong> - {session.latestWorldEvent.detail}
+            </div>
+          ) : null}
         </section>
 
         <section className="panel space-y-4 p-5">
@@ -431,6 +436,11 @@ function RealtimeRecap({ code, playerId }: RealtimeRecapProps) {
             <DirectorBeatTimeline beats={recap.directorTimeline ?? []} />
             <RiftEventTimeline events={recap.riftHistory} />
             <WorldEventTimeline events={recap.worldState?.timeline ?? []} />
+            {recap.latestWorldEvent ? (
+              <div className="rounded-xl border border-fuchsia-300/40 bg-fuchsia-500/10 p-3 text-sm text-fuchsia-100">
+                Latest shift: <strong>{recap.latestWorldEvent.title}</strong> - {recap.latestWorldEvent.detail}
+              </div>
+            ) : null}
 
             <section className="panel space-y-4 p-5">
               <h2 className="text-xl font-semibold">Living Rift Snapshot</h2>

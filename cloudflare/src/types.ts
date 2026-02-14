@@ -3,12 +3,19 @@ export type EndingType = "triumph" | "survival" | "doom";
 export type RoomPhase = "lobby" | "minigame" | "game" | "recap";
 export type NarrationTone = "calm" | "uneasy" | "urgent" | "desperate" | "hopeful" | "grim";
 export type NarrationTrigger = "scene_enter" | "choice_submitted" | "turn_timeout" | "ending";
-export type RiftEventType = "genre_surge" | "scene_twist";
+export type RiftEventType = "rift_genre_surge" | "rift_reality_fracture";
 export type FactionId = "survivors" | "scientists" | "military";
 export type ResourceId = "food" | "medicine" | "ammunition" | "fuel";
 export type ResourceTrend = "stable" | "declining" | "critical";
 export type WorldTensionId = "food_shortage" | "faction_conflict" | "external_threat" | "morale_crisis" | "disease_outbreak";
-export type WorldEventType = "resource_crisis" | "faction_conflict" | "tension_overflow" | "thread_seeded" | "thread_resolved";
+export type WorldEventType =
+  | "resource_crisis"
+  | "faction_conflict"
+  | "tension_overflow"
+  | "thread_seeded"
+  | "thread_resolved"
+  | "rift_genre_surge"
+  | "rift_reality_fracture";
 export type WorldEventSeverity = "low" | "medium" | "high" | "critical";
 export type NarrativeThreadType = "mystery" | "conflict" | "relationship" | "quest" | "survival";
 export type NarrativeThreadStatus = "active" | "resolved" | "abandoned" | "dormant";
@@ -58,8 +65,11 @@ export type WorldTimelineEvent = {
   title: string;
   detail: string;
   severity: WorldEventSeverity;
+  source?: "rift" | "director" | "system";
   createdAt: number;
 };
+
+export type WorldEvent = WorldTimelineEvent;
 
 export type WorldMetaState = {
   gamesPlayed: number;
@@ -120,6 +130,7 @@ export type RiftEventRecord = {
   type: RiftEventType;
   title: string;
   description: string;
+  step: number;
   sceneId: string;
   playerId: string | null;
   choiceId?: string | null;
@@ -128,6 +139,26 @@ export type RiftEventRecord = {
   targetGenre?: GenreId | null;
   chaosLevel: number;
   createdAt: number;
+};
+
+export type RiftTriggerContext = {
+  roomCode: string;
+  step: number;
+  sceneId: string;
+  chaosLevel: number;
+  genrePower: GenrePower;
+  voteSplitSeverity: number;
+  scenesSinceLastRift: number;
+  recentTensionDelta: number;
+  timeout?: boolean;
+};
+
+export type RiftDecision = {
+  triggered: boolean;
+  selectedType: RiftEventType | null;
+  probability: number;
+  roll: number;
+  reason: string;
 };
 
 export type Choice = {
@@ -231,6 +262,7 @@ export type RoomState = {
   latestNarration: NarrationLine | null;
   narrationLog: NarrationLine[];
   worldState: WorldState;
+  latestWorldEvent: WorldEvent | null;
   narrativeThreads: NarrativeThread[];
   activeThreadId: string | null;
   directedScene: DirectedSceneView | null;
@@ -264,6 +296,7 @@ export type RecapPayload = {
   latestNarration: NarrationLine | null;
   narrationLog: NarrationLine[];
   worldState: WorldState;
+  latestWorldEvent: WorldEvent | null;
   narrativeThreads: NarrativeThread[];
   activeThreadId: string | null;
   directedScene: DirectedSceneView | null;

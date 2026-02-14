@@ -23,6 +23,11 @@ export type AnalyticsEventName =
   | "motion_perf_sample"
   | "share_link_created"
   | "og_image_requested"
+  | "rift_trigger_evaluated"
+  | "rift_event_triggered"
+  | "rift_overlay_rendered"
+  | "rift_overlay_fallback_used"
+  | "rift_event_resolved"
   | "cron_daily";
 
 type AnalyticsEvent = {

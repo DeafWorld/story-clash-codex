@@ -18,7 +18,7 @@ export default function RiftEventTimeline({
       <h2 className="mb-3 text-2xl font-semibold">{title}</h2>
       {events.length === 0 ? (
         <p className="text-sm text-zinc-400">
-          No Rift spikes this run. Keep pushing chaos to trigger surges and twists.
+          No Rift spikes this run. Keep pushing chaos to trigger surges and fractures.
         </p>
       ) : (
         <div className="space-y-3">
@@ -30,7 +30,7 @@ export default function RiftEventTimeline({
               transition={{ delay: Math.min(index * 0.04, 0.3) }}
               className={clsx(
                 "rounded-xl border p-4",
-                event.type === "scene_twist"
+                event.type === "rift_reality_fracture"
                   ? "border-red-300/45 bg-red-500/10"
                   : "border-cyan-300/45 bg-cyan-500/10"
               )}

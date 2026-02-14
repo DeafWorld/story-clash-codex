@@ -3,6 +3,7 @@ import { sanitizeDisplayName } from "./profanity";
 import { generateRoomCode, validateRoomCode } from "./room-code";
 import { getScene, getStoryTitle } from "./stories";
 import { generateNarrationLine } from "./narrator";
+import { logger } from "./logger";
 import {
   applyEvolutionStep,
   createInitialPlayerProfile,
@@ -11,11 +12,16 @@ import {
 } from "./evolution-engine";
 import { applyNarrativeDirector, defaultMotionCue } from "./narrative-director";
 import {
+  appendWorldEvent,
   computeChaosLevel,
   createInitialGenrePower,
   deriveChoiceGenreShift,
+  deriveRecentTensionDelta,
+  deriveVoteSplitSeverity,
   evaluateRiftEvent,
   applyGenrePowerShift,
+  scenesSinceLastRift,
+  toWorldEventFromRift,
 } from "./rift";
 import type {
   Choice,
@@ -156,6 +162,7 @@ function ensureFreshRoom(code: string): RoomState {
   room.latestNarration = room.latestNarration ?? null;
   room.narrationLog = (room.narrationLog ?? []).slice(-MAX_NARRATION_LOG);
   room.worldState = room.worldState ?? createInitialWorldState();
+  room.latestWorldEvent = room.latestWorldEvent ?? room.worldState.timeline.at(-1) ?? null;
   room.playerProfiles = ensurePlayerProfiles(room.players, room.playerProfiles ?? {});
   room.narrativeThreads = room.narrativeThreads ?? [];
   room.activeThreadId = room.activeThreadId ?? null;
@@ -376,6 +383,7 @@ export function createRoom(hostName: string) {
     latestNarration: null,
     narrationLog: [],
     worldState: createInitialWorldState(),
+    latestWorldEvent: null,
     playerProfiles: {
       [host.id]: createInitialPlayerProfile(host.id),
     },
@@ -593,6 +601,7 @@ export function selectGenre(code: string, playerId: string, genre: GenreId) {
   room.chaosLevel = 0;
   room.riftHistory = [];
   room.activeRiftEvent = null;
+  room.latestWorldEvent = null;
   room.directorTimeline = [];
   room.directedScene = null;
   room.endingScene = null;
@@ -644,6 +653,7 @@ export function selectGenre(code: string, playerId: string, genre: GenreId) {
   room.directorTimeline = directed.directorTimeline;
   if (directed.timelineEvents.length > 0) {
     room.worldState.timeline = [...room.worldState.timeline, ...directed.timelineEvents].slice(-60);
+    room.latestWorldEvent = room.worldState.timeline.at(-1) ?? room.latestWorldEvent;
   }
 
   return {
@@ -743,6 +753,22 @@ export function submitChoice(
     genrePower: room.genrePower,
     chaosLevel: room.chaosLevel,
     timeout: payload.timeout,
+    voteSplitSeverity: deriveVoteSplitSeverity({
+      availableChoices: sceneChoices.length,
+      recentChoiceTargets: room.history
+        .slice(-4)
+        .map((entry) => entry.nextNodeId)
+        .filter((value): value is string => Boolean(value)),
+      selectedNextSceneId: nextSceneId,
+    }),
+    scenesSinceLastRift: scenesSinceLastRift({
+      historyLength: room.history.length,
+      riftHistory: room.riftHistory,
+    }),
+    recentTensionDelta: deriveRecentTensionDelta({
+      currentTension: scene.tensionLevel ?? 1,
+      recentTensions: room.history.slice(-3).map((entry) => entry.tensionLevel ?? 1),
+    }),
   });
   nextSceneId = rift.nextSceneId;
   room.genrePower = rift.genrePower;
@@ -750,7 +776,21 @@ export function submitChoice(
   room.activeRiftEvent = rift.event;
   if (rift.event) {
     room.riftHistory = [...room.riftHistory, rift.event].slice(-MAX_RIFT_HISTORY);
+    const mappedWorldEvent = toWorldEventFromRift(rift.event);
+    const worldUpdate = appendWorldEvent(room.worldState.timeline, mappedWorldEvent, 60);
+    room.worldState.timeline = worldUpdate.timeline;
+    room.latestWorldEvent = worldUpdate.latest;
   }
+  logger.info("rift.trigger_evaluated", {
+    roomCode: room.code,
+    step: room.history.length + 1,
+    probability: rift.decision.probability,
+    roll: rift.decision.roll,
+    triggered: rift.decision.triggered,
+    eventType: rift.event?.type ?? null,
+    chaos: room.chaosLevel,
+    genreLead: Math.max(room.genrePower.zombie, room.genrePower.alien, room.genrePower.haunted),
+  });
 
   const historyEntry = {
     sceneId: scene.id,
@@ -824,6 +864,7 @@ export function submitChoice(
   room.directorTimeline = directed.directorTimeline;
   if (directed.timelineEvents.length > 0) {
     room.worldState.timeline = [...room.worldState.timeline, ...directed.timelineEvents].slice(-60);
+    room.latestWorldEvent = room.worldState.timeline.at(-1) ?? room.latestWorldEvent;
   }
 
   if (nextScene.ending) {
@@ -845,6 +886,7 @@ export function submitChoice(
       endingType: room.endingType,
       history: room.history,
       riftEvent: room.activeRiftEvent,
+      riftDecision: rift.decision,
       narration,
       endingNarration,
     };
@@ -861,6 +903,7 @@ export function submitChoice(
     turnDeadline: room.turnDeadline,
     history: room.history,
     riftEvent: room.activeRiftEvent,
+    riftDecision: rift.decision,
     narration,
   };
 }
@@ -898,6 +941,7 @@ export function getRecapState(code: string) {
     latestNarration: room.latestNarration ?? null,
     narrationLog: room.narrationLog ?? [],
     worldState: room.worldState,
+    latestWorldEvent: room.latestWorldEvent,
     playerProfiles: room.playerProfiles,
     narrativeThreads: room.narrativeThreads,
     activeThreadId: room.activeThreadId,
@@ -919,6 +963,7 @@ export function restartSession(code: string) {
   room.chaosLevel = 0;
   room.riftHistory = [];
   room.activeRiftEvent = null;
+  room.latestWorldEvent = room.worldState.timeline.at(-1) ?? null;
   room.latestNarration = null;
   room.narrationLog = [];
   room.endingScene = null;

@@ -6,7 +6,11 @@ type WorldEventTimelineProps = {
   compact?: boolean;
 };
 
-function severityStyle(severity: WorldTimelineEvent["severity"]) {
+function severityStyle(event: WorldTimelineEvent) {
+  if (event.type.startsWith("rift_")) {
+    return "border-fuchsia-300/50 bg-fuchsia-500/12 text-fuchsia-100 shadow-[0_0_18px_rgba(217,70,239,0.18)]";
+  }
+  const severity = event.severity;
   if (severity === "critical") {
     return "border-red-300/50 bg-red-500/10 text-red-100";
   }
@@ -36,7 +40,7 @@ export default function WorldEventTimeline({ events, compact = false }: WorldEve
           {visible.map((event) => (
             <article
               key={event.id}
-              className={clsx("rounded-xl border px-3 py-2 text-sm", severityStyle(event.severity))}
+              className={clsx("rounded-xl border px-3 py-2 text-sm", severityStyle(event))}
             >
               <p className="text-[11px] uppercase tracking-[0.16em] opacity-85">{event.type.replaceAll("_", " ")}</p>
               <p className="font-semibold">{event.title}</p>

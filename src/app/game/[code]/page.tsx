@@ -9,6 +9,7 @@ import { trackEvent } from "../../../lib/analytics";
 import Typewriter from "../../../components/typewriter";
 import RoomCodeCard from "../../../components/room-code-card";
 import NarratorBanner from "../../../components/narrator-banner";
+import RiftImmersionLayer from "../../../components/rift-immersion-layer";
 import SceneShell from "../../../components/motion/scene-shell";
 import ImpactFlash from "../../../components/motion/impact-flash";
 import {
@@ -34,6 +35,27 @@ function genreOverlay(genre: string | null) {
   return "";
 }
 
+function detectRiftVisualTier(): "high" | "medium" | "low" {
+  if (typeof window === "undefined") {
+    return "medium";
+  }
+
+  const reducedMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+  if (reducedMotion) {
+    return "low";
+  }
+
+  const memory = (navigator as Navigator & { deviceMemory?: number }).deviceMemory ?? 4;
+  const cores = navigator.hardwareConcurrency ?? 4;
+  if (memory <= 2 || cores <= 4) {
+    return "low";
+  }
+  if (memory <= 4 || cores <= 6) {
+    return "medium";
+  }
+  return "high";
+}
+
 type DemoGameProps = {
   code: string;
   playerId: string;
@@ -42,6 +64,9 @@ type DemoGameProps = {
 function DemoGame({ code, playerId }: DemoGameProps) {
   const router = useRouter();
   const [, rerender] = useState(0);
+  const [overlayFallback, setOverlayFallback] = useState<string | null>(null);
+  const [riftTier, setRiftTier] = useState<"high" | "medium" | "low">("medium");
+  const lastDemoRiftIdRef = useRef<string | null>(null);
 
   const session = getDemoSession();
   const storyTree = getDemoStoryTree();
@@ -59,6 +84,31 @@ function DemoGame({ code, playerId }: DemoGameProps) {
   const directed = session.directedScene;
   const cue = directed?.motionCue ?? null;
   const showImpact = directed?.beatType === "payoff" || directed?.beatType === "fracture";
+
+  useEffect(() => {
+    setRiftTier(detectRiftVisualTier());
+  }, []);
+
+  useEffect(() => {
+    if (!overlayFallback) {
+      return;
+    }
+    const timeout = window.setTimeout(() => setOverlayFallback(null), 2200);
+    return () => window.clearTimeout(timeout);
+  }, [overlayFallback]);
+
+  useEffect(() => {
+    if (!session.activeRiftEvent || session.activeRiftEvent.id === lastDemoRiftIdRef.current) {
+      return;
+    }
+    lastDemoRiftIdRef.current = session.activeRiftEvent.id;
+    trackEvent("rift_event_triggered", {
+      code,
+      mode: "demo",
+      eventType: session.activeRiftEvent.type,
+      chaos: session.activeRiftEvent.chaosLevel,
+    });
+  }, [code, session.activeRiftEvent]);
 
   function choose(choiceId: string) {
     advanceDemoStoryChoice(choiceId);
@@ -78,6 +128,28 @@ function DemoGame({ code, playerId }: DemoGameProps) {
       />
       <div className="suspense-wash" aria-hidden />
       <ImpactFlash active={Boolean(showImpact)} />
+      <RiftImmersionLayer
+        event={session.activeRiftEvent}
+        chaosLevel={session.chaosLevel}
+        sceneId={session.currentNodeId}
+        tier={riftTier}
+        interactionBusy={false}
+        onOverlayRendered={(event) =>
+          trackEvent("rift_overlay_rendered", {
+            code,
+            mode: "demo",
+            eventType: event.type,
+            chaos: event.chaosLevel,
+          })
+        }
+        onOverlayFallback={(event) => {
+          trackEvent("rift_overlay_fallback_used", { code, mode: "demo", eventType: event.type });
+          setOverlayFallback(`${event.title}: ${event.description}`);
+        }}
+        onOverlayResolved={(event) =>
+          trackEvent("rift_event_resolved", { code, mode: "demo", eventType: event.type })
+        }
+      />
       <SessionTopBar
         backHref={`/lobby/${code}?player=${viewer.id}&demo=1`}
         backLabel="Back to Lobby"
@@ -94,8 +166,16 @@ function DemoGame({ code, playerId }: DemoGameProps) {
           <h1 className="text-2xl font-black sm:text-3xl">Decision Under Pressure</h1>
           <p className="text-sm text-zinc-300">The clock runs, chaos rises, and each turn reshapes the ending.</p>
         </section>
+        {overlayFallback ? <p className="text-sm text-fuchsia-200">{overlayFallback}</p> : null}
         <RoomCodeCard code={code} players={session.players} title="Demo Room" />
         <NarratorBanner line={narration} />
+        {session.latestWorldEvent ? (
+          <section className="rounded-xl border border-fuchsia-300/40 bg-fuchsia-500/10 px-4 py-3 shadow-[0_0_24px_rgba(217,70,239,0.2)]">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-fuchsia-200">World Shift</p>
+            <p className="mt-1 text-sm font-semibold text-white">{session.latestWorldEvent.title}</p>
+            <p className="mt-1 text-xs text-fuchsia-100/90">{session.latestWorldEvent.detail}</p>
+          </section>
+        ) : null}
       <div className="grid min-h-[70dvh] gap-4 lg:grid-cols-[1fr_280px]">
         <section className={clsx("panel flex flex-col gap-5 p-5", tensionHigh ? "tension-pulse" : "")}>
           <header className="flex flex-wrap items-center justify-between gap-3">
@@ -184,7 +264,11 @@ function RealtimeGame({ code, playerId }: RealtimeGameProps) {
   const [remainingMs, setRemainingMs] = useState(30000);
   const [timeoutNotice, setTimeoutNotice] = useState<string | null>(null);
   const [narration, setNarration] = useState<NarrationLine | null>(null);
+  const [overlayFallback, setOverlayFallback] = useState<string | null>(null);
+  const [riftTier, setRiftTier] = useState<"high" | "medium" | "low">("medium");
+  const [missedEventsNotice, setMissedEventsNotice] = useState<string | null>(null);
   const lastNarrationIdRef = useRef<string | null>(null);
+  const lastRiftIdRef = useRef<string | null>(null);
   const roomRef = useRef<RoomView | null>(null);
 
   const activePlayer = useMemo(
@@ -205,6 +289,10 @@ function RealtimeGame({ code, playerId }: RealtimeGameProps) {
   useEffect(() => {
     roomRef.current = room;
   }, [room]);
+
+  useEffect(() => {
+    setRiftTier(detectRiftVisualTier());
+  }, []);
 
   useEffect(() => {
     let mounted = true;
@@ -256,6 +344,11 @@ function RealtimeGame({ code, playerId }: RealtimeGameProps) {
     };
 
     const onReconnectState = (payload: RoomView) => {
+      const previousCount = roomRef.current?.worldState.timeline.length ?? 0;
+      const nextCount = payload.worldState.timeline.length;
+      if (nextCount > previousCount) {
+        setMissedEventsNotice(`You missed ${nextCount - previousCount} world event${nextCount - previousCount === 1 ? "" : "s"} while reconnecting.`);
+      }
       setRoom(payload);
       setNarration(payload.latestNarration ?? null);
       if (payload.turnDeadline) {
@@ -341,6 +434,22 @@ function RealtimeGame({ code, playerId }: RealtimeGameProps) {
   }, [toast]);
 
   useEffect(() => {
+    if (!overlayFallback) {
+      return;
+    }
+    const timer = window.setTimeout(() => setOverlayFallback(null), 2200);
+    return () => window.clearTimeout(timer);
+  }, [overlayFallback]);
+
+  useEffect(() => {
+    if (!missedEventsNotice) {
+      return;
+    }
+    const timer = window.setTimeout(() => setMissedEventsNotice(null), 2600);
+    return () => window.clearTimeout(timer);
+  }, [missedEventsNotice]);
+
+  useEffect(() => {
     if (!narration || narration.id === lastNarrationIdRef.current) {
       return;
     }
@@ -351,6 +460,20 @@ function RealtimeGame({ code, playerId }: RealtimeGameProps) {
       tone: narration.tone,
     });
   }, [code, narration]);
+
+  useEffect(() => {
+    const activeRift = room?.activeRiftEvent;
+    if (!activeRift || activeRift.id === lastRiftIdRef.current) {
+      return;
+    }
+    lastRiftIdRef.current = activeRift.id;
+    trackEvent("rift_event_triggered", {
+      code,
+      eventType: activeRift.type,
+      chaos: activeRift.chaosLevel,
+      step: activeRift.step,
+    });
+  }, [code, room?.activeRiftEvent]);
 
   useEffect(() => {
     if (!room?.turnDeadline || room.phase !== "game") {
@@ -422,6 +545,33 @@ function RealtimeGame({ code, playerId }: RealtimeGameProps) {
       <div className={clsx("absolute inset-0 opacity-80", genreOverlay(genre), tensionHigh ? "animate-pulse" : "")} aria-hidden />
       <div className="suspense-wash" aria-hidden />
       <ImpactFlash active={Boolean(showImpact)} />
+      <RiftImmersionLayer
+        event={room.activeRiftEvent}
+        chaosLevel={room.chaosLevel}
+        sceneId={room.currentScene.id}
+        tier={riftTier}
+        interactionBusy={Boolean(isActivePlayer && !submitting)}
+        onOverlayRendered={(event) =>
+          trackEvent("rift_overlay_rendered", {
+            code,
+            eventType: event.type,
+            chaos: event.chaosLevel,
+          })
+        }
+        onOverlayFallback={(event) => {
+          trackEvent("rift_overlay_fallback_used", {
+            code,
+            eventType: event.type,
+          });
+          setOverlayFallback(`${event.title}: ${event.description}`);
+        }}
+        onOverlayResolved={(event) =>
+          trackEvent("rift_event_resolved", {
+            code,
+            eventType: event.type,
+          })
+        }
+      />
       <SessionTopBar
         backHref={`/lobby/${code}?player=${playerId}`}
         backLabel="Back to Lobby"
@@ -440,6 +590,8 @@ function RealtimeGame({ code, playerId }: RealtimeGameProps) {
         </section>
         {timeoutNotice ? <p className="text-sm text-yellow-300">{timeoutNotice}</p> : null}
         {toast ? <p className="text-sm text-cyan-300">{toast}</p> : null}
+        {missedEventsNotice ? <p className="text-sm text-fuchsia-200">{missedEventsNotice}</p> : null}
+        {overlayFallback ? <p className="text-sm text-fuchsia-200">{overlayFallback}</p> : null}
         {isActivePlayer ? (
           <div
             className="rounded-xl border-2 border-cyan-400 bg-cyan-500/20 px-4 py-3 text-center text-lg font-bold text-cyan-100 shadow-[0_0_20px_rgba(34,211,238,0.3)] animate-pulse"
@@ -450,6 +602,13 @@ function RealtimeGame({ code, playerId }: RealtimeGameProps) {
           </div>
         ) : null}
         <NarratorBanner line={narration} />
+        {room.latestWorldEvent ? (
+          <section className="rounded-xl border border-fuchsia-300/40 bg-fuchsia-500/10 px-4 py-3 shadow-[0_0_24px_rgba(217,70,239,0.2)]">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-fuchsia-200">World Shift</p>
+            <p className="mt-1 text-sm font-semibold text-white">{room.latestWorldEvent.title}</p>
+            <p className="mt-1 text-xs text-fuchsia-100/90">{room.latestWorldEvent.detail}</p>
+          </section>
+        ) : null}
         <RoomCodeCard
           code={code}
           title="Live Room"

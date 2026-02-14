@@ -336,6 +336,44 @@ textarea:focus-visible {
   animation: tensionPulse 1.5s ease-in-out infinite;
 }
 
+.rift-layer-idle {
+  background: transparent;
+}
+
+.rift-layer-subtle {
+  border: 1px solid rgba(217, 70, 239, 0.25);
+  box-shadow: inset 0 0 80px rgba(217, 70, 239, 0.15), 0 0 24px rgba(217, 70, 239, 0.2);
+  animation: riftSubtlePulse 1.6s ease-in-out infinite;
+}
+
+.rift-layer-escalation {
+  background:
+    repeating-linear-gradient(
+      -12deg,
+      rgba(255, 255, 255, 0.05) 0,
+      rgba(255, 255, 255, 0.05) 1px,
+      transparent 1px,
+      transparent 12px
+    ),
+    radial-gradient(circle at 48% 42%, rgba(255, 77, 109, 0.28), transparent 52%),
+    radial-gradient(circle at 30% 70%, rgba(83, 244, 255, 0.16), transparent 58%);
+  animation: riftEscalation 460ms linear infinite;
+}
+
+.rift-layer-rupture {
+  background:
+    radial-gradient(circle at 50% 45%, rgba(255, 255, 255, 0.46), rgba(255, 77, 109, 0.35) 30%, transparent 68%),
+    linear-gradient(180deg, rgba(255, 77, 109, 0.28), rgba(83, 244, 255, 0.16));
+  animation: riftRupture 640ms ease-out 1;
+}
+
+.rift-layer-aftermath {
+  background:
+    radial-gradient(circle at 50% 20%, rgba(217, 70, 239, 0.22), transparent 58%),
+    radial-gradient(circle at 20% 90%, rgba(83, 244, 255, 0.12), transparent 60%);
+  animation: riftAftermath 1.9s ease-out;
+}
+
 @keyframes suspenseShift {
   0% {
     transform: translate3d(0, 0, 0) scale(1);
@@ -358,6 +396,51 @@ textarea:focus-visible {
   }
   50% {
     box-shadow: 0 0 0 7px rgba(255, 77, 109, 0.18);
+  }
+}
+
+@keyframes riftSubtlePulse {
+  0%,
+  100% {
+    opacity: 0.45;
+  }
+  50% {
+    opacity: 0.8;
+  }
+}
+
+@keyframes riftEscalation {
+  0% {
+    transform: translate3d(0, 0, 0);
+    opacity: 0.62;
+  }
+  100% {
+    transform: translate3d(0, -16px, 0);
+    opacity: 1;
+  }
+}
+
+@keyframes riftRupture {
+  0% {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+  30% {
+    opacity: 1;
+    transform: scale(1.05);
+  }
+  100% {
+    opacity: 0.08;
+    transform: scale(1.1);
+  }
+}
+
+@keyframes riftAftermath {
+  0% {
+    opacity: 0.7;
+  }
+  100% {
+    opacity: 0.15;
   }
 }
 
@@ -413,5 +496,15 @@ textarea:focus-visible {
 
   .session-top-inner .btn {
     min-height: 44px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rift-layer-subtle,
+  .rift-layer-escalation,
+  .rift-layer-rupture,
+  .rift-layer-aftermath {
+    animation: none !important;
+    opacity: 0.3;
   }
 }

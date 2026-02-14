@@ -39,6 +39,10 @@ test("demo game shows narrator banner", async ({ page }) => {
   await expect(page.getByText(/narrator/i)).toBeVisible();
   await expect(page.locator("main.page-shell")).toHaveClass(/motion-band-/);
   await expect(page.locator(".suspense-wash")).toBeVisible();
+  await expect(page.locator(".rift-layer-idle, .rift-layer-subtle, .rift-layer-escalation, .rift-layer-rupture, .rift-layer-aftermath")).toBeVisible();
+  await page.locator("button.btn.btn-secondary").first().click();
+  await expect(page.getByText("Rift Event")).toBeVisible({ timeout: 6_000 });
+  await expect(page.getByText("World Shift")).toBeVisible({ timeout: 6_000 });
 });
 
 test("health endpoint is reachable", async ({ request }) => {

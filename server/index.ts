@@ -441,6 +441,19 @@ async function bootstrap() {
             choiceId: payload.choiceId,
           });
           trackEvent("choice_submitted", { code, ended: result.ended });
+          trackEvent("rift_trigger_evaluated", {
+            code,
+            probability: result.riftDecision?.probability ?? null,
+            roll: result.riftDecision?.roll ?? null,
+            triggered: result.riftDecision?.triggered ?? false,
+          });
+          if (result.riftEvent) {
+            trackEvent("rift_event_triggered", {
+              code,
+              eventType: result.riftEvent.type,
+              chaos: result.riftEvent.chaosLevel,
+            });
+          }
           emitNarration(code, result.narration);
 
           if (result.ended) {
@@ -474,6 +487,21 @@ async function bootstrap() {
         const acquired = withRoomLock(code, () => {
           const result = timeoutChoice(code);
           trackEvent("turn_timed_out", { code });
+          trackEvent("rift_trigger_evaluated", {
+            code,
+            probability: result.riftDecision?.probability ?? null,
+            roll: result.riftDecision?.roll ?? null,
+            triggered: result.riftDecision?.triggered ?? false,
+            source: "timeout",
+          });
+          if (result.riftEvent) {
+            trackEvent("rift_event_triggered", {
+              code,
+              eventType: result.riftEvent.type,
+              chaos: result.riftEvent.chaosLevel,
+              source: "timeout",
+            });
+          }
           emitNarration(code, result.narration);
           io.to(code).emit("turn_timeout", {
             playerId: timedOutPlayerId,
@@ -540,6 +568,21 @@ async function bootstrap() {
               if (latest.phase === "game" && latest.activePlayerId === mapping.playerId && player && !player.connected) {
                 const result = timeoutChoice(mapping.code);
                 trackEvent("turn_timed_out", { code: mapping.code, source: "disconnect" });
+                trackEvent("rift_trigger_evaluated", {
+                  code: mapping.code,
+                  probability: result.riftDecision?.probability ?? null,
+                  roll: result.riftDecision?.roll ?? null,
+                  triggered: result.riftDecision?.triggered ?? false,
+                  source: "disconnect",
+                });
+                if (result.riftEvent) {
+                  trackEvent("rift_event_triggered", {
+                    code: mapping.code,
+                    eventType: result.riftEvent.type,
+                    chaos: result.riftEvent.chaosLevel,
+                    source: "disconnect",
+                  });
+                }
                 emitNarration(mapping.code, result.narration);
                 if (result.ended) {
                   emitNarration(mapping.code, result.endingNarration);

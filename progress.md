@@ -264,3 +264,33 @@ TODO:
 - Run Playwright smoke/live suites to confirm no regressions in browser runtime:
   - `npx playwright test tests/e2e/smoke.spec.ts`
   - `RUN_LIVE_E2E=1 npx playwright test tests/e2e/live-multiplayer.spec.ts`
+
+---
+
+- Rift visibility hardening pass implemented to address "no visible Rift interruption" feedback.
+- Updated `/Users/deafgod/Desktop/Codex/src/components/rift-immersion-layer.tsx`:
+  - longer active sequence timings so rupture state is visible long enough to register
+  - stronger event card treatment during active phases (phase2/phase3/phase4)
+  - clearer reduced-motion fallback duration
+  - earlier subtle instability threshold (`chaos >= 52`)
+- Updated `/Users/deafgod/Desktop/Codex/src/app/globals.css` Rift layer styling:
+  - stronger escalation/rupture/aftermath contrast and pulse intensity
+  - more pronounced keyframes for rupture and escalation
+- Updated `/Users/deafgod/Desktop/Codex/src/app/game/[code]/page.tsx` (demo + live):
+  - added persistent `World Shift` callout card sourced from `latestWorldEvent` so Rift consequences are visible beyond transient overlay timing.
+- Updated `/Users/deafgod/Desktop/Codex/tests/e2e/smoke.spec.ts`:
+  - demo game test now clicks a story choice and asserts visible `Rift Event` + `World Shift` evidence.
+
+Validation executed:
+- deterministic logic check script: `rift-logic-check:ok` (probability rises with chaos/imbalance)
+- demo session simulation check: `demo-rift-check:ok { rifts: 3, worldEvents: 4 }`
+- import syntax sanity: `import-check:ok` for updated rift component + rift lib
+
+Environment/runtime blockers still present:
+- `require("next")` and local Next/custom server startup paths stall in this shell, preventing reliable local browser run.
+- `npm run lint` starts and then hangs with no output; timed out at 120s in this environment.
+- Playwright runtime bootstrap (`require('playwright')`) also stalls in this shell; could not complete scripted live screenshot proof from terminal.
+
+Next TODO for next agent/session:
+- run smoke e2e in a fresh shell/CI runner where Next + Playwright load normally to verify visible overlay on `/game/DEMO1` end-to-end.
+- if user still perceives no Rift impact, increase phase3 hold from current ~1.6s to ~2.1s and add single-frame viewport shake on choice submit.

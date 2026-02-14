@@ -72,7 +72,7 @@ export default function RiftStatusCard({
         <div
           className={clsx(
             "mt-4 rounded-xl border px-3 py-3 text-sm",
-            activeEvent.type === "scene_twist"
+            activeEvent.type === "rift_reality_fracture"
               ? "border-red-300/55 bg-red-500/15"
               : "border-cyan-300/55 bg-cyan-500/15"
           )}
