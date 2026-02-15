@@ -169,14 +169,13 @@ function DemoGame({ code, playerId }: DemoGameProps) {
         {overlayFallback ? <p className="text-sm text-fuchsia-200">{overlayFallback}</p> : null}
         <RoomCodeCard code={code} players={session.players} title="Demo Room" />
         <NarratorBanner line={narration} />
-        {session.realityRemembersLine ? (
-          <section className="rounded-xl border border-cyan-300/35 bg-cyan-500/10 px-4 py-3 text-sm text-cyan-100 shadow-[0_0_24px_rgba(34,211,238,0.16)]">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-cyan-200">Reality remembers</p>
-            <p className="mt-1">
-              <span className="font-semibold">Reality remembers:</span> {session.realityRemembersLine}
-            </p>
-          </section>
-        ) : null}
+        <section className="rounded-xl border border-cyan-300/35 bg-cyan-500/10 px-4 py-3 text-sm text-cyan-100 shadow-[0_0_24px_rgba(34,211,238,0.16)]">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-cyan-200">Reality remembers</p>
+          <p className="mt-1">
+            <span className="font-semibold">Reality remembers:</span>{" "}
+            {session.realityRemembersLine ?? "The Rift is watching every move."}
+          </p>
+        </section>
         {session.latestWorldEvent ? (
           <section className="rounded-xl border border-fuchsia-300/40 bg-fuchsia-500/10 px-4 py-3 shadow-[0_0_24px_rgba(217,70,239,0.2)]">
             <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-fuchsia-200">World Shift</p>
@@ -610,14 +609,13 @@ function RealtimeGame({ code, playerId }: RealtimeGameProps) {
           </div>
         ) : null}
         <NarratorBanner line={narration} />
-        {room.realityRemembersLine ? (
-          <section className="rounded-xl border border-cyan-300/35 bg-cyan-500/10 px-4 py-3 text-sm text-cyan-100 shadow-[0_0_24px_rgba(34,211,238,0.16)]">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-cyan-200">Reality remembers</p>
-            <p className="mt-1">
-              <span className="font-semibold">Reality remembers:</span> {room.realityRemembersLine}
-            </p>
-          </section>
-        ) : null}
+        <section className="rounded-xl border border-cyan-300/35 bg-cyan-500/10 px-4 py-3 text-sm text-cyan-100 shadow-[0_0_24px_rgba(34,211,238,0.16)]">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-cyan-200">Reality remembers</p>
+          <p className="mt-1">
+            <span className="font-semibold">Reality remembers:</span>{" "}
+            {room.realityRemembersLine ?? "The Rift is watching every move."}
+          </p>
+        </section>
         {room.latestWorldEvent ? (
           <section className="rounded-xl border border-fuchsia-300/40 bg-fuchsia-500/10 px-4 py-3 shadow-[0_0_24px_rgba(217,70,239,0.2)]">
             <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-fuchsia-200">World Shift</p>
