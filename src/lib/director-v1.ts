@@ -3,7 +3,6 @@ import type {
   DeferredDirectorCallback,
   GenreId,
   GenrePower,
-  HistoryEntry,
   Player,
   PlayerArchetype,
   PlayerProfile,
@@ -16,13 +15,22 @@ import type {
 const MAX_CALLBACKS = 28;
 const MAX_MEMORY_LINE_LENGTH = 160;
 
+type HistoryLikeEntry = {
+  sceneId: string;
+  playerId: string;
+  player?: string;
+  playerName?: string;
+  choice?: string;
+  choiceLabel?: string;
+};
+
 type DirectorLineContext = {
   roomCode: string;
   step: number;
   currentPlayerName: string;
   currentArchetype: PlayerArchetype;
   callback: DeferredDirectorCallback | null;
-  latestHistory: HistoryEntry | null;
+  latestHistory: HistoryLikeEntry | null;
   latestWorldEvent: WorldEvent | null;
   splitVoteConsequence: SplitVoteConsequence | null;
 };
@@ -68,6 +76,14 @@ function sanitizeLine(value: string | null | undefined): string | null {
     return null;
   }
   return clipText(compact, MAX_MEMORY_LINE_LENGTH);
+}
+
+function historyChoice(entry: HistoryLikeEntry | null): string {
+  return entry?.choiceLabel ?? entry?.choice ?? "a risky move";
+}
+
+function historyPlayer(entry: HistoryLikeEntry | null): string {
+  return entry?.playerName ?? entry?.player ?? "Someone";
 }
 
 function archetypeVolatility(profile: PlayerProfile | undefined): number {
@@ -222,12 +238,12 @@ export function scheduleDirectorCallbacks(input: {
   roomCode: string;
   step: number;
   queue: DeferredDirectorCallback[];
-  historyEntry: HistoryEntry;
+  historyEntry: HistoryLikeEntry;
   latestWorldEvent: WorldEvent | null;
   splitVoteConsequence: SplitVoteConsequence | null;
 }): DeferredDirectorCallback[] {
   const callbacks = [...input.queue];
-  const delayChoice = 2 + (stableHash(`${input.roomCode}:${input.step}:${input.historyEntry.choice}`) % 2);
+  const delayChoice = 2 + (stableHash(`${input.roomCode}:${input.step}:${historyChoice(input.historyEntry)}`) % 2);
   callbacks.push({
     id: `cb-choice-${input.roomCode}-${input.step}`,
     source: "choice_memory",
@@ -235,8 +251,8 @@ export function scheduleDirectorCallbacks(input: {
     dueStep: input.step + delayChoice,
     sceneId: input.historyEntry.sceneId,
     playerId: input.historyEntry.playerId,
-    playerName: input.historyEntry.playerName ?? input.historyEntry.player,
-    choiceLabel: input.historyEntry.choice,
+    playerName: historyPlayer(input.historyEntry),
+    choiceLabel: historyChoice(input.historyEntry),
   });
 
   if (input.latestWorldEvent) {
@@ -248,8 +264,8 @@ export function scheduleDirectorCallbacks(input: {
       dueStep: input.step + delayWorld,
       sceneId: input.historyEntry.sceneId,
       playerId: input.historyEntry.playerId,
-      playerName: input.historyEntry.playerName ?? input.historyEntry.player,
-      choiceLabel: input.historyEntry.choice,
+      playerName: historyPlayer(input.historyEntry),
+      choiceLabel: historyChoice(input.historyEntry),
       worldEventId: input.latestWorldEvent.id,
       worldEventTitle: input.latestWorldEvent.title,
     });
@@ -300,7 +316,7 @@ function localRealityLine(context: DirectorLineContext): string {
     return `${clipText(context.latestWorldEvent.title, 52)} traces back to your last move.`;
   }
   if (context.latestHistory) {
-    return `${context.latestHistory.playerName ?? context.latestHistory.player} set this path with "${clipText(context.latestHistory.choice, 38)}".`;
+    return `${historyPlayer(context.latestHistory)} set this path with "${clipText(historyChoice(context.latestHistory), 38)}".`;
   }
   return `${context.currentPlayerName}, your ${context.currentArchetype.replace("The ", "").toLowerCase()} instincts are shaping what comes next.`;
 }
@@ -328,7 +344,7 @@ export function resolveRealityRemembers(input: {
   players: Player[];
   playerProfiles: Record<string, PlayerProfile>;
   queue: DeferredDirectorCallback[];
-  history: HistoryEntry[];
+  history: HistoryLikeEntry[];
   worldState: WorldState;
   splitVoteConsequence: SplitVoteConsequence | null;
 }): { line: string; queue: DeferredDirectorCallback[] } {
