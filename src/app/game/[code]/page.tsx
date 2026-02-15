@@ -165,6 +165,9 @@ function DemoGame({ code, playerId }: DemoGameProps) {
           <p className="badge w-fit">Story Phase</p>
           <h1 className="text-2xl font-black sm:text-3xl">Decision Under Pressure</h1>
           <p className="text-sm text-zinc-300">The clock runs, chaos rises, and each turn reshapes the ending.</p>
+          <p className="inline-flex w-fit items-center rounded-full border border-cyan-300/50 bg-cyan-500/15 px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-cyan-100">
+            Director v1 Active
+          </p>
         </section>
         {overlayFallback ? <p className="text-sm text-fuchsia-200">{overlayFallback}</p> : null}
         <RoomCodeCard code={code} players={session.players} title="Demo Room" />
@@ -176,6 +179,12 @@ function DemoGame({ code, playerId }: DemoGameProps) {
             {session.realityRemembersLine ?? "The Rift is watching every move."}
           </p>
         </section>
+        {session.splitVoteConsequence ? (
+          <section className="rounded-xl border border-orange-300/45 bg-orange-500/12 px-4 py-3 text-sm text-orange-100 shadow-[0_0_24px_rgba(251,146,60,0.12)]">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-orange-200">Fractured Outcome</p>
+            <p className="mt-1">{session.splitVoteConsequence.detail}</p>
+          </section>
+        ) : null}
         {session.latestWorldEvent ? (
           <section className="rounded-xl border border-fuchsia-300/40 bg-fuchsia-500/10 px-4 py-3 shadow-[0_0_24px_rgba(217,70,239,0.2)]">
             <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-fuchsia-200">World Shift</p>
@@ -594,6 +603,9 @@ function RealtimeGame({ code, playerId }: RealtimeGameProps) {
           <p className="badge w-fit">Story Phase</p>
           <h1 className="text-2xl font-black sm:text-3xl">Decision Under Pressure</h1>
           <p className="text-sm text-zinc-300">Only one player acts per turn. Everyone else tracks the fallout in real time.</p>
+          <p className="inline-flex w-fit items-center rounded-full border border-cyan-300/50 bg-cyan-500/15 px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-cyan-100">
+            Director v1 Active
+          </p>
         </section>
         {timeoutNotice ? <p className="text-sm text-yellow-300">{timeoutNotice}</p> : null}
         {toast ? <p className="text-sm text-cyan-300">{toast}</p> : null}
@@ -616,6 +628,12 @@ function RealtimeGame({ code, playerId }: RealtimeGameProps) {
             {room.realityRemembersLine ?? "The Rift is watching every move."}
           </p>
         </section>
+        {room.splitVoteConsequence ? (
+          <section className="rounded-xl border border-orange-300/45 bg-orange-500/12 px-4 py-3 text-sm text-orange-100 shadow-[0_0_24px_rgba(251,146,60,0.12)]">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-orange-200">Fractured Outcome</p>
+            <p className="mt-1">{room.splitVoteConsequence.detail}</p>
+          </section>
+        ) : null}
         {room.latestWorldEvent ? (
           <section className="rounded-xl border border-fuchsia-300/40 bg-fuchsia-500/10 px-4 py-3 shadow-[0_0_24px_rgba(217,70,239,0.2)]">
             <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-fuchsia-200">World Shift</p>
