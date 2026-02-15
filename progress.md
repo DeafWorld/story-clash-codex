@@ -294,3 +294,33 @@ Environment/runtime blockers still present:
 Next TODO for next agent/session:
 - run smoke e2e in a fresh shell/CI runner where Next + Playwright load normally to verify visible overlay on `/game/DEMO1` end-to-end.
 - if user still perceives no Rift impact, increase phase3 hold from current ~1.6s to ~2.1s and add single-frame viewport shake on choice submit.
+
+---
+
+- Implemented Director v1 core (local-first, no paid dependency required by default):
+  - Added hidden per-player archetype progression state + callback queue + split-vote consequence model in `/Users/deafgod/Desktop/Codex/src/types/game.ts`.
+  - Added `/Users/deafgod/Desktop/Codex/src/lib/director-v1.ts` with:
+    - archetype progression synchronization,
+    - emergent split-vote consequence resolver,
+    - split impact application to world events/genre pressure,
+    - 2-3 scene deferred callback scheduling,
+    - per-turn `Reality remembers` line generator with `NARRATIVE_AI_ENABLED=1` optional hook and local fallback.
+  - Wired authoritative Node store path (`/Users/deafgod/Desktop/Codex/src/lib/store.ts`) to:
+    - maintain Director v1 hidden state,
+    - resolve split outcomes in `submitChoice`,
+    - inject callbacks and world timeline events,
+    - emit/update `realityRemembersLine` each turn.
+  - Wired demo path (`/Users/deafgod/Desktop/Codex/src/lib/demo-session.ts`) with the same Director v1 behavior for parity.
+  - Added visible per-turn memory callout on game screens (`/Users/deafgod/Desktop/Codex/src/app/game/[code]/page.tsx`):
+    - `Reality remembers: ...`
+
+- Tests added/updated:
+  - New `/Users/deafgod/Desktop/Codex/tests/director-v1.test.ts`.
+  - Updated `/Users/deafgod/Desktop/Codex/tests/store-flow.test.ts` with Director v1 assertions.
+
+TODO:
+- Run full gate (`npm run test`, `npm run build`, optionally `npm run lint`) and fix any type/style regressions.
+- If cloudflare runtime parity is needed immediately, mirror Director v1 fields/logic into `/Users/deafgod/Desktop/Codex/cloudflare/src/room-do.ts` + `/Users/deafgod/Desktop/Codex/cloudflare/src/types.ts`.
+- Validation attempt update:
+  - Multiple `vitest` / `tsc` invocations remained stalled in this shell (no stdout; forced process cleanup).
+  - Completed manual static review of all touched code paths; follow-up gate run still required in a clean shell/CI worker.

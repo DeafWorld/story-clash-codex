@@ -15,6 +15,7 @@ export type WorldEventType =
   | "resource_crisis"
   | "faction_conflict"
   | "tension_overflow"
+  | "fractured_outcome"
   | "thread_seeded"
   | "thread_resolved"
   | "rift_genre_surge"
@@ -134,6 +135,46 @@ export interface PlayerProfile {
   patterns: PlayerChoicePattern;
   history: PlayerHistoryState;
   predictions: PlayerPrediction;
+}
+
+export type DirectorCallbackSource = "choice_memory" | "split_consequence" | "world_event";
+
+export interface ArchetypeProgressState {
+  playerId: string;
+  currentArchetype: PlayerArchetype;
+  previousArchetype: PlayerArchetype | null;
+  progress: number;
+  confidence: number;
+  volatility: number;
+  shiftCount: number;
+  lastShiftStep: number | null;
+  updatedAt: number;
+}
+
+export interface SplitVoteConsequence {
+  id: string;
+  step: number;
+  sceneId: string;
+  sourcePlayerId: string | null;
+  sourcePlayerName: string | null;
+  choiceLabel: string;
+  severity: number;
+  pressure: number;
+  detail: string;
+  createdAt: number;
+}
+
+export interface DeferredDirectorCallback {
+  id: string;
+  source: DirectorCallbackSource;
+  createdStep: number;
+  dueStep: number;
+  sceneId: string;
+  playerId: string | null;
+  playerName: string | null;
+  choiceLabel: string | null;
+  worldEventId?: string;
+  worldEventTitle?: string;
 }
 
 export interface NarrativeThreadMoment {
@@ -322,6 +363,10 @@ export interface StoryState {
   worldState: WorldState;
   latestWorldEvent: WorldEvent | null;
   playerProfiles: Record<string, PlayerProfile>;
+  archetypeProgress: Record<string, ArchetypeProgressState>;
+  splitVoteConsequence: SplitVoteConsequence | null;
+  deferredCallbacks: DeferredDirectorCallback[];
+  realityRemembersLine: string | null;
   narrativeThreads: NarrativeThread[];
   activeThreadId: string | null;
   directedScene: DirectedSceneView | null;
@@ -369,6 +414,10 @@ export interface RecapPayload {
   worldState: WorldState;
   latestWorldEvent: WorldEvent | null;
   playerProfiles: Record<string, PlayerProfile>;
+  archetypeProgress: Record<string, ArchetypeProgressState>;
+  splitVoteConsequence: SplitVoteConsequence | null;
+  deferredCallbacks: DeferredDirectorCallback[];
+  realityRemembersLine: string | null;
   narrativeThreads: NarrativeThread[];
   activeThreadId: string | null;
   directedScene: DirectedSceneView | null;

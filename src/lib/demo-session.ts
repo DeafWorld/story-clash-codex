@@ -25,8 +25,17 @@ import {
   getStoryStartNode,
 } from "./story-utils";
 import { applyNarrativeDirector, defaultMotionCue } from "./narrative-director";
+import {
+  applySplitVoteImpact,
+  resolveRealityRemembers,
+  resolveSplitVoteConsequence,
+  scheduleDirectorCallbacks,
+  syncArchetypeProgress,
+} from "./director-v1";
 import type {
+  ArchetypeProgressState,
   Choice,
+  DeferredDirectorCallback,
   DirectedSceneView,
   DirectorBeatRecord,
   GenreId,
@@ -36,6 +45,7 @@ import type {
   PlayerProfile,
   Player,
   RiftEventRecord,
+  SplitVoteConsequence,
   StoryTree,
   WorldState,
 } from "../types/game";
@@ -75,6 +85,10 @@ export type DemoSessionState = {
   worldState: WorldState;
   latestWorldEvent: WorldState["timeline"][number] | null;
   playerProfiles: Record<string, PlayerProfile>;
+  archetypeProgress: Record<string, ArchetypeProgressState>;
+  splitVoteConsequence: SplitVoteConsequence | null;
+  deferredCallbacks: DeferredDirectorCallback[];
+  realityRemembersLine: string | null;
   narrativeThreads: NarrativeThread[];
   activeThreadId: string | null;
   directedScene: DirectedSceneView | null;
@@ -97,7 +111,7 @@ let session: DemoSessionState = createSession();
 
 function createSession(): DemoSessionState {
   const startNode = getStoryStartNode(storyTrees.zombie);
-  return {
+  const next: DemoSessionState = {
     roomCode: "DEMO1",
     storyId: "zombie",
     status: "lobby",
@@ -116,6 +130,10 @@ function createSession(): DemoSessionState {
     worldState: createInitialWorldState(),
     latestWorldEvent: null,
     playerProfiles: ensurePlayerProfiles(DEMO_PLAYERS, {}),
+    archetypeProgress: {},
+    splitVoteConsequence: null,
+    deferredCallbacks: [],
+    realityRemembersLine: null,
     narrativeThreads: [],
     activeThreadId: null,
     directedScene: {
@@ -132,6 +150,13 @@ function createSession(): DemoSessionState {
     },
     directorTimeline: [],
   };
+  next.archetypeProgress = syncArchetypeProgress({
+    players: next.players,
+    playerProfiles: next.playerProfiles,
+    current: {},
+    step: 0,
+  });
+  return next;
 }
 
 function appendNarration(trigger: "scene_enter" | "choice_submitted" | "turn_timeout" | "ending", input: {
@@ -233,6 +258,15 @@ export function setDemoMinigameOrder(order: string[], genre: GenreId = "zombie")
   session.worldState = createInitialWorldState();
   session.latestWorldEvent = null;
   session.playerProfiles = ensurePlayerProfiles(session.players, session.playerProfiles);
+  session.archetypeProgress = syncArchetypeProgress({
+    players: session.players,
+    playerProfiles: session.playerProfiles,
+    current: session.archetypeProgress ?? {},
+    step: 0,
+  });
+  session.splitVoteConsequence = null;
+  session.deferredCallbacks = [];
+  session.realityRemembersLine = null;
   session.narrativeThreads = [];
   session.activeThreadId = null;
   session.directedScene = {
@@ -283,6 +317,19 @@ export function setDemoMinigameOrder(order: string[], genre: GenreId = "zombie")
     session.worldState.timeline = [...session.worldState.timeline, ...directed.timelineEvents].slice(-60);
     session.latestWorldEvent = session.worldState.timeline.at(-1) ?? session.latestWorldEvent;
   }
+  const memoryLine = resolveRealityRemembers({
+    roomCode: session.roomCode,
+    step: session.history.length,
+    currentPlayerId: session.currentPlayerId,
+    players: session.players,
+    playerProfiles: session.playerProfiles,
+    queue: session.deferredCallbacks,
+    history: session.history,
+    worldState: session.worldState,
+    splitVoteConsequence: session.splitVoteConsequence,
+  });
+  session.deferredCallbacks = memoryLine.queue;
+  session.realityRemembersLine = memoryLine.line;
 }
 
 export function advanceDemoStoryChoice(choiceId: string) {
@@ -319,6 +366,14 @@ export function advanceDemoStoryChoice(choiceId: string) {
     selectedGenre: session.storyId,
     tensionLevel: scene.tensionLevel,
   });
+  const voteSplitSeverity = deriveVoteSplitSeverity({
+    availableChoices: sceneChoices.length,
+    recentChoiceTargets: session.history
+      .slice(-4)
+      .map((entry) => entry.nextNodeId)
+      .filter((value): value is string => Boolean(value)),
+    selectedNextSceneId: nextNodeId,
+  });
   const rift = evaluateRiftEvent({
     roomCode: session.roomCode,
     step: session.history.length + 1,
@@ -329,14 +384,7 @@ export function advanceDemoStoryChoice(choiceId: string) {
     playerId: session.currentPlayerId,
     genrePower: session.genrePower,
     chaosLevel: session.chaosLevel,
-    voteSplitSeverity: deriveVoteSplitSeverity({
-      availableChoices: sceneChoices.length,
-      recentChoiceTargets: session.history
-        .slice(-4)
-        .map((entry) => entry.nextNodeId)
-        .filter((value): value is string => Boolean(value)),
-      selectedNextSceneId: nextNodeId,
-    }),
+    voteSplitSeverity,
     scenesSinceLastRift: scenesSinceLastRift({
       historyLength: session.history.length,
       riftHistory: session.riftHistory,
@@ -350,11 +398,41 @@ export function advanceDemoStoryChoice(choiceId: string) {
   session.genrePower = rift.genrePower;
   session.chaosLevel = rift.chaosLevel;
   session.activeRiftEvent = rift.event;
+  const sourcePlayer = session.players.find((entry) => entry.id === session.currentPlayerId) ?? session.players[0];
+  const splitConsequence = resolveSplitVoteConsequence({
+    roomCode: session.roomCode,
+    step: session.history.length + 1,
+    sceneId: scene.id,
+    sourcePlayerId: sourcePlayer.id,
+    sourcePlayerName: sourcePlayer.name,
+    choiceLabel: choice.label,
+    availableChoices: sceneChoices.length,
+    voteSplitSeverity,
+    chaosLevel: session.chaosLevel,
+    worldState: session.worldState,
+  });
+  session.splitVoteConsequence = splitConsequence;
   if (rift.event) {
     session.riftHistory = [...session.riftHistory, rift.event].slice(-40);
     const worldUpdate = appendWorldEvent(session.worldState.timeline, toWorldEventFromRift(rift.event), 60);
     session.worldState.timeline = worldUpdate.timeline;
     session.latestWorldEvent = worldUpdate.latest;
+  }
+  if (splitConsequence) {
+    const splitImpact = applySplitVoteImpact({
+      consequence: splitConsequence,
+      genrePower: session.genrePower,
+    });
+    session.genrePower = applyGenrePowerShift(session.genrePower, splitImpact.genreShift);
+    session.chaosLevel = computeChaosLevel({
+      genrePower: session.genrePower,
+      selectedGenre: session.storyId,
+      tensionLevel: scene.tensionLevel,
+      bonus: splitImpact.chaosBonus,
+    });
+    const splitWorld = appendWorldEvent(session.worldState.timeline, splitImpact.worldEvent, 60);
+    session.worldState.timeline = splitWorld.timeline;
+    session.latestWorldEvent = splitWorld.latest;
   }
 
   pushHistory(nextNodeId, choice.label);
@@ -391,6 +469,12 @@ export function advanceDemoStoryChoice(choiceId: string) {
   });
   session.worldState = evolution.worldState;
   session.playerProfiles = evolution.playerProfiles;
+  session.archetypeProgress = syncArchetypeProgress({
+    players: session.players,
+    playerProfiles: session.playerProfiles,
+    current: session.archetypeProgress ?? {},
+    step: session.history.length,
+  });
   session.narrativeThreads = evolution.narrativeThreads;
   session.activeThreadId = evolution.activeThreadId;
   session.chaosLevel = evolution.chaosLevel;
@@ -426,6 +510,30 @@ export function advanceDemoStoryChoice(choiceId: string) {
     session.worldState.timeline = [...session.worldState.timeline, ...directed.timelineEvents].slice(-60);
     session.latestWorldEvent = session.worldState.timeline.at(-1) ?? session.latestWorldEvent;
   }
+  const historyEntry = session.history.at(-1);
+  if (historyEntry) {
+    session.deferredCallbacks = scheduleDirectorCallbacks({
+      roomCode: session.roomCode,
+      step: session.history.length,
+      queue: session.deferredCallbacks,
+      historyEntry,
+      latestWorldEvent: session.latestWorldEvent,
+      splitVoteConsequence: session.splitVoteConsequence,
+    });
+  }
+  const memoryLine = resolveRealityRemembers({
+    roomCode: session.roomCode,
+    step: session.history.length,
+    currentPlayerId: session.currentPlayerId,
+    players: session.players,
+    playerProfiles: session.playerProfiles,
+    queue: session.deferredCallbacks,
+    history: session.history,
+    worldState: session.worldState,
+    splitVoteConsequence: session.splitVoteConsequence,
+  });
+  session.deferredCallbacks = memoryLine.queue;
+  session.realityRemembersLine = memoryLine.line;
 
   session.currentNodeId = nextNodeId;
   markStoryOrRecap(nextNodeId);

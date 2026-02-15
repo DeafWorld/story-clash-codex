@@ -12,6 +12,13 @@ import {
 } from "./evolution-engine";
 import { applyNarrativeDirector, defaultMotionCue } from "./narrative-director";
 import {
+  applySplitVoteImpact,
+  resolveRealityRemembers,
+  resolveSplitVoteConsequence,
+  scheduleDirectorCallbacks,
+  syncArchetypeProgress,
+} from "./director-v1";
+import {
   appendWorldEvent,
   computeChaosLevel,
   createInitialGenrePower,
@@ -44,6 +51,7 @@ const MIN_PLAYERS = 3;
 const MAX_NARRATION_LOG = 30;
 const MAX_RIFT_HISTORY = 40;
 const MAX_DIRECTOR_TIMELINE = 40;
+const MAX_DIRECTOR_CALLBACKS = 28;
 
 const AVATARS = ["circle-cyan", "diamond-red", "hex-green", "triangle-blue", "square-gold", "ring-white"];
 const ROUND_TWO_SCORES = [940, 760, 670, 610, 560, 520];
@@ -164,6 +172,10 @@ function ensureFreshRoom(code: string): RoomState {
   room.worldState = room.worldState ?? createInitialWorldState();
   room.latestWorldEvent = room.latestWorldEvent ?? room.worldState.timeline.at(-1) ?? null;
   room.playerProfiles = ensurePlayerProfiles(room.players, room.playerProfiles ?? {});
+  room.archetypeProgress = room.archetypeProgress ?? {};
+  room.splitVoteConsequence = room.splitVoteConsequence ?? null;
+  room.deferredCallbacks = (room.deferredCallbacks ?? []).slice(-MAX_DIRECTOR_CALLBACKS);
+  room.realityRemembersLine = room.realityRemembersLine ?? null;
   room.narrativeThreads = room.narrativeThreads ?? [];
   room.activeThreadId = room.activeThreadId ?? null;
   room.directorTimeline = (room.directorTimeline ?? []).slice(-MAX_DIRECTOR_TIMELINE);
@@ -172,6 +184,12 @@ function ensureFreshRoom(code: string): RoomState {
     ...player,
     orderIndex: player.orderIndex ?? player.turnOrder ?? index,
   }));
+  room.archetypeProgress = syncArchetypeProgress({
+    players: room.players,
+    playerProfiles: room.playerProfiles,
+    current: room.archetypeProgress,
+    step: room.history.length,
+  });
   if (!room.directedScene) {
     const scene = getCurrentScene(room);
     if (scene) {
@@ -358,6 +376,9 @@ export function createRoom(hostName: string) {
 
   const code = ensureRoomCode();
   const host = newPlayer(normalizedName, true, 0);
+  const initialProfiles = {
+    [host.id]: createInitialPlayerProfile(host.id),
+  };
   const room: RoomState = {
     id: nanoid(),
     code,
@@ -384,9 +405,16 @@ export function createRoom(hostName: string) {
     narrationLog: [],
     worldState: createInitialWorldState(),
     latestWorldEvent: null,
-    playerProfiles: {
-      [host.id]: createInitialPlayerProfile(host.id),
-    },
+    playerProfiles: initialProfiles,
+    archetypeProgress: syncArchetypeProgress({
+      players: [host],
+      playerProfiles: initialProfiles,
+      current: {},
+      step: 0,
+    }),
+    splitVoteConsequence: null,
+    deferredCallbacks: [],
+    realityRemembersLine: null,
     narrativeThreads: [],
     activeThreadId: null,
     directedScene: null,
@@ -471,6 +499,12 @@ export function startGame(code: string, hostPlayerId: string) {
     player.rounds = [];
   });
   room.playerProfiles = ensurePlayerProfiles(room.players, room.playerProfiles ?? {});
+  room.archetypeProgress = syncArchetypeProgress({
+    players: room.players,
+    playerProfiles: room.playerProfiles,
+    current: room.archetypeProgress ?? {},
+    step: room.history.length,
+  });
   room.currentPlayerId = activePlayerId(room);
   room.turnDeadline = null;
 
@@ -602,6 +636,9 @@ export function selectGenre(code: string, playerId: string, genre: GenreId) {
   room.riftHistory = [];
   room.activeRiftEvent = null;
   room.latestWorldEvent = null;
+  room.splitVoteConsequence = null;
+  room.deferredCallbacks = [];
+  room.realityRemembersLine = null;
   room.directorTimeline = [];
   room.directedScene = null;
   room.endingScene = null;
@@ -609,6 +646,12 @@ export function selectGenre(code: string, playerId: string, genre: GenreId) {
   room.activePlayerIndex = 0;
   room.turnDeadline = now() + TURN_DURATION_MS;
   room.playerProfiles = ensurePlayerProfiles(room.players, room.playerProfiles ?? {});
+  room.archetypeProgress = syncArchetypeProgress({
+    players: room.players,
+    playerProfiles: room.playerProfiles,
+    current: room.archetypeProgress ?? {},
+    step: room.history.length,
+  });
   room.worldState.meta.communityChoiceInfluence = Math.min(100, room.worldState.meta.communityChoiceInfluence + 2);
   room.narrativeThreads = room.narrativeThreads.map((thread) => ({
     ...thread,
@@ -655,6 +698,19 @@ export function selectGenre(code: string, playerId: string, genre: GenreId) {
     room.worldState.timeline = [...room.worldState.timeline, ...directed.timelineEvents].slice(-60);
     room.latestWorldEvent = room.worldState.timeline.at(-1) ?? room.latestWorldEvent;
   }
+  const memoryLine = resolveRealityRemembers({
+    roomCode: room.code,
+    step: room.history.length,
+    currentPlayerId: room.currentPlayerId,
+    players: room.players,
+    playerProfiles: room.playerProfiles,
+    queue: room.deferredCallbacks,
+    history: room.history,
+    worldState: room.worldState,
+    splitVoteConsequence: room.splitVoteConsequence,
+  });
+  room.deferredCallbacks = memoryLine.queue;
+  room.realityRemembersLine = memoryLine.line;
 
   return {
     genre,
@@ -742,6 +798,15 @@ export function submitChoice(
     timeout: payload.timeout,
   });
 
+  const voteSplitSeverity = deriveVoteSplitSeverity({
+    availableChoices: sceneChoices.length,
+    recentChoiceTargets: room.history
+      .slice(-4)
+      .map((entry) => entry.nextNodeId)
+      .filter((value): value is string => Boolean(value)),
+    selectedNextSceneId: nextSceneId,
+  });
+
   const rift = evaluateRiftEvent({
     roomCode: room.code,
     step: room.history.length + 1,
@@ -753,14 +818,7 @@ export function submitChoice(
     genrePower: room.genrePower,
     chaosLevel: room.chaosLevel,
     timeout: payload.timeout,
-    voteSplitSeverity: deriveVoteSplitSeverity({
-      availableChoices: sceneChoices.length,
-      recentChoiceTargets: room.history
-        .slice(-4)
-        .map((entry) => entry.nextNodeId)
-        .filter((value): value is string => Boolean(value)),
-      selectedNextSceneId: nextSceneId,
-    }),
+    voteSplitSeverity,
     scenesSinceLastRift: scenesSinceLastRift({
       historyLength: room.history.length,
       riftHistory: room.riftHistory,
@@ -774,12 +832,42 @@ export function submitChoice(
   room.genrePower = rift.genrePower;
   room.chaosLevel = rift.chaosLevel;
   room.activeRiftEvent = rift.event;
+  const splitConsequence = resolveSplitVoteConsequence({
+    roomCode: room.code,
+    step: room.history.length + 1,
+    sceneId: scene.id,
+    sourcePlayerId: playerId,
+    sourcePlayerName: player.name,
+    choiceLabel: resolvedChoiceText,
+    availableChoices: sceneChoices.length,
+    voteSplitSeverity,
+    chaosLevel: room.chaosLevel,
+    worldState: room.worldState,
+  });
+  room.splitVoteConsequence = splitConsequence;
   if (rift.event) {
     room.riftHistory = [...room.riftHistory, rift.event].slice(-MAX_RIFT_HISTORY);
     const mappedWorldEvent = toWorldEventFromRift(rift.event);
     const worldUpdate = appendWorldEvent(room.worldState.timeline, mappedWorldEvent, 60);
     room.worldState.timeline = worldUpdate.timeline;
     room.latestWorldEvent = worldUpdate.latest;
+  }
+  if (splitConsequence) {
+    const splitImpact = applySplitVoteImpact({
+      consequence: splitConsequence,
+      genrePower: room.genrePower,
+    });
+    room.genrePower = applyGenrePowerShift(room.genrePower, splitImpact.genreShift);
+    room.chaosLevel = computeChaosLevel({
+      genrePower: room.genrePower,
+      selectedGenre: genre,
+      tensionLevel: scene.tensionLevel ?? 1,
+      timeout: payload.timeout,
+      bonus: splitImpact.chaosBonus,
+    });
+    const splitWorld = appendWorldEvent(room.worldState.timeline, splitImpact.worldEvent, 60);
+    room.worldState.timeline = splitWorld.timeline;
+    room.latestWorldEvent = splitWorld.latest;
   }
   logger.info("rift.trigger_evaluated", {
     roomCode: room.code,
@@ -847,6 +935,12 @@ export function submitChoice(
   room.narrativeThreads = evolution.narrativeThreads;
   room.activeThreadId = evolution.activeThreadId;
   room.chaosLevel = evolution.chaosLevel;
+  room.archetypeProgress = syncArchetypeProgress({
+    players: room.players,
+    playerProfiles: room.playerProfiles,
+    current: room.archetypeProgress ?? {},
+    step: room.history.length,
+  });
   const directed = applyNarrativeDirector({
     roomCode: room.code,
     scene: nextScene,
@@ -866,6 +960,14 @@ export function submitChoice(
     room.worldState.timeline = [...room.worldState.timeline, ...directed.timelineEvents].slice(-60);
     room.latestWorldEvent = room.worldState.timeline.at(-1) ?? room.latestWorldEvent;
   }
+  room.deferredCallbacks = scheduleDirectorCallbacks({
+    roomCode: room.code,
+    step: room.history.length,
+    queue: room.deferredCallbacks ?? [],
+    historyEntry,
+    latestWorldEvent: room.latestWorldEvent,
+    splitVoteConsequence: room.splitVoteConsequence,
+  });
 
   if (nextScene.ending) {
     setRoomPhase(room, "recap");
@@ -873,6 +975,19 @@ export function submitChoice(
     room.endingType = (nextScene.endingType ?? "doom") as EndingType;
     room.turnDeadline = null;
     room.currentPlayerId = null;
+    const recapMemory = resolveRealityRemembers({
+      roomCode: room.code,
+      step: room.history.length,
+      currentPlayerId: playerId,
+      players: room.players,
+      playerProfiles: room.playerProfiles,
+      queue: room.deferredCallbacks,
+      history: room.history,
+      worldState: room.worldState,
+      splitVoteConsequence: room.splitVoteConsequence,
+    });
+    room.deferredCallbacks = recapMemory.queue;
+    room.realityRemembersLine = recapMemory.line;
     const endingNarration = appendNarration(room, "ending", {
       sceneId: nextScene.id,
       playerId,
@@ -895,6 +1010,19 @@ export function submitChoice(
   room.activePlayerIndex = rotateToConnectedPlayer(room, room.activePlayerIndex);
   room.currentPlayerId = activePlayerId(room);
   room.turnDeadline = now() + TURN_DURATION_MS;
+  const rememberLine = resolveRealityRemembers({
+    roomCode: room.code,
+    step: room.history.length,
+    currentPlayerId: room.currentPlayerId,
+    players: room.players,
+    playerProfiles: room.playerProfiles,
+    queue: room.deferredCallbacks,
+    history: room.history,
+    worldState: room.worldState,
+    splitVoteConsequence: room.splitVoteConsequence,
+  });
+  room.deferredCallbacks = rememberLine.queue;
+  room.realityRemembersLine = rememberLine.line;
 
   return {
     ended: false,
@@ -943,6 +1071,10 @@ export function getRecapState(code: string) {
     worldState: room.worldState,
     latestWorldEvent: room.latestWorldEvent,
     playerProfiles: room.playerProfiles,
+    archetypeProgress: room.archetypeProgress,
+    splitVoteConsequence: room.splitVoteConsequence,
+    deferredCallbacks: room.deferredCallbacks,
+    realityRemembersLine: room.realityRemembersLine,
     narrativeThreads: room.narrativeThreads,
     activeThreadId: room.activeThreadId,
     directedScene: room.directedScene,
@@ -963,6 +1095,9 @@ export function restartSession(code: string) {
   room.chaosLevel = 0;
   room.riftHistory = [];
   room.activeRiftEvent = null;
+  room.splitVoteConsequence = null;
+  room.deferredCallbacks = [];
+  room.realityRemembersLine = null;
   room.latestWorldEvent = room.worldState.timeline.at(-1) ?? null;
   room.latestNarration = null;
   room.narrationLog = [];
@@ -990,6 +1125,12 @@ export function restartSession(code: string) {
   }));
   room.activePlayerIndex = 0;
   room.currentPlayerId = activePlayerId(room);
+  room.archetypeProgress = syncArchetypeProgress({
+    players: room.players,
+    playerProfiles: room.playerProfiles,
+    current: room.archetypeProgress ?? {},
+    step: 0,
+  });
   room.turnDeadline = null;
   room.expiresAt = now() + ROOM_TTL_MS;
 

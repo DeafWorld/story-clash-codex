@@ -63,6 +63,7 @@ describe("store multiplayer flow", () => {
     expect(selected.scene.id).toBe("start");
     expect(selected.narration?.trigger).toBe("scene_enter");
     expect(getGameState(code).directedScene?.sceneId).toBe("start");
+    expect(getGameState(code).realityRemembersLine).toBeTruthy();
 
     const firstTurn = getGameState(code);
     const firstPlayer = firstTurn.activePlayerId;
@@ -77,6 +78,8 @@ describe("store multiplayer flow", () => {
     }
     expect(one.nextScene?.id).toBeTruthy();
     expect(one.narration?.trigger).toBe("choice_submitted");
+    expect(getGameState(code).realityRemembersLine).toBeTruthy();
+    expect(Object.keys(getGameState(code).archetypeProgress).length).toBeGreaterThanOrEqual(3);
 
     let endedResult = one.ended ? one : null;
     for (let i = 0; i < 7 && !endedResult; i += 1) {
@@ -112,6 +115,8 @@ describe("store multiplayer flow", () => {
     expect(recap.directorTimeline.length).toBeGreaterThan(0);
     expect(recap.worldState.resources.food.amount).toBeGreaterThanOrEqual(0);
     expect(Object.keys(recap.playerProfiles).length).toBeGreaterThanOrEqual(3);
+    expect(Object.keys(recap.archetypeProgress).length).toBeGreaterThanOrEqual(3);
+    expect(recap.realityRemembersLine).toBeTruthy();
     expect(recap.narrativeThreads.length).toBeGreaterThanOrEqual(1);
 
     const restarted = restartSession(code);
