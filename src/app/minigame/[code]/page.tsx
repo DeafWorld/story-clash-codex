@@ -12,6 +12,8 @@ import SessionTopBar from "../../../components/session-top-bar";
 import SceneShell from "../../../components/motion/scene-shell";
 import ImpactFlash from "../../../components/motion/impact-flash";
 import RiveLayer from "../../../components/motion/rive-layer";
+import LiveVoteTracker from "../../../components/live-vote-tracker";
+import VoteRevealCard from "../../../components/vote-reveal-card";
 import type { GenreId, MinigameOutcome, MotionCue, NarrationLine, Player } from "../../../types/game";
 import type { NarratorUpdatePayload } from "../../../types/realtime";
 
@@ -450,6 +452,12 @@ function DemoMinigame({ code, playerId }: DemoProps) {
           wheelRotation={wheelRotation}
           disabled={phase !== "picking"}
         />
+        <LiveVoteTracker
+          players={players}
+          picks={picks}
+          options={GENRES.map((genre) => ({ id: genre.id, label: genre.name, color: genre.color }))}
+          title="Live vote pressure"
+        />
 
         {phase === "picking" ? (
           <button type="button" className="btn btn-primary w-full max-w-3xl py-4 text-lg" onClick={spinWheel} disabled={!allPicked}>
@@ -463,13 +471,12 @@ function DemoMinigame({ code, playerId }: DemoProps) {
 
         {phase === "results" && winner && winningGenre ? (
           <section className="panel w-full max-w-3xl space-y-4 p-5">
-            <p className="text-xs uppercase tracking-[0.2em] text-zinc-400">Spin Result</p>
-            <h2 className="text-3xl font-black" style={{ color: winningGenre.color }}>
-              {winningGenre.name}
-            </h2>
-            <p className="text-lg">
-              <strong>{winner.name}</strong> goes first.
-            </p>
+            <VoteRevealCard
+              title={winningGenre.name}
+              subtitle={`${outcome?.contenders.length ?? 1}/${players.length} votes on winning genre`}
+              detail={`${winner.name} goes first.`}
+              accentColor={winningGenre.color}
+            />
             {outcome?.tieBreak ? <p className="text-sm text-zinc-300">Tie break resolved by name wheel.</p> : null}
             <button type="button" className="btn btn-primary w-full py-4 text-lg" onClick={finishDemo}>
               Finish Demo Minigame
@@ -783,6 +790,14 @@ function RealtimeMinigame({ code, playerId }: RealtimeProps) {
             disabled={phase !== "picking"}
           />
         )}
+        {players.length > 0 && phase !== "revealed" ? (
+          <LiveVoteTracker
+            players={players.map((player) => ({ id: player.id, name: player.name }))}
+            picks={picks}
+            options={GENRES.map((genre) => ({ id: genre.id, label: genre.name, color: genre.color }))}
+            title="Live vote pressure"
+          />
+        ) : null}
 
         {phase === "picking" ? (
           <button
@@ -807,13 +822,12 @@ function RealtimeMinigame({ code, playerId }: RealtimeProps) {
 
         {phase === "results" && winner && winningGenre ? (
           <section className="panel w-full max-w-3xl space-y-4 p-5">
-            <p className="text-xs uppercase tracking-[0.2em] text-zinc-400">Wheel Result</p>
-            <h2 className="text-3xl font-black" style={{ color: winningGenre.color }}>
-              {winningGenre.name}
-            </h2>
-            <p className="text-lg">
-              <strong>{winner.name}</strong> goes first.
-            </p>
+            <VoteRevealCard
+              title={winningGenre.name}
+              subtitle={`${outcome?.contenders.length ?? 1}/${players.length} votes on winning genre`}
+              detail={`${winner.name} goes first.`}
+              accentColor={winningGenre.color}
+            />
             {outcome?.tieBreak ? <p className="text-sm text-zinc-300">Tie resolved with the names-only wheel.</p> : null}
 
             <div className="space-y-2">

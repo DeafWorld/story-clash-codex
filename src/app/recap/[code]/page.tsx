@@ -175,6 +175,7 @@ function RealtimeRecap({ code, playerId }: RealtimeRecapProps) {
   const [error, setError] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const [shareUrl, setShareUrl] = useState<string>("");
+  const [shareImageUrl, setShareImageUrl] = useState<string>("");
   const [narrationText, setNarrationText] = useState<string>("");
 
   const safeWorldState = recap?.worldState ?? {
@@ -272,12 +273,13 @@ function RealtimeRecap({ code, playerId }: RealtimeRecapProps) {
     async function loadShareUrl() {
       try {
         const response = await apiFetch(`/api/share/recap/${code}`);
-        const data = (await response.json()) as { shareUrl?: string };
+        const data = (await response.json()) as { shareUrl?: string; imageUrl?: string };
         if (!response.ok || !data.shareUrl) {
           return;
         }
         if (mounted) {
           setShareUrl(data.shareUrl);
+          setShareImageUrl(data.imageUrl ?? "");
         }
       } catch {
         // Share URL can fail safely; button falls back to local URL.
@@ -325,6 +327,45 @@ function RealtimeRecap({ code, playerId }: RealtimeRecapProps) {
     await navigator.clipboard.writeText(url);
     trackEvent("recap_shared", { code, method: "copy_link" });
     setToast("Link copied");
+  }
+
+  async function shareCardImage() {
+    if (!shareImageUrl) {
+      setToast("Card still loading");
+      return;
+    }
+
+    try {
+      const response = await fetch(shareImageUrl);
+      if (!response.ok) {
+        throw new Error("Card download failed");
+      }
+      const blob = await response.blob();
+      const file = new File([blob], `story-clash-${code}.png`, { type: "image/png" });
+      if (typeof navigator.share === "function" && navigator.canShare?.({ files: [file] })) {
+        await navigator.share({
+          title: "Story Clash Card",
+          text: shareText,
+          files: [file],
+        });
+        trackEvent("recap_shared", { code, method: "native_image" });
+        setToast("Card shared");
+        return;
+      }
+
+      const objectUrl = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = objectUrl;
+      link.download = `story-clash-${code}.png`;
+      link.click();
+      URL.revokeObjectURL(objectUrl);
+      trackEvent("recap_shared", { code, method: "image_download" });
+      setToast("Card downloaded");
+    } catch {
+      window.open(shareImageUrl, "_blank", "noopener,noreferrer");
+      trackEvent("recap_shared", { code, method: "image_open" });
+      setToast("Opened share card");
+    }
   }
 
   function playAgain() {
@@ -503,6 +544,16 @@ function RealtimeRecap({ code, playerId }: RealtimeRecapProps) {
           <button type="button" className="btn btn-secondary min-w-[120px] py-3" onClick={copyLinkOnly}>
             Copy link
           </button>
+          {socialCardEnabled ? (
+            <button
+              type="button"
+              className="btn btn-secondary min-w-[130px] py-3"
+              onClick={shareCardImage}
+              disabled={!shareImageUrl}
+            >
+              Share Card Image
+            </button>
+          ) : null}
           <a
             href={shareToXUrl}
             target="_blank"

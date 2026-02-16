@@ -2,6 +2,7 @@
 
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { motion } from "framer-motion";
 import clsx from "clsx";
 import { getSocketClient } from "../../../lib/socket-client";
 import { apiFetch } from "../../../lib/api-client";
@@ -20,6 +21,7 @@ import {
 import { getNodeById, getStoryStartNode } from "../../../lib/story-utils";
 import SessionTopBar from "../../../components/session-top-bar";
 import MobileChoiceCard from "../../../components/mobile-choice-card";
+import ChoiceTimer from "../../../components/choice-timer";
 import type { NarrationLine, RoomView } from "../../../types/game";
 import type { NarratorUpdatePayload } from "../../../types/realtime";
 
@@ -66,6 +68,7 @@ function DemoGame({ code, playerId }: DemoGameProps) {
   const router = useRouter();
   const [, rerender] = useState(0);
   const [overlayFallback, setOverlayFallback] = useState<string | null>(null);
+  const [rememberToast, setRememberToast] = useState<string | null>(null);
   const [riftTier, setRiftTier] = useState<"high" | "medium" | "low">("medium");
   const lastDemoRiftIdRef = useRef<string | null>(null);
 
@@ -99,6 +102,14 @@ function DemoGame({ code, playerId }: DemoGameProps) {
   }, [overlayFallback]);
 
   useEffect(() => {
+    if (!rememberToast) {
+      return;
+    }
+    const timeout = window.setTimeout(() => setRememberToast(null), 1900);
+    return () => window.clearTimeout(timeout);
+  }, [rememberToast]);
+
+  useEffect(() => {
     if (!session.activeRiftEvent || session.activeRiftEvent.id === lastDemoRiftIdRef.current) {
       return;
     }
@@ -112,6 +123,8 @@ function DemoGame({ code, playerId }: DemoGameProps) {
   }, [code, session.activeRiftEvent]);
 
   function choose(choiceId: string) {
+    const selected = scene?.choices?.find((entry) => entry.id === choiceId);
+    setRememberToast(`Reality remembers: ${selected?.label ?? "This move."}`);
     advanceDemoStoryChoice(choiceId);
     rerender((value) => value + 1);
   }
@@ -171,6 +184,15 @@ function DemoGame({ code, playerId }: DemoGameProps) {
           </p>
         </section>
         {overlayFallback ? <p className="text-sm text-fuchsia-200">{overlayFallback}</p> : null}
+        {rememberToast ? (
+          <motion.p
+            initial={{ opacity: 0, y: -8, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            className="rounded-xl border border-fuchsia-300/45 bg-fuchsia-500/15 px-4 py-3 text-sm font-semibold text-fuchsia-100"
+          >
+            {rememberToast}
+          </motion.p>
+        ) : null}
         <RoomCodeCard code={code} players={session.players} title="Demo Room" />
         <NarratorBanner line={narration} />
         <section className="rounded-xl border border-cyan-300/35 bg-cyan-500/10 px-4 py-3 text-sm text-cyan-100 shadow-[0_0_24px_rgba(34,211,238,0.16)]">
@@ -279,6 +301,7 @@ function RealtimeGame({ code, playerId }: RealtimeGameProps) {
   const [timeoutNotice, setTimeoutNotice] = useState<string | null>(null);
   const [narration, setNarration] = useState<NarrationLine | null>(null);
   const [overlayFallback, setOverlayFallback] = useState<string | null>(null);
+  const [rememberToast, setRememberToast] = useState<string | null>(null);
   const [riftTier, setRiftTier] = useState<"high" | "medium" | "low">("medium");
   const [missedEventsNotice, setMissedEventsNotice] = useState<string | null>(null);
   const lastNarrationIdRef = useRef<string | null>(null);
@@ -295,7 +318,6 @@ function RealtimeGame({ code, playerId }: RealtimeGameProps) {
   const scene = room?.currentScene;
   const genre = room?.genre ?? null;
   const seconds = Math.max(0, Math.ceil(remainingMs / 1000));
-  const timerColor = seconds > 15 ? "#39ff14" : seconds > 10 ? "#ffd166" : "#ff3b3b";
   const tensionHigh = seconds <= 10;
   const cue = room?.directedScene?.motionCue ?? null;
   const showImpact = room?.directedScene?.beatType === "payoff" || room?.directedScene?.beatType === "fracture";
@@ -464,6 +486,14 @@ function RealtimeGame({ code, playerId }: RealtimeGameProps) {
   }, [missedEventsNotice]);
 
   useEffect(() => {
+    if (!rememberToast) {
+      return;
+    }
+    const timer = window.setTimeout(() => setRememberToast(null), 1900);
+    return () => window.clearTimeout(timer);
+  }, [rememberToast]);
+
+  useEffect(() => {
     if (!narration || narration.id === lastNarrationIdRef.current) {
       return;
     }
@@ -506,6 +536,11 @@ function RealtimeGame({ code, playerId }: RealtimeGameProps) {
     if (!isActivePlayer) {
       return;
     }
+    const selectedLabel =
+      scene?.choices?.find((entry) => entry.id === choiceId)?.label ??
+      scene?.choices?.find((entry) => entry.id === choiceId)?.text ??
+      "This move.";
+    setRememberToast(`Reality remembers: ${selectedLabel}`);
     setSubmitting(true);
     getSocketClient().emit("submit_choice", { code, playerId, choiceId });
     navigator.vibrate?.(28);
@@ -609,6 +644,15 @@ function RealtimeGame({ code, playerId }: RealtimeGameProps) {
         {toast ? <p className="text-sm text-cyan-300">{toast}</p> : null}
         {missedEventsNotice ? <p className="text-sm text-fuchsia-200">{missedEventsNotice}</p> : null}
         {overlayFallback ? <p className="text-sm text-fuchsia-200">{overlayFallback}</p> : null}
+        {rememberToast ? (
+          <motion.p
+            initial={{ opacity: 0, y: -8, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            className="rounded-xl border border-fuchsia-300/45 bg-fuchsia-500/15 px-4 py-3 text-sm font-semibold text-fuchsia-100"
+          >
+            {rememberToast}
+          </motion.p>
+        ) : null}
         {isActivePlayer ? (
           <div
             className="rounded-xl border-2 border-cyan-400 bg-cyan-500/20 px-4 py-3 text-center text-lg font-bold text-cyan-100 shadow-[0_0_20px_rgba(34,211,238,0.3)] animate-pulse"
@@ -660,9 +704,7 @@ function RealtimeGame({ code, playerId }: RealtimeGameProps) {
 
           {isActivePlayer ? (
             <div className="space-y-3">
-              <div className="timer-ring" style={{ ["--timer-color" as string]: timerColor }}>
-                <strong>{seconds}</strong>
-              </div>
+              <ChoiceTimer seconds={seconds} maxSeconds={30} />
 
               <div className="space-y-2">
                 {scene.choices?.map((choice) => (
