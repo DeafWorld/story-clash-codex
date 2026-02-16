@@ -27,21 +27,21 @@ function inferPersonality(label: string): ChoicePersonality {
 
 function personalityTheme(personality: ChoicePersonality) {
   if (personality === "analytical") {
-    return { icon: "◇", tint: "text-cyan-200", border: "border-cyan-300/40", fill: "bg-cyan-500/10" };
+    return { icon: "🔍", tint: "text-cyan-200", border: "border-cyan-300/40", fill: "bg-cyan-500/10" };
   }
   if (personality === "defensive") {
-    return { icon: "▣", tint: "text-emerald-200", border: "border-emerald-300/40", fill: "bg-emerald-500/10" };
+    return { icon: "🛡️", tint: "text-emerald-200", border: "border-emerald-300/40", fill: "bg-emerald-500/10" };
   }
   if (personality === "empathetic") {
-    return { icon: "◍", tint: "text-violet-200", border: "border-violet-300/40", fill: "bg-violet-500/10" };
+    return { icon: "🤝", tint: "text-violet-200", border: "border-violet-300/40", fill: "bg-violet-500/10" };
   }
   if (personality === "chaotic") {
-    return { icon: "✶", tint: "text-rose-200", border: "border-rose-300/45", fill: "bg-rose-500/12" };
+    return { icon: "⚡", tint: "text-rose-200", border: "border-rose-300/45", fill: "bg-rose-500/12" };
   }
   if (personality === "opportunistic") {
-    return { icon: "◈", tint: "text-amber-200", border: "border-amber-300/45", fill: "bg-amber-500/12" };
+    return { icon: "🎯", tint: "text-amber-200", border: "border-amber-300/45", fill: "bg-amber-500/12" };
   }
-  return { icon: "◆", tint: "text-cyan-100", border: "border-white/20", fill: "bg-black/25" };
+  return { icon: "🧭", tint: "text-cyan-100", border: "border-white/20", fill: "bg-black/25" };
 }
 
 function personalityLabel(personality: ChoicePersonality): string {
@@ -75,20 +75,43 @@ function inferStakes(label: string, personality: ChoicePersonality): string {
   return "Commits the crew to a hard path.";
 }
 
+function shortLabel(label: string): string {
+  if (label.length <= 28) {
+    return label;
+  }
+  const words = label
+    .replace(/[^\w\s]/g, " ")
+    .split(/\s+/)
+    .filter(Boolean);
+  if (words.length <= 4) {
+    return words.join(" ");
+  }
+  return `${words.slice(0, 4).join(" ")}...`;
+}
+
 export type MobileChoiceCardProps = {
   choice: Choice;
   onSelect: () => void;
   disabled?: boolean;
   locked?: boolean;
+  index?: number;
 };
 
-export default function MobileChoiceCard({ choice, onSelect, disabled = false, locked = false }: MobileChoiceCardProps) {
+export default function MobileChoiceCard({
+  choice,
+  onSelect,
+  disabled = false,
+  locked = false,
+  index = -1,
+}: MobileChoiceCardProps) {
   const label = choice.label ?? choice.text ?? "Continue";
+  const labelCompact = shortLabel(label);
   const personality = choice.personality ?? inferPersonality(label);
   const theme = personalityTheme(personality);
   const persona = personalityLabel(personality);
   const stakes = choice.stakes ?? inferStakes(label, personality);
   const detail = choice.fullText ?? label;
+  const keyLabel = index >= 0 ? String.fromCharCode(65 + (index % 26)) : null;
 
   return (
     <button
@@ -105,14 +128,19 @@ export default function MobileChoiceCard({ choice, onSelect, disabled = false, l
       aria-label={`Choose ${label}`}
     >
       <div className="flex items-start justify-between gap-2">
-        <p className="text-base font-semibold text-white sm:text-lg">{label}</p>
-        <span className={clsx("text-xs font-semibold uppercase tracking-[0.16em]", theme.tint)}>
-          {theme.icon}
-        </span>
+        <div className="flex min-w-0 items-start gap-2">
+          {keyLabel ? (
+            <span className="inline-grid h-6 w-6 place-items-center rounded-full border border-white/25 bg-black/40 text-xs font-black text-zinc-100">
+              {keyLabel}
+            </span>
+          ) : null}
+          <p className="truncate text-base font-semibold text-white sm:text-lg">{labelCompact}</p>
+        </div>
+        <span className={clsx("text-lg", theme.tint)}>{theme.icon}</span>
       </div>
       <p className="mt-1 text-sm text-zinc-300">{detail}</p>
       <div className="mt-2 flex items-center justify-between gap-2 text-xs">
-        <span className="text-zinc-400">Stakes: {stakes}</span>
+        <span className="text-zinc-300">{stakes}</span>
         <span className={clsx("font-semibold uppercase tracking-[0.14em]", theme.tint)}>
           {locked ? "Choice locked" : "Tap to lock"}
         </span>

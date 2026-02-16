@@ -7,7 +7,6 @@ import clsx from "clsx";
 import { getSocketClient } from "../../../lib/socket-client";
 import { apiFetch } from "../../../lib/api-client";
 import { trackEvent } from "../../../lib/analytics";
-import Typewriter from "../../../components/typewriter";
 import RoomCodeCard from "../../../components/room-code-card";
 import NarratorBanner from "../../../components/narrator-banner";
 import RiftImmersionLayer from "../../../components/rift-immersion-layer";
@@ -22,6 +21,7 @@ import { getNodeById, getStoryStartNode } from "../../../lib/story-utils";
 import SessionTopBar from "../../../components/session-top-bar";
 import MobileChoiceCard from "../../../components/mobile-choice-card";
 import ChoiceTimer from "../../../components/choice-timer";
+import StoryBeatView from "../../../components/story-beat-view";
 import type { NarrationLine, RoomView } from "../../../types/game";
 import type { NarratorUpdatePayload } from "../../../types/realtime";
 
@@ -69,6 +69,7 @@ function DemoGame({ code, playerId }: DemoGameProps) {
   const [, rerender] = useState(0);
   const [overlayFallback, setOverlayFallback] = useState<string | null>(null);
   const [rememberToast, setRememberToast] = useState<string | null>(null);
+  const [demoSeconds, setDemoSeconds] = useState(30);
   const [riftTier, setRiftTier] = useState<"high" | "medium" | "low">("medium");
   const lastDemoRiftIdRef = useRef<string | null>(null);
 
@@ -108,6 +109,20 @@ function DemoGame({ code, playerId }: DemoGameProps) {
     const timeout = window.setTimeout(() => setRememberToast(null), 1900);
     return () => window.clearTimeout(timeout);
   }, [rememberToast]);
+
+  useEffect(() => {
+    setDemoSeconds(30);
+  }, [session.currentNodeId]);
+
+  useEffect(() => {
+    if (isDone) {
+      return;
+    }
+    const timer = window.setInterval(() => {
+      setDemoSeconds((value) => Math.max(0, value - 1));
+    }, 1000);
+    return () => window.clearInterval(timer);
+  }, [isDone, session.currentNodeId]);
 
   useEffect(() => {
     if (!session.activeRiftEvent || session.activeRiftEvent.id === lastDemoRiftIdRef.current) {
@@ -224,16 +239,19 @@ function DemoGame({ code, playerId }: DemoGameProps) {
             </p>
           </header>
 
-          <Typewriter text={directed?.renderedText ?? scene?.text ?? "Demo story unavailable."} charsPerSecond={30} />
+          <StoryBeatView text={directed?.renderedText ?? scene?.text ?? "Demo story unavailable."} />
 
           {!isDone ? (
             <div className="space-y-3">
+              <ChoiceTimer seconds={demoSeconds} maxSeconds={30} />
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-zinc-300">What do you do?</p>
               <div className="space-y-2">
-                {scene?.choices?.slice(0, 2).map((choice) => (
+                {scene?.choices?.slice(0, 2).map((choice, index) => (
                   <MobileChoiceCard
                     key={choice.id}
                     choice={choice}
                     onSelect={() => choose(choice.id)}
+                    index={index}
                   />
                 ))}
               </div>
@@ -700,20 +718,22 @@ function RealtimeGame({ code, playerId }: RealtimeGameProps) {
             {(room.directedScene?.beatType ?? "setup").replaceAll("_", " ")} • {(room.directedScene?.pressureBand ?? "calm").replaceAll("_", " ")}
           </p>
 
-          <Typewriter text={room.directedScene?.renderedText ?? scene.text} charsPerSecond={30} />
+          <StoryBeatView text={room.directedScene?.renderedText ?? scene.text} />
 
           {isActivePlayer ? (
             <div className="space-y-3">
               <ChoiceTimer seconds={seconds} maxSeconds={30} />
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-zinc-300">What do you do?</p>
 
               <div className="space-y-2">
-                {scene.choices?.map((choice) => (
+                {scene.choices?.map((choice, index) => (
                   <MobileChoiceCard
                     key={choice.id}
                     choice={choice}
                     onSelect={() => submitPreset(choice.id)}
                     disabled={submitting}
                     locked={submitting}
+                    index={index}
                   />
                 ))}
               </div>
