@@ -7,7 +7,6 @@ import clsx from "clsx";
 import { getSocketClient } from "../../../lib/socket-client";
 import { apiFetch } from "../../../lib/api-client";
 import { trackEvent } from "../../../lib/analytics";
-import RoomCodeCard from "../../../components/room-code-card";
 import NarratorBanner from "../../../components/narrator-banner";
 import RiftImmersionLayer from "../../../components/rift-immersion-layer";
 import SceneShell from "../../../components/motion/scene-shell";
@@ -217,18 +216,9 @@ function DemoGame({ code, playerId }: DemoGameProps) {
         playerId={viewer.id}
         showInvite
         isDemo
-        phaseLabel="Story"
         playerName={viewer.name}
       />
       <div className="content-wrap space-y-4">
-        <section className="panel space-y-2 p-5">
-          <p className="badge w-fit">Story Phase</p>
-          <h1 className="text-2xl font-black sm:text-3xl">Decision Under Pressure</h1>
-          <p className="text-sm text-zinc-300">The clock runs, chaos rises, and each turn reshapes the ending.</p>
-          <p className="inline-flex w-fit items-center rounded-full border border-cyan-300/50 bg-cyan-500/15 px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-cyan-100">
-            Director v1 Active
-          </p>
-        </section>
         {overlayFallback ? <p className="text-sm text-fuchsia-200">{overlayFallback}</p> : null}
         {rememberToast ? (
           <motion.p
@@ -239,7 +229,6 @@ function DemoGame({ code, playerId }: DemoGameProps) {
             {rememberToast}
           </motion.p>
         ) : null}
-        <RoomCodeCard code={code} players={session.players} title="Demo Room" />
         <NarratorBanner line={narration} />
         <section className="rounded-xl border border-cyan-300/35 bg-cyan-500/10 px-4 py-3 text-sm text-cyan-100 shadow-[0_0_24px_rgba(34,211,238,0.16)]">
           <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-cyan-200">Reality remembers</p>
@@ -663,7 +652,6 @@ function RealtimeGame({ code, playerId }: RealtimeGameProps) {
           roomCode={code}
           playerId={playerId}
           showInvite
-          phaseLabel="Story"
           playerName={selfPlayer?.name}
         />
         <div className="content-wrap grid min-h-dvh place-items-center">
@@ -687,7 +675,6 @@ function RealtimeGame({ code, playerId }: RealtimeGameProps) {
           roomCode={code}
           playerId={playerId}
           showInvite
-          phaseLabel="Story"
           playerName={selfPlayer?.name}
         />
         <div className="content-wrap grid min-h-dvh place-items-center">
@@ -735,19 +722,10 @@ function RealtimeGame({ code, playerId }: RealtimeGameProps) {
         roomCode={code}
         playerId={playerId}
         showInvite
-        phaseLabel="Story"
         playerName={selfPlayer?.name}
       />
 
       <div className="content-wrap space-y-4">
-        <section className="panel space-y-2 p-5">
-          <p className="badge w-fit">Story Phase</p>
-          <h1 className="text-2xl font-black sm:text-3xl">Decision Under Pressure</h1>
-          <p className="text-sm text-zinc-300">Only one player acts per turn. Everyone else tracks the fallout in real time.</p>
-          <p className="inline-flex w-fit items-center rounded-full border border-cyan-300/50 bg-cyan-500/15 px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-cyan-100">
-            Director v1 Active
-          </p>
-        </section>
         {timeoutNotice ? <p className="text-sm text-yellow-300">{timeoutNotice}</p> : null}
         {toast ? <p className="text-sm text-cyan-300">{toast}</p> : null}
         {missedEventsNotice ? <p className="text-sm text-fuchsia-200">{missedEventsNotice}</p> : null}
@@ -800,11 +778,6 @@ function RealtimeGame({ code, playerId }: RealtimeGameProps) {
             <p className="mt-1 text-xs text-fuchsia-100/90">{room.latestWorldEvent.detail}</p>
           </section>
         ) : null}
-        <RoomCodeCard
-          code={code}
-          title="Live Room"
-          players={room.players.map((player) => ({ id: player.id, name: player.name }))}
-        />
       <div className="grid min-h-[70dvh] gap-4 lg:grid-cols-[1fr_280px]">
         <section className="panel flex flex-col gap-5 p-5">
           <header className="flex flex-wrap items-center justify-between gap-3">
