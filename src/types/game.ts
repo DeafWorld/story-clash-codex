@@ -294,6 +294,9 @@ export interface Choice {
   next?: string;
   label?: string;
   nextId?: string;
+  fullText?: string;
+  stakes?: string;
+  personality?: "brave" | "analytical" | "defensive" | "chaotic" | "empathetic" | "opportunistic";
 }
 
 export interface Scene {
@@ -428,6 +431,9 @@ export interface StoryChoiceNode {
   id: string;
   label: string;
   nextId: string;
+  fullText?: string;
+  stakes?: string;
+  personality?: "brave" | "analytical" | "defensive" | "chaotic" | "empathetic" | "opportunistic";
 }
 
 export interface StoryNode {

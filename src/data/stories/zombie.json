@@ -4,168 +4,210 @@
   "scenes": [
     {
       "id": "start",
-      "text": "Emergency lights strobe through smoke. Your heartbeat drowns out distant screams as something drags itself across the floor above you.",
+      "text": "Emergency strobes slash through smoke, turning each corridor into red freeze-frames.\nA scream cuts off above you, followed by the wet scrape of something heavy being dragged.\nYour crew tastes bleach, blood, and burned wiring in the air.\nFrom inside the wall, a voice whispers your names like roll call for the dead.",
       "tensionLevel": 2,
       "choices": [
         {
           "id": "a",
           "label": "Rip open the supply locker for a weapon",
-          "nextId": "armed",
           "text": "Rip open the supply locker for a weapon",
-          "next": "armed"
+          "nextId": "armed",
+          "next": "armed",
+          "fullText": "Pry the steel locker apart and arm up before the horde closes in.",
+          "stakes": "Immediate power, but the noise can pull infected straight to you.",
+          "personality": "brave"
         },
         {
           "id": "b",
           "label": "Sprint for the chained fire door",
-          "nextId": "exit_attempt",
           "text": "Sprint for the chained fire door",
-          "next": "exit_attempt"
+          "nextId": "exit_attempt",
+          "next": "exit_attempt",
+          "fullText": "Bet on speed and reach the only marked exit before this floor collapses.",
+          "stakes": "Fast escape chance, but you might run into a sealed kill zone.",
+          "personality": "defensive"
         }
       ]
     },
     {
       "id": "armed",
-      "text": "Your hands find a blood-slick crowbar. In the hallway, a jaw snaps in the dark and hungry feet begin to rush your position.",
+      "text": "The locker tears open with a shriek of metal and your hand finds a blood-slick crowbar.\nSomething slams into the opposite wall, then another body, then three more.\nHungry feet drum down the hall in uneven rhythm, too many to count.\nYour flashlight catches teeth first, then faces.",
       "tensionLevel": 3,
       "choices": [
         {
           "id": "a",
           "label": "Charge the hallway before they surround you",
-          "nextId": "stairwell",
           "text": "Charge the hallway before they surround you",
-          "next": "stairwell"
+          "nextId": "stairwell",
+          "next": "stairwell",
+          "fullText": "Hit first and carve a path before the corridor becomes a cage.",
+          "stakes": "Momentum if you break through, fatal if you stall.",
+          "personality": "chaotic"
         },
         {
           "id": "b",
           "label": "Kill the lights and slip through the kitchen",
-          "nextId": "kitchen",
           "text": "Kill the lights and slip through the kitchen",
-          "next": "kitchen"
+          "nextId": "kitchen",
+          "next": "kitchen",
+          "fullText": "Disappear into darkness and thread a stealth route through service halls.",
+          "stakes": "Lower noise, but one wrong step leaves you blind and trapped.",
+          "personality": "analytical"
         }
       ]
     },
     {
       "id": "exit_attempt",
-      "text": "The fire door shakes as bodies slam into the other side. The chain pin rattles loose and cold fingers start pushing through the gap.",
+      "text": "You hit the fire door at full speed and the chain pin rattles loose in your hands.\nBodies hammer the opposite side hard enough to bend the frame inward.\nCold fingers force through the widening gap, clawing for your throat.\nThe emergency alarm loops: EVACUATION ROUTE COMPROMISED.",
       "tensionLevel": 4,
       "choices": [
         {
           "id": "a",
           "label": "Force the door open and blast through",
-          "nextId": "stairwell",
           "text": "Force the door open and blast through",
-          "next": "stairwell"
+          "nextId": "stairwell",
+          "next": "stairwell",
+          "fullText": "Explode through the breach and gamble on raw force to clear a path.",
+          "stakes": "Could break containment in your favor, or drop you into a swarm.",
+          "personality": "brave"
         },
         {
           "id": "b",
           "label": "Drop into the service vents",
-          "nextId": "kitchen",
           "text": "Drop into the service vents",
-          "next": "kitchen"
+          "nextId": "kitchen",
+          "next": "kitchen",
+          "fullText": "Abandon the main route and crawl maintenance shafts under the chaos.",
+          "stakes": "Stealth route with limited exits if infected flood the duct line.",
+          "personality": "defensive"
         }
       ]
     },
     {
       "id": "kitchen",
-      "text": "Flies cloud the prep tables. A cracked radio repeats evacuation coordinates while footsteps scrape across the ceiling vents overhead.",
+      "text": "Flies cloud the prep tables and rotten meat swings from broken hooks.\nA cracked radio repeats rooftop extraction coordinates between bursts of static.\nAbove you, vents rattle as something crawls directly over your position.\nEach breath echoes louder than it should.",
       "tensionLevel": 4,
       "choices": [
         {
           "id": "a",
           "label": "Follow the radio to the rooftop signal point",
-          "nextId": "rooftop",
           "text": "Follow the radio to the rooftop signal point",
-          "next": "rooftop"
+          "nextId": "rooftop",
+          "next": "rooftop",
+          "fullText": "Chase the last clear transmission and race for aerial extraction.",
+          "stakes": "Best rescue odds, but the rooftop is fully exposed.",
+          "personality": "opportunistic"
         },
         {
           "id": "b",
           "label": "Barricade the freezer and wait for first light",
-          "nextId": "checkpoint_twist",
           "text": "Barricade the freezer and wait for first light",
-          "next": "checkpoint_twist"
+          "nextId": "checkpoint_twist",
+          "next": "checkpoint_twist",
+          "fullText": "Lock down cold storage and ride out the night in silence.",
+          "stakes": "Temporary safety, but surrendering movement can cost initiative.",
+          "personality": "defensive"
         }
       ]
     },
     {
       "id": "stairwell",
-      "text": "Bodies pile on each landing, climbing over each other to reach you. The fire escape outside groans in the wind but still looks climbable.",
+      "text": "The stairwell is a vertical meat grinder of bodies climbing over bodies.\nHands reach through railings and snag your sleeves as you pass each landing.\nOutside, the fire escape sways in storm wind, glass between you and open air.\nBehind you, the infected roar like a single throat.",
       "tensionLevel": 5,
       "choices": [
         {
           "id": "a",
           "label": "Fight upward through the swarm",
-          "nextId": "checkpoint_twist",
           "text": "Fight upward through the swarm",
-          "next": "checkpoint_twist"
+          "nextId": "checkpoint_twist",
+          "next": "checkpoint_twist",
+          "fullText": "Keep climbing through direct contact and trust brute will over panic.",
+          "stakes": "High casualty risk, but wins control if your line holds.",
+          "personality": "chaotic"
         },
         {
           "id": "b",
           "label": "Leap through the glass to the fire escape",
-          "nextId": "rooftop",
           "text": "Leap through the glass to the fire escape",
-          "next": "rooftop"
+          "nextId": "rooftop",
+          "next": "rooftop",
+          "fullText": "Break out now and take the exposed external route around the pack.",
+          "stakes": "Fast reposition, severe injury risk before the next decision.",
+          "personality": "brave"
         }
       ]
     },
     {
       "id": "rooftop",
-      "text": "Rotor blades thunder in the distance while flares burn out one by one. Below, the dead flood the streets and begin pouring onto your building.",
+      "text": "Rotor thunder rolls across the skyline, but the helicopter is still out of sight.\nYour final flare sputters while the street below fills with moving bodies wall to wall.\nThe dead begin spilling onto your building from three adjacent roofs.\nWind tears words out of your mouth before your crew can answer.",
       "tensionLevel": 5,
       "choices": [
         {
           "id": "a",
           "label": "Ignite your last flare and hold your ground",
-          "nextId": "checkpoint_twist",
           "text": "Ignite your last flare and hold your ground",
-          "next": "checkpoint_twist"
+          "nextId": "checkpoint_twist",
+          "next": "checkpoint_twist",
+          "fullText": "Signal hard and commit to a defensive stand until extraction sees you.",
+          "stakes": "Max visibility for rescue, max visibility for every infected nearby.",
+          "personality": "empathetic"
         },
         {
           "id": "b",
           "label": "Jump across to the next roof in the dark",
-          "nextId": "ending_doom",
           "text": "Jump across to the next roof in the dark",
-          "next": "ending_doom"
+          "nextId": "ending_doom",
+          "next": "ending_doom",
+          "fullText": "Abandon the signal and trust a blind leap to break pursuit.",
+          "stakes": "Instant escape chance, catastrophic failure if distance is wrong.",
+          "personality": "chaotic"
         }
       ]
     },
     {
       "id": "checkpoint_twist",
-      "text": "Floodlights blast your faces. A military quarantine line has formed, and through loudspeakers they order everyone to kneel for 'containment processing'.",
+      "text": "Floodlights ignite and lock on your crew from armored barricades ahead.\nMilitary loudspeakers order you to kneel for immediate containment processing.\nBehind you, the infected close in; ahead, rifles rise in perfect formation.\nOne second from now, someone else chooses what happens to you.",
       "tensionLevel": 5,
       "choices": [
         {
           "id": "a",
           "label": "Run the decon lane under floodlights",
-          "nextId": "ending_survival",
           "text": "Run the decon lane under floodlights",
-          "next": "ending_survival"
+          "nextId": "ending_survival",
+          "next": "ending_survival",
+          "fullText": "Submit to quarantine and gamble that protocol beats panic.",
+          "stakes": "Higher survival odds, lower freedom and total control loss.",
+          "personality": "defensive"
         },
         {
           "id": "b",
           "label": "Hijack the armored truck and punch through",
-          "nextId": "ending_triumph",
           "text": "Hijack the armored truck and punch through",
-          "next": "ending_triumph"
+          "nextId": "ending_triumph",
+          "next": "ending_triumph",
+          "fullText": "Take the vehicle and force an escape before either side owns you.",
+          "stakes": "Freedom if successful, full crossfire if it fails.",
+          "personality": "opportunistic"
         }
       ]
     },
     {
       "id": "ending_triumph",
-      "text": "You gun the truck through the barricade and carve a path into open highway. Behind you, the quarantine line collapses as your crew escapes alive.",
+      "text": "You slam the truck through steel barricades and break onto open highway.\nTracer fire fades behind you as quarantine and horde collide in your wake.\nYour crew is alive, bloodied, and uncontained.",
       "tensionLevel": 3,
       "ending": true,
       "endingType": "triumph"
     },
     {
       "id": "ending_survival",
-      "text": "You endure decontamination in freezing floodlight glare and stagger into a guarded safe zone. The city is lost, but your crew still breathes.",
+      "text": "You endure freezing decon mist under floodlights that never blink.\nHours later, your crew staggers into a guarded safe zone with numbered wristbands.\nThe city is gone, but your names are still on the living roster.",
       "tensionLevel": 2,
       "ending": true,
       "endingType": "survival"
     },
     {
       "id": "ending_doom",
-      "text": "Your foot slips on wet concrete. The scream is brief, then swallowed by the roar of the horde.",
+      "text": "Your foot slips on wet concrete at the edge of the jump.\nThe scream is brief, swallowed by a wall of hands and teeth below.\nBy dawn, even the rooftop flare is dark.",
       "tensionLevel": 5,
       "ending": true,
       "endingType": "doom"

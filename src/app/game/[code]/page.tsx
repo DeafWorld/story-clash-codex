@@ -19,6 +19,7 @@ import {
 } from "../../../lib/demo-session";
 import { getNodeById, getStoryStartNode } from "../../../lib/story-utils";
 import SessionTopBar from "../../../components/session-top-bar";
+import MobileChoiceCard from "../../../components/mobile-choice-card";
 import type { NarrationLine, RoomView } from "../../../types/game";
 import type { NarratorUpdatePayload } from "../../../types/realtime";
 
@@ -207,14 +208,11 @@ function DemoGame({ code, playerId }: DemoGameProps) {
             <div className="space-y-3">
               <div className="space-y-2">
                 {scene?.choices?.slice(0, 2).map((choice) => (
-                  <button
+                  <MobileChoiceCard
                     key={choice.id}
-                    type="button"
-                    className="btn btn-secondary w-full py-4 text-left"
-                    onClick={() => choose(choice.id)}
-                  >
-                    {choice.label}
-                  </button>
+                    choice={choice}
+                    onSelect={() => choose(choice.id)}
+                  />
                 ))}
               </div>
             </div>
@@ -668,16 +666,13 @@ function RealtimeGame({ code, playerId }: RealtimeGameProps) {
 
               <div className="space-y-2">
                 {scene.choices?.map((choice) => (
-                  <button
+                  <MobileChoiceCard
                     key={choice.id}
-                    type="button"
-                    className="btn btn-secondary w-full py-4 text-left"
-                    onClick={() => submitPreset(choice.id)}
+                    choice={choice}
+                    onSelect={() => submitPreset(choice.id)}
                     disabled={submitting}
-                    aria-label={`Choose ${choice.text ?? choice.label ?? "continue"}`}
-                  >
-                    {choice.text ?? choice.label ?? "Continue"}
-                  </button>
+                    locked={submitting}
+                  />
                 ))}
               </div>
             </div>

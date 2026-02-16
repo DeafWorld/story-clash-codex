@@ -34,7 +34,7 @@ export default function Typewriter({ text, charsPerSecond = 30 }: TypewriterProp
   const cursorVisible = visibleCount < text.length;
 
   return (
-    <p className="text-lg leading-8 text-white" aria-live="polite">
+    <p className="whitespace-pre-line text-[1.05rem] leading-7 text-white sm:text-lg sm:leading-8" aria-live="polite">
       {rendered}
       {cursorVisible ? <span className="animate-pulse">|</span> : null}
     </p>

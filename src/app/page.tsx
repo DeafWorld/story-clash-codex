@@ -50,7 +50,7 @@ export default function HomePage() {
               Story Clash
             </motion.h1>
             <motion.p variants={heroRevealVariants} className="mx-auto max-w-2xl text-base text-zinc-200 sm:text-xl">
-              Spin fate. Enter the Rift. Fight for the first move, then drive your crew through a high-stakes branching nightmare.
+              Vote together. Watch genres collide. Survive the Rift events that tear reality apart while every choice rewrites your ending.
             </motion.p>
             <motion.p variants={heroRevealVariants} className="text-xs uppercase tracking-[0.16em] text-zinc-400">
               {SITE_HOOK}
@@ -70,14 +70,6 @@ export default function HomePage() {
             <motion.div variants={heroRevealVariants}>
               <Link href="/join" className="btn btn-secondary w-full py-4 text-lg motion-cta magnetic-hover">
                 Join Room
-              </Link>
-            </motion.div>
-            <motion.div variants={heroRevealVariants}>
-              <Link
-                href="/arcade.html"
-                className="btn w-full border border-cyan-300/70 bg-cyan-500/10 py-3 text-base text-cyan-100 hover:bg-cyan-500/20"
-              >
-                Open Signal Sprint (Canvas Arcade)
               </Link>
             </motion.div>
           </motion.div>

@@ -4,147 +4,183 @@
   "scenes": [
     {
       "id": "start",
-      "text": "The night sky splits into violet fractures as every screen in the city flashes a non-human warning. Gravity feels wrong, like the air is being pulled upward.",
+      "text": "The night sky splits into violet fractures and every billboard flickers with one impossible glyph.\nPhones, radios, and city sirens sync into a single non-human tone.\nGravity lurches upward for a heartbeat, lifting loose glass and ash from the street.\nYour crew realizes first contact has already moved into occupation.",
       "tensionLevel": 2,
       "choices": [
         {
           "id": "a",
           "label": "Descend into the subway shelter",
-          "nextId": "subway",
           "text": "Descend into the subway shelter",
-          "next": "subway"
+          "nextId": "subway",
+          "next": "subway",
+          "fullText": "Drop below street level and use abandoned transit routes as cover.",
+          "stakes": "Less aerial exposure, higher ambush risk in tight tunnels.",
+          "personality": "defensive"
         },
         {
           "id": "b",
           "label": "Break into emergency comms control",
-          "nextId": "control_room",
           "text": "Break into emergency comms control",
-          "next": "control_room"
+          "nextId": "control_room",
+          "next": "control_room",
+          "fullText": "Fight for the comms grid before invaders lock the city narrative.",
+          "stakes": "Critical intel if successful, immediate target lock if detected.",
+          "personality": "brave"
         }
       ]
     },
     {
       "id": "subway",
-      "text": "Emergency lights pulse through flooded tracks. Mechanical scouts drop from the ceiling and begin scanning faces one by one.",
+      "text": "Floodwater ripples over tracks while red emergency strips pulse across the tunnel walls.\nMechanical scout drones drop from ceiling vents and begin scanning faces one by one.\nA child cries somewhere down-platform, then the voice repeats from three directions at once.\nThe rail map burns itself out section by section.",
       "tensionLevel": 4,
       "choices": [
         {
           "id": "a",
           "label": "Ambush the scouts before they alert the fleet",
-          "nextId": "echo_chamber",
           "text": "Ambush the scouts before they alert the fleet",
-          "next": "echo_chamber"
+          "nextId": "echo_chamber",
+          "next": "echo_chamber",
+          "fullText": "Destroy the local scouts and gamble on a silent kill chain.",
+          "stakes": "Delays pursuit if clean, triggers full hunt if noisy.",
+          "personality": "chaotic"
         },
         {
           "id": "b",
           "label": "Use maintenance tunnels to reach the reactor",
-          "nextId": "reactor",
           "text": "Use maintenance tunnels to reach the reactor",
-          "next": "reactor"
+          "nextId": "reactor",
+          "next": "reactor",
+          "fullText": "Bypass contact and head straight for infrastructure sabotage.",
+          "stakes": "Strategic advantage, but one-way corridors with no fallback.",
+          "personality": "analytical"
         }
       ]
     },
     {
       "id": "control_room",
-      "text": "Inside the command bunker, alien code crawls over every monitor. The relay has fused itself into the city grid and is counting down.",
+      "text": "Inside the command bunker, alien code crawls over every monitor like living static.\nOperators lie unconscious at their stations with identical burn marks at the neck.\nThe city relay has fused itself into the grid and begun a final countdown.\nA translated message appears: COMPLIANCE PREVENTS EXTINCTION.",
       "tensionLevel": 4,
       "choices": [
         {
           "id": "a",
           "label": "Hard-cut city power and kill the relay",
-          "nextId": "echo_chamber",
           "text": "Hard-cut city power and kill the relay",
-          "next": "echo_chamber"
+          "nextId": "echo_chamber",
+          "next": "echo_chamber",
+          "fullText": "Crash the entire grid to sever alien command synchronization.",
+          "stakes": "Breaks invasion tempo, but leaves civilians blind and trapped.",
+          "personality": "opportunistic"
         },
         {
           "id": "b",
           "label": "Reverse the uplink toward their mothership",
-          "nextId": "reactor",
           "text": "Reverse the uplink toward their mothership",
-          "next": "reactor"
+          "nextId": "reactor",
+          "next": "reactor",
+          "fullText": "Hijack the channel and push a weaponized handshake upstream.",
+          "stakes": "High reward if accepted, instant retaliation if rejected.",
+          "personality": "analytical"
         }
       ]
     },
     {
       "id": "echo_chamber",
-      "text": "A perfect human distress call echoes from a sealed service tunnel, repeating your own names back at you. Thermal scans show no human life signs.",
+      "text": "A sealed service tunnel begins broadcasting perfect copies of your own voices.\nEach imitation begs to be rescued, each one knows details only your crew should know.\nThermal scans show no human heat signatures beyond the hatch.\nThe loudest voice uses your childhood nickname.",
       "tensionLevel": 5,
       "choices": [
         {
           "id": "a",
           "label": "Follow the voice beacon anyway",
-          "nextId": "reactor",
           "text": "Follow the voice beacon anyway",
-          "next": "reactor"
+          "nextId": "reactor",
+          "next": "reactor",
+          "fullText": "Trust instinct over instruments and pursue the strongest signal.",
+          "stakes": "Could find survivors, could walk straight into mimic control.",
+          "personality": "empathetic"
         },
         {
           "id": "b",
           "label": "Mute comms and move by heat signatures",
-          "nextId": "reactor",
           "text": "Mute comms and move by heat signatures",
-          "next": "reactor"
+          "nextId": "reactor",
+          "next": "reactor",
+          "fullText": "Cut emotional noise and navigate strictly by sensor truth.",
+          "stakes": "Sharper decisions, slower trust between players.",
+          "personality": "defensive"
         }
       ]
     },
     {
       "id": "reactor",
-      "text": "A hidden reactor chamber vibrates with blue plasma. The beacon is seconds from synchronizing with orbiting warships.",
+      "text": "A hidden reactor chamber hums with unstable blue plasma and static lightning.\nThe uplink beacon is seconds from syncing with warships parked in low orbit.\nMetal catwalks tremble as if something massive is docking overhead.\nYour choice now decides whether this city becomes a warning or a weapon.",
       "tensionLevel": 5,
       "choices": [
         {
           "id": "a",
           "label": "Overload the core immediately",
-          "nextId": "uplink_spire",
           "text": "Overload the core immediately",
-          "next": "uplink_spire"
+          "nextId": "uplink_spire",
+          "next": "uplink_spire",
+          "fullText": "Trigger a full surge now and trust your crew can outrun the collapse.",
+          "stakes": "Maximum disruption, maximum casualties if timing is off.",
+          "personality": "brave"
         },
         {
           "id": "b",
           "label": "Plant delayed charges and evacuate",
-          "nextId": "ending_survival",
           "text": "Plant delayed charges and evacuate",
-          "next": "ending_survival"
+          "nextId": "ending_survival",
+          "next": "ending_survival",
+          "fullText": "Set a timed kill sequence and prioritize extraction over spectacle.",
+          "stakes": "More survivable route, lower chance to cripple command instantly.",
+          "personality": "defensive"
         }
       ]
     },
     {
       "id": "uplink_spire",
-      "text": "At the top of the beacon spire, emergency channels suddenly fill with perfect copies of your friends' voices begging to be let in. The lock controls are in your hand.",
+      "text": "At the beacon spire apex, external speakers replay your friends' voices in perfect panic.\nThe lock panel in your hand controls the blast doors and the challenge uplink.\nOutside the glass, silhouettes wave exactly in sync with one another.\nIf they are real, this saves them. If not, this ends everyone.",
       "tensionLevel": 5,
       "choices": [
         {
           "id": "a",
           "label": "Broadcast the challenge code and collapse the spire",
-          "nextId": "ending_triumph",
           "text": "Broadcast the challenge code and collapse the spire",
-          "next": "ending_triumph"
+          "nextId": "ending_triumph",
+          "next": "ending_triumph",
+          "fullText": "Commit to the counter-signal and burn the tower before they adapt.",
+          "stakes": "Ends the node if true, no recovery if challenge fails.",
+          "personality": "analytical"
         },
         {
           "id": "b",
           "label": "Open the blast doors for the voices outside",
-          "nextId": "ending_doom",
           "text": "Open the blast doors for the voices outside",
-          "next": "ending_doom"
+          "nextId": "ending_doom",
+          "next": "ending_doom",
+          "fullText": "Choose trust in the voices and let them into the control core.",
+          "stakes": "Potential rescue, likely full-system compromise.",
+          "personality": "empathetic"
         }
       ]
     },
     {
       "id": "ending_triumph",
-      "text": "The spire implodes into a white arc that shreds the beacon network. Alien ships lose formation and burn across the dawn horizon.",
+      "text": "The spire implodes into a white arc that shreds beacon arrays across the skyline.\nAlien formations break and burn through dawn cloud cover in silent trails.\nYour crew survives long enough to watch the invasion lose its shape.",
       "tensionLevel": 3,
       "ending": true,
       "endingType": "triumph"
     },
     {
       "id": "ending_survival",
-      "text": "You pull back before final detonation and outrun the shockwave through collapsing tunnels. The city is scarred, but your crew makes it out alive.",
+      "text": "You clear the blast radius seconds before delayed charges rip the reactor apart.\nThe shockwave folds rail tunnels and kills the uplink chain.\nThe city is scarred, but your crew leaves breathing.",
       "tensionLevel": 2,
       "ending": true,
       "endingType": "survival"
     },
     {
       "id": "ending_doom",
-      "text": "The doors slide open and mimic drones flood the chamber in silence. By the time you understand, the invasion signal is complete.",
+      "text": "The doors slide open and mimic drones flood the chamber without a sound.\nTheir eyes mirror your own faces for one impossible second.\nThen the invasion signal completes and the sky answers.",
       "tensionLevel": 5,
       "ending": true,
       "endingType": "doom"

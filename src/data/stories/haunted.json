@@ -4,147 +4,183 @@
   "scenes": [
     {
       "id": "start",
-      "text": "Thunder shakes the manor as every candle extinguishes at once. A childlike whisper speaks your names from the second floor.",
+      "text": "Thunder shakes the manor and every candle dies in the same breath.\nA childlike whisper speaks each of your names from the second floor landing.\nWet footprints appear behind your crew, one step at a time, with no body attached.\nThe whisper says, very gently: Follow me.",
       "tensionLevel": 2,
       "choices": [
         {
           "id": "a",
           "label": "Push into the locked library",
-          "nextId": "library",
           "text": "Push into the locked library",
-          "next": "library"
+          "nextId": "library",
+          "next": "library",
+          "fullText": "Force the library lock and search for the manor's original records.",
+          "stakes": "Knowledge and clues, but you invite whatever is nesting in the stacks.",
+          "personality": "analytical"
         },
         {
           "id": "b",
           "label": "Climb toward the attic whisper",
-          "nextId": "attic",
           "text": "Climb toward the attic whisper",
-          "next": "attic"
+          "nextId": "attic",
+          "next": "attic",
+          "fullText": "Follow the voice directly before the trail goes cold.",
+          "stakes": "Fast contact with the source, high chance of ambush.",
+          "personality": "brave"
         }
       ]
     },
     {
       "id": "library",
-      "text": "Portrait eyes track your movement. A hidden drawer opens, revealing a rusted key wrapped in hair.",
+      "text": "Portrait eyes track you between lightning flashes as dust falls like ash.\nA hidden drawer clicks open on its own, revealing a rusted key wrapped in hair.\nEvery book on one shelf is blank except for your names on the inside cover.\nSomething scratches from the wall behind the fireplace.",
       "tensionLevel": 3,
       "choices": [
         {
           "id": "a",
           "label": "Use the key on the chapel crypt",
-          "nextId": "chapel",
           "text": "Use the key on the chapel crypt",
-          "next": "chapel"
+          "nextId": "chapel",
+          "next": "chapel",
+          "fullText": "Take the key to sacred ground and face the source in ritual space.",
+          "stakes": "Direct confrontation with possible binding leverage.",
+          "personality": "empathetic"
         },
         {
           "id": "b",
           "label": "Burn the portrait and force a hidden passage",
-          "nextId": "undercroft",
           "text": "Burn the portrait and force a hidden passage",
-          "next": "undercroft"
+          "nextId": "undercroft",
+          "next": "undercroft",
+          "fullText": "Destroy the watching eyes and breach the wall route behind them.",
+          "stakes": "Rapid access below, escalates hostility immediately.",
+          "personality": "chaotic"
         }
       ]
     },
     {
       "id": "attic",
-      "text": "A music box turns by itself beside a rocking chair that never stops moving. Wet footprints appear behind you one step at a time.",
+      "text": "A music box turns by itself beside a rocking chair that never stops moving.\nThe lullaby changes tempo to match your breathing as you approach.\nWater drips from the ceiling, but each drop lands in a perfect ring around your feet.\nBehind you, the attic door closes without sound.",
       "tensionLevel": 4,
       "choices": [
         {
           "id": "a",
           "label": "Open the music box and follow the lullaby",
-          "nextId": "undercroft",
           "text": "Open the music box and follow the lullaby",
-          "next": "undercroft"
+          "nextId": "undercroft",
+          "next": "undercroft",
+          "fullText": "Trust the pattern in the song and trace where it leads below.",
+          "stakes": "Potential hidden truth, high influence from the entity.",
+          "personality": "empathetic"
         },
         {
           "id": "b",
           "label": "Run for the chapel before the door shuts",
-          "nextId": "chapel",
           "text": "Run for the chapel before the door shuts",
-          "next": "chapel"
+          "nextId": "chapel",
+          "next": "chapel",
+          "fullText": "Break line of contact and retreat to consecrated ground.",
+          "stakes": "Safer route now, less control over what follows.",
+          "personality": "defensive"
         }
       ]
     },
     {
       "id": "chapel",
-      "text": "The chapel mirror fogs from inside, revealing the bound spirit clawing to get out. Candles ignite in a perfect circle around your crew.",
+      "text": "The chapel mirror fogs from inside, revealing a bound spirit clawing to get out.\nCandles ignite in a perfect circle around your crew, one by one, without flame.\nThe stained glass bleeds moonlight across the floor like water.\nIn the reflection, one of your crew is standing in the wrong place.",
       "tensionLevel": 5,
       "choices": [
         {
           "id": "a",
           "label": "Speak the spirit's true name",
-          "nextId": "ritual_vault",
           "text": "Speak the spirit's true name",
-          "next": "ritual_vault"
+          "nextId": "ritual_vault",
+          "next": "ritual_vault",
+          "fullText": "Invoke identity as leverage and force a binding conversation.",
+          "stakes": "Could weaken the spirit, could make you its new anchor.",
+          "personality": "analytical"
         },
         {
           "id": "b",
           "label": "Shatter the mirror and run below",
-          "nextId": "undercroft",
           "text": "Shatter the mirror and run below",
-          "next": "undercroft"
+          "nextId": "undercroft",
+          "next": "undercroft",
+          "fullText": "Break the gateway physically and outrun whatever spills through.",
+          "stakes": "Immediate release of pressure, unpredictable contamination.",
+          "personality": "chaotic"
         }
       ]
     },
     {
       "id": "undercroft",
-      "text": "Beneath the manor, an undercroft lined with coffin niches reveals fresh carvings of your own names. One niche is still empty and warm.",
+      "text": "Beneath the manor, coffin niches stretch into darkness like teeth.\nFresh carvings of your names run along the stone, still damp and warm.\nOne niche remains empty, lined with clean cloth and your crew's favorite trinkets.\nThe air smells of wet earth and opened graves.",
       "tensionLevel": 5,
       "choices": [
         {
           "id": "a",
           "label": "Relight the mourning candles and continue",
-          "nextId": "ritual_vault",
           "text": "Relight the mourning candles and continue",
-          "next": "ritual_vault"
+          "nextId": "ritual_vault",
+          "next": "ritual_vault",
+          "fullText": "Restore ritual order and push deeper on the spirit's terms.",
+          "stakes": "Stability and access, but stronger spiritual tether.",
+          "personality": "defensive"
         },
         {
           "id": "b",
           "label": "Seal the crypt and force your way upward",
-          "nextId": "ending_doom",
           "text": "Seal the crypt and force your way upward",
-          "next": "ending_doom"
+          "nextId": "ending_doom",
+          "next": "ending_doom",
+          "fullText": "Cut losses and trap the horror below before it chooses one of you.",
+          "stakes": "Short-term escape with long-term curse risk.",
+          "personality": "opportunistic"
         }
       ]
     },
     {
       "id": "ritual_vault",
-      "text": "In the final vault, the spirit speaks with your own voice and offers one bargain: freedom for itself, or peace for the house.",
+      "text": "In the final vault, the spirit steps from shadow wearing your own face.\nIt offers one bargain in your voice: freedom for itself, or peace for the house.\nChains rattle behind the walls as if dozens more are listening.\nThe floor sigils glow brighter with every heartbeat.",
       "tensionLevel": 5,
       "choices": [
         {
           "id": "a",
           "label": "Offer forgiveness and release it",
-          "nextId": "ending_triumph",
           "text": "Offer forgiveness and release it",
-          "next": "ending_triumph"
+          "nextId": "ending_triumph",
+          "next": "ending_triumph",
+          "fullText": "Break the cycle and risk mercy where fear expects violence.",
+          "stakes": "Potential cleansing, total trust in an unknown promise.",
+          "personality": "empathetic"
         },
         {
           "id": "b",
           "label": "Bind it with blood and chain it forever",
-          "nextId": "ending_survival",
           "text": "Bind it with blood and chain it forever",
-          "next": "ending_survival"
+          "nextId": "ending_survival",
+          "next": "ending_survival",
+          "fullText": "Choose control over closure and lock the threat beneath stone.",
+          "stakes": "You live now, but the debt follows the crew.",
+          "personality": "brave"
         }
       ]
     },
     {
       "id": "ending_triumph",
-      "text": "The whisper turns into a final sigh. The manor doors unbolt, and moonlight floods the halls for the first time in decades.",
+      "text": "The whisper softens into a final sigh and the manor doors unbolt on their own.\nMoonlight pours through every hall for the first time in decades.\nYour crew leaves with the night behind you instead of inside you.",
       "tensionLevel": 3,
       "ending": true,
       "endingType": "triumph"
     },
     {
       "id": "ending_survival",
-      "text": "The spirit is chained beneath stone and silence. You leave alive, but each of you carries a thin red mark where the oath was sealed.",
+      "text": "The spirit is chained beneath stone and silence, screaming without sound.\nYou walk out alive, each with a thin red oath mark at the wrist.\nThe house is quiet, but never empty.",
       "tensionLevel": 2,
       "ending": true,
       "endingType": "survival"
     },
     {
       "id": "ending_doom",
-      "text": "The vault seals and every candle dies at once. By dawn, only your names remain carved into the manor wall.",
+      "text": "The vault seals and every candle in the manor dies at once.\nBy dawn, the front gate hangs open but no one answers from inside.\nOnly your names remain carved into the entry wall.",
       "tensionLevel": 5,
       "ending": true,
       "endingType": "doom"

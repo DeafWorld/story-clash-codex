@@ -30,6 +30,9 @@ function normalizeChoice(choice: Choice): StoryChoiceNode | null {
     id: choice.id,
     label,
     nextId,
+    fullText: choice.fullText,
+    stakes: choice.stakes,
+    personality: choice.personality,
   };
 }
 
