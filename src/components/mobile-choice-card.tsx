@@ -44,6 +44,15 @@ function personalityTheme(personality: ChoicePersonality) {
   return { icon: "🧭", tint: "text-cyan-100", border: "border-white/20", fill: "bg-black/25" };
 }
 
+function stakesIcon(personality: ChoicePersonality): string {
+  if (personality === "analytical") return "🔍";
+  if (personality === "defensive") return "🛡️";
+  if (personality === "empathetic") return "🤝";
+  if (personality === "chaotic") return "⚠️";
+  if (personality === "opportunistic") return "🎯";
+  return "⚡";
+}
+
 function personalityLabel(personality: ChoicePersonality): string {
   if (personality === "analytical") return "Analytical";
   if (personality === "defensive") return "Defensive";
@@ -86,7 +95,7 @@ function shortLabel(label: string): string {
   if (words.length <= 4) {
     return words.join(" ");
   }
-  return `${words.slice(0, 4).join(" ")}...`;
+  return words.slice(0, 4).join(" ");
 }
 
 export type MobileChoiceCardProps = {
@@ -110,8 +119,10 @@ export default function MobileChoiceCard({
   const theme = personalityTheme(personality);
   const persona = personalityLabel(personality);
   const stakes = choice.stakes ?? inferStakes(label, personality);
-  const detail = choice.fullText ?? label;
+  const detailSource = choice.fullText ?? label;
+  const detail = detailSource.length > 62 ? `${detailSource.slice(0, 62).trim()}...` : detailSource;
   const keyLabel = index >= 0 ? String.fromCharCode(65 + (index % 26)) : null;
+  const stakesMark = stakesIcon(personality);
 
   return (
     <button
@@ -140,7 +151,9 @@ export default function MobileChoiceCard({
       </div>
       <p className="mt-1 text-sm text-zinc-300">{detail}</p>
       <div className="mt-2 flex items-center justify-between gap-2 text-xs">
-        <span className="text-zinc-300">{stakes}</span>
+        <span className="text-zinc-300">
+          {stakesMark} {stakes}
+        </span>
         <span className={clsx("font-semibold uppercase tracking-[0.14em]", theme.tint)}>
           {locked ? "Choice locked" : "Tap to lock"}
         </span>

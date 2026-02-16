@@ -259,7 +259,12 @@ function DemoGame({ code, playerId }: DemoGameProps) {
             </p>
           </header>
 
-          <StoryBeatView text={directed?.renderedText ?? scene?.text ?? "Demo story unavailable."} />
+          <StoryBeatView
+            text={directed?.renderedText ?? scene?.text ?? "Demo story unavailable."}
+            storyTitle={storyTree.title}
+            genre={session.storyId}
+            sceneId={scene?.id}
+          />
 
           {!isDone ? (
             <div className="space-y-3">
@@ -794,7 +799,12 @@ function RealtimeGame({ code, playerId }: RealtimeGameProps) {
             {(room.directedScene?.beatType ?? "setup").replaceAll("_", " ")} • {(room.directedScene?.pressureBand ?? "calm").replaceAll("_", " ")}
           </p>
 
-          <StoryBeatView text={room.directedScene?.renderedText ?? scene.text} />
+          <StoryBeatView
+            text={room.directedScene?.renderedText ?? scene.text}
+            storyTitle={room.storyTitle}
+            genre={room.genre}
+            sceneId={scene.id}
+          />
 
           {!choicesOpen ? (
             <section className="rounded-xl border border-white/15 bg-black/25 p-4">

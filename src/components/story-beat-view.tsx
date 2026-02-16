@@ -1,9 +1,13 @@
 "use client";
 
 import { motion } from "framer-motion";
+import type { GenreId } from "../types/game";
 
 type StoryBeatViewProps = {
   text: string;
+  sceneId?: string;
+  storyTitle?: string | null;
+  genre?: GenreId | null;
 };
 
 type BeatKind = "dialogue" | "action" | "text";
@@ -68,11 +72,70 @@ function containerClass(kind: BeatKind): string {
   return "border-white/15 bg-black/20";
 }
 
-export default function StoryBeatView({ text }: StoryBeatViewProps) {
+const GENRE_ICON: Record<GenreId, string> = {
+  zombie: "🧟",
+  alien: "🛸",
+  haunted: "🏚️",
+};
+
+const SCENE_LOCATION: Record<GenreId, Record<string, string>> = {
+  zombie: {
+    start: "Emergency Wing",
+    armed: "Supply Corridor",
+    exit_attempt: "Fire Exit Block",
+    kitchen: "Service Kitchen",
+    stairwell: "North Stairwell",
+    rooftop: "Rooftop Edge",
+    checkpoint_twist: "Quarantine Checkpoint",
+    ending_triumph: "Escape Highway",
+    ending_survival: "Safe Zone Gate",
+    ending_doom: "Collapsed Roofline",
+  },
+  alien: {
+    start: "City Core",
+    subway: "Subway Shelter",
+    control_room: "Emergency Comms",
+    echo_chamber: "Echo Tunnel",
+    reactor: "Reactor Chamber",
+    uplink_spire: "Uplink Spire",
+    ending_triumph: "Skyline Break",
+    ending_survival: "Blast Perimeter",
+    ending_doom: "Control Core",
+  },
+  haunted: {
+    start: "Front Hall",
+    library: "Locked Library",
+    attic: "Attic Landing",
+    chapel: "Chapel Mirror",
+    undercroft: "Undercroft",
+    ritual_vault: "Ritual Vault",
+    ending_triumph: "Manor Exit",
+    ending_survival: "Oath Gate",
+    ending_doom: "Sealed Entry",
+  },
+};
+
+function resolveLocation(genre: GenreId | null | undefined, sceneId: string | undefined): string {
+  if (!genre || !sceneId) {
+    return "Unknown Location";
+  }
+  return SCENE_LOCATION[genre]?.[sceneId] ?? sceneId.replaceAll("_", " ");
+}
+
+export default function StoryBeatView({ text, sceneId, storyTitle, genre }: StoryBeatViewProps) {
   const beats = toBeats(text);
+  const headerIcon = genre ? GENRE_ICON[genre] : "⚡";
+  const headerTitle = storyTitle ?? "Story Clash";
+  const headerLocation = resolveLocation(genre, sceneId);
 
   return (
     <div className="space-y-3">
+      <div className="rounded-xl border border-white/15 bg-black/25 px-4 py-3">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-zinc-400">
+          {headerIcon} {headerTitle}
+        </p>
+        <p className="mt-1 text-sm font-semibold text-zinc-100">{headerLocation}</p>
+      </div>
       {beats.map((beat, index) => (
         <div key={beat.id} className="space-y-3">
           <motion.article
@@ -95,7 +158,9 @@ export default function StoryBeatView({ text }: StoryBeatViewProps) {
             </div>
           </motion.article>
           {index < beats.length - 1 ? (
-            <div className="mx-auto w-20 border-t border-white/20" aria-hidden />
+            <div className="mx-auto w-28 text-center text-xs tracking-[0.28em] text-white/35" aria-hidden>
+              ━━━
+            </div>
           ) : null}
         </div>
       ))}
