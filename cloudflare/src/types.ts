@@ -254,6 +254,8 @@ export type RoomState = {
   currentNodeId: string;
   currentSceneId: string;
   tensionLevel: number;
+  sceneReadyPlayerIds: string[];
+  choicesOpen: boolean;
   history: HistoryEntry[];
   genrePower: GenrePower;
   chaosLevel: number;

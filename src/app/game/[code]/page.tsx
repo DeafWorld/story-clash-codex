@@ -70,8 +70,10 @@ function DemoGame({ code, playerId }: DemoGameProps) {
   const [overlayFallback, setOverlayFallback] = useState<string | null>(null);
   const [rememberToast, setRememberToast] = useState<string | null>(null);
   const [demoSeconds, setDemoSeconds] = useState(30);
+  const [readyPlayerIds, setReadyPlayerIds] = useState<string[]>([]);
   const [riftTier, setRiftTier] = useState<"high" | "medium" | "low">("medium");
   const lastDemoRiftIdRef = useRef<string | null>(null);
+  const readyTimerRef = useRef<number[]>([]);
 
   const session = getDemoSession();
   const storyTree = getDemoStoryTree();
@@ -81,6 +83,11 @@ function DemoGame({ code, playerId }: DemoGameProps) {
   const activePlayer = session.players.find((player) => player.id === activePlayerId) ?? session.players[0];
   const viewerId = playerId || "demo-host";
   const viewer = session.players.find((player) => player.id === viewerId) ?? session.players[0];
+  const connectedPlayers = session.players.filter((player) => player.connected !== false);
+  const requiredReadyIds = connectedPlayers.map((player) => player.id);
+  const readySet = new Set(readyPlayerIds);
+  const isViewerReady = readySet.has(viewer.id);
+  const choicesOpen = requiredReadyIds.length > 0 && requiredReadyIds.every((id) => readySet.has(id));
   const isDone = Boolean(scene?.ending);
   const tensionLevel = scene?.tensionLevel ?? 1;
   const tensionHigh = tensionLevel >= 4;
@@ -111,18 +118,28 @@ function DemoGame({ code, playerId }: DemoGameProps) {
   }, [rememberToast]);
 
   useEffect(() => {
+    readyTimerRef.current.forEach((timer) => window.clearTimeout(timer));
+    readyTimerRef.current = [];
+    setReadyPlayerIds([]);
     setDemoSeconds(30);
   }, [session.currentNodeId]);
 
   useEffect(() => {
-    if (isDone) {
+    if (isDone || !choicesOpen) {
       return;
     }
     const timer = window.setInterval(() => {
       setDemoSeconds((value) => Math.max(0, value - 1));
     }, 1000);
     return () => window.clearInterval(timer);
-  }, [isDone, session.currentNodeId]);
+  }, [isDone, choicesOpen, session.currentNodeId]);
+
+  useEffect(() => {
+    return () => {
+      readyTimerRef.current.forEach((timer) => window.clearTimeout(timer));
+      readyTimerRef.current = [];
+    };
+  }, []);
 
   useEffect(() => {
     if (!session.activeRiftEvent || session.activeRiftEvent.id === lastDemoRiftIdRef.current) {
@@ -142,6 +159,20 @@ function DemoGame({ code, playerId }: DemoGameProps) {
     setRememberToast(`Reality remembers: ${selected?.label ?? "This move."}`);
     advanceDemoStoryChoice(choiceId);
     rerender((value) => value + 1);
+  }
+
+  function markReady() {
+    if (isDone || isViewerReady) {
+      return;
+    }
+    setReadyPlayerIds((current) => (current.includes(viewer.id) ? current : [...current, viewer.id]));
+    const otherReadyIds = requiredReadyIds.filter((id) => id !== viewer.id);
+    otherReadyIds.forEach((id, index) => {
+      const timer = window.setTimeout(() => {
+        setReadyPlayerIds((current) => (current.includes(id) ? current : [...current, id]));
+      }, 600 + index * 450);
+      readyTimerRef.current.push(timer);
+    });
   }
 
   return (
@@ -243,18 +274,50 @@ function DemoGame({ code, playerId }: DemoGameProps) {
 
           {!isDone ? (
             <div className="space-y-3">
-              <ChoiceTimer seconds={demoSeconds} maxSeconds={30} />
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-zinc-300">What do you do?</p>
-              <div className="space-y-2">
-                {scene?.choices?.slice(0, 2).map((choice, index) => (
-                  <MobileChoiceCard
-                    key={choice.id}
-                    choice={choice}
-                    onSelect={() => choose(choice.id)}
-                    index={index}
-                  />
-                ))}
-              </div>
+              {!choicesOpen ? (
+                <section className="rounded-xl border border-white/15 bg-black/25 p-4">
+                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-zinc-300">Story Readiness</p>
+                  <p className="mt-1 text-sm text-zinc-200">
+                    Read first, then lock in. Choices unlock when all players are ready.
+                  </p>
+                  <p className="mt-2 text-xs text-cyan-200">
+                    Ready: {readyPlayerIds.filter((id) => requiredReadyIds.includes(id)).length}/{requiredReadyIds.length}
+                  </p>
+                  <div className="mt-3 grid gap-2 sm:grid-cols-3">
+                    {connectedPlayers.map((player) => (
+                      <div
+                        key={player.id}
+                        className={clsx(
+                          "rounded-lg border px-3 py-2 text-xs",
+                          readySet.has(player.id)
+                            ? "border-cyan-300/50 bg-cyan-500/15 text-cyan-100"
+                            : "border-white/15 bg-black/30 text-zinc-300"
+                        )}
+                      >
+                        {player.name}: {readySet.has(player.id) ? "Ready" : "Reading"}
+                      </div>
+                    ))}
+                  </div>
+                  <button type="button" className="btn btn-primary mt-3 w-full sm:w-auto" onClick={markReady} disabled={isViewerReady}>
+                    {isViewerReady ? "Waiting for Crew..." : "Ready for Choices"}
+                  </button>
+                </section>
+              ) : (
+                <>
+                  <ChoiceTimer seconds={demoSeconds} maxSeconds={30} />
+                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-zinc-300">What do you do?</p>
+                  <div className="space-y-2">
+                    {scene?.choices?.slice(0, 2).map((choice, index) => (
+                      <MobileChoiceCard
+                        key={choice.id}
+                        choice={choice}
+                        onSelect={() => choose(choice.id)}
+                        index={index}
+                      />
+                    ))}
+                  </div>
+                </>
+              )}
             </div>
           ) : (
             <button
@@ -333,6 +396,14 @@ function RealtimeGame({ code, playerId }: RealtimeGameProps) {
   const selfPlayer = useMemo(() => room?.players.find((player) => player.id === playerId) ?? null, [room, playerId]);
 
   const isActivePlayer = room?.activePlayerId === playerId;
+  const connectedPlayers = useMemo(
+    () => room?.players.filter((player) => player.connected !== false) ?? [],
+    [room]
+  );
+  const readySet = useMemo(() => new Set(room?.sceneReadyPlayerIds ?? []), [room?.sceneReadyPlayerIds]);
+  const readyCount = connectedPlayers.filter((player) => readySet.has(player.id)).length;
+  const choicesOpen = room?.choicesOpen ?? false;
+  const isSelfReady = readySet.has(playerId);
   const scene = room?.currentScene;
   const genre = room?.genre ?? null;
   const seconds = Math.max(0, Math.ceil(remainingMs / 1000));
@@ -361,6 +432,11 @@ function RealtimeGame({ code, playerId }: RealtimeGameProps) {
         if (mounted) {
           setRoom(data);
           setNarration(data.latestNarration ?? null);
+          if (data.turnDeadline) {
+            setRemainingMs(Math.max(0, data.turnDeadline - Date.now()));
+          } else {
+            setRemainingMs(30000);
+          }
         }
       } catch (err) {
         if (mounted) {
@@ -386,6 +462,8 @@ function RealtimeGame({ code, playerId }: RealtimeGameProps) {
       setSubmitting(false);
       if (payload.turnDeadline) {
         setRemainingMs(Math.max(0, payload.turnDeadline - Date.now()));
+      } else {
+        setRemainingMs(30000);
       }
     };
 
@@ -394,6 +472,8 @@ function RealtimeGame({ code, playerId }: RealtimeGameProps) {
       setNarration(payload.latestNarration ?? null);
       if (payload.turnDeadline) {
         setRemainingMs(Math.max(0, payload.turnDeadline - Date.now()));
+      } else {
+        setRemainingMs(30000);
       }
     };
 
@@ -407,6 +487,8 @@ function RealtimeGame({ code, playerId }: RealtimeGameProps) {
       setNarration(payload.latestNarration ?? null);
       if (payload.turnDeadline) {
         setRemainingMs(Math.max(0, payload.turnDeadline - Date.now()));
+      } else {
+        setRemainingMs(30000);
       }
     };
 
@@ -538,7 +620,7 @@ function RealtimeGame({ code, playerId }: RealtimeGameProps) {
   }, [code, room?.activeRiftEvent]);
 
   useEffect(() => {
-    if (!room?.turnDeadline || room.phase !== "game") {
+    if (!room?.turnDeadline || room.phase !== "game" || !choicesOpen) {
       return;
     }
 
@@ -548,10 +630,10 @@ function RealtimeGame({ code, playerId }: RealtimeGameProps) {
     }, 150);
 
     return () => window.clearInterval(interval);
-  }, [room?.turnDeadline, room?.phase]);
+  }, [room?.turnDeadline, room?.phase, choicesOpen]);
 
   function submitPreset(choiceId: string) {
-    if (!isActivePlayer) {
+    if (!isActivePlayer || !choicesOpen) {
       return;
     }
     const selectedLabel =
@@ -562,6 +644,14 @@ function RealtimeGame({ code, playerId }: RealtimeGameProps) {
     setSubmitting(true);
     getSocketClient().emit("submit_choice", { code, playerId, choiceId });
     navigator.vibrate?.(28);
+  }
+
+  function markReady() {
+    if (!room || !playerId || isSelfReady || choicesOpen) {
+      return;
+    }
+    getSocketClient().emit("scene_ready", { code, playerId });
+    navigator.vibrate?.(18);
   }
 
   if (error) {
@@ -671,7 +761,7 @@ function RealtimeGame({ code, playerId }: RealtimeGameProps) {
             {rememberToast}
           </motion.p>
         ) : null}
-        {isActivePlayer ? (
+        {isActivePlayer && choicesOpen ? (
           <div
             className="rounded-xl border-2 border-cyan-400 bg-cyan-500/20 px-4 py-3 text-center text-lg font-bold text-cyan-100 shadow-[0_0_20px_rgba(34,211,238,0.3)] animate-pulse"
             aria-live="polite"
@@ -679,6 +769,15 @@ function RealtimeGame({ code, playerId }: RealtimeGameProps) {
           >
             Your turn, {activePlayer?.name ?? "Player"} — make your move
           </div>
+        ) : null}
+        {!choicesOpen ? (
+          <section className="rounded-xl border border-white/15 bg-black/25 px-4 py-3 text-sm text-zinc-200">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-cyan-200">Story Readiness</p>
+            <p className="mt-1">Read the scene first. Choices unlock once all connected players tap ready.</p>
+            <p className="mt-2 text-xs text-cyan-100">
+              Ready: {readyCount}/{connectedPlayers.length}
+            </p>
+          </section>
         ) : null}
         <NarratorBanner line={narration} />
         <section className="rounded-xl border border-cyan-300/35 bg-cyan-500/10 px-4 py-3 text-sm text-cyan-100 shadow-[0_0_24px_rgba(34,211,238,0.16)]">
@@ -711,7 +810,11 @@ function RealtimeGame({ code, playerId }: RealtimeGameProps) {
           <header className="flex flex-wrap items-center justify-between gap-3">
             <p className="text-sm uppercase tracking-[0.2em] text-zinc-400">{room.storyTitle}</p>
             <p className="rounded-full border border-white/20 px-3 py-1 text-sm">
-              {isActivePlayer ? `Your Turn, ${activePlayer?.name ?? "Player"}` : `Waiting for ${activePlayer?.name ?? "Player"}`}
+              {choicesOpen
+                ? isActivePlayer
+                  ? `Your Turn, ${activePlayer?.name ?? "Player"}`
+                  : `Waiting for ${activePlayer?.name ?? "Player"}`
+                : "Reading phase"}
             </p>
           </header>
           <p className="text-xs uppercase tracking-[0.16em] text-cyan-200">
@@ -720,7 +823,30 @@ function RealtimeGame({ code, playerId }: RealtimeGameProps) {
 
           <StoryBeatView text={room.directedScene?.renderedText ?? scene.text} />
 
-          {isActivePlayer ? (
+          {!choicesOpen ? (
+            <section className="rounded-xl border border-white/15 bg-black/25 p-4">
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-zinc-300">Ready Check</p>
+              <p className="mt-1 text-sm text-zinc-200">Once all players are ready, choices appear and the timer starts.</p>
+              <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                {connectedPlayers.map((player) => (
+                  <div
+                    key={player.id}
+                    className={clsx(
+                      "rounded-lg border px-3 py-2 text-xs",
+                      readySet.has(player.id)
+                        ? "border-cyan-300/50 bg-cyan-500/15 text-cyan-100"
+                        : "border-white/15 bg-black/30 text-zinc-300"
+                    )}
+                  >
+                    {player.name}: {readySet.has(player.id) ? "Ready" : "Reading"}
+                  </div>
+                ))}
+              </div>
+              <button type="button" className="btn btn-primary mt-3 w-full sm:w-auto" onClick={markReady} disabled={isSelfReady}>
+                {isSelfReady ? "Waiting for Crew..." : "Ready for Choices"}
+              </button>
+            </section>
+          ) : isActivePlayer ? (
             <div className="space-y-3">
               <ChoiceTimer seconds={seconds} maxSeconds={30} />
               <p className="text-xs font-semibold uppercase tracking-[0.18em] text-zinc-300">What do you do?</p>

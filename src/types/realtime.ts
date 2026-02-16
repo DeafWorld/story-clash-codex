@@ -7,6 +7,7 @@ export type ClientEventName =
   | "minigame_score"
   | "minigame_spin"
   | "genre_selected"
+  | "scene_ready"
   | "submit_choice"
   | "restart_session";
 

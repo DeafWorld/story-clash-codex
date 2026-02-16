@@ -356,6 +356,8 @@ export interface StoryState {
   history: HistoryEntry[];
   tensionLevel: number;
   currentPlayerId: string | null;
+  sceneReadyPlayerIds: string[];
+  choicesOpen: boolean;
   storyId: GenreId | null;
   genrePower: GenrePower;
   chaosLevel: number;

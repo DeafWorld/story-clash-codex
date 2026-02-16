@@ -184,6 +184,22 @@ function ensureFreshRoom(code: string): RoomState {
     ...player,
     orderIndex: player.orderIndex ?? player.turnOrder ?? index,
   }));
+  room.sceneReadyPlayerIds = normalizeSceneReadyPlayerIds(room);
+  if (room.phase === "game") {
+    const legacyChoicesOpen = (room as { choicesOpen?: boolean }).choicesOpen;
+    if (room.turnDeadline && typeof legacyChoicesOpen !== "boolean") {
+      room.choicesOpen = true;
+      room.sceneReadyPlayerIds = connectedPlayerIds(room);
+    }
+    room.choicesOpen = room.choicesOpen ?? false;
+    if (room.choicesOpen && !room.turnDeadline) {
+      room.turnDeadline = now() + TURN_DURATION_MS;
+    }
+  } else {
+    room.choicesOpen = false;
+    room.sceneReadyPlayerIds = [];
+    room.turnDeadline = null;
+  }
   room.archetypeProgress = syncArchetypeProgress({
     players: room.players,
     playerProfiles: room.playerProfiles,
@@ -253,6 +269,42 @@ function activePlayerId(room: RoomState): string | null {
     return null;
   }
   return room.turnOrder[room.activePlayerIndex] ?? null;
+}
+
+function connectedPlayerIds(room: RoomState): string[] {
+  return room.players.filter((player) => player.connected !== false).map((player) => player.id);
+}
+
+function normalizeSceneReadyPlayerIds(room: RoomState): string[] {
+  const validIds = new Set(room.players.map((player) => player.id));
+  return [...new Set((room.sceneReadyPlayerIds ?? []).filter((playerId) => validIds.has(playerId)))];
+}
+
+function resetSceneReadiness(room: RoomState) {
+  room.sceneReadyPlayerIds = [];
+  room.choicesOpen = false;
+  room.turnDeadline = null;
+}
+
+function maybeUnlockChoices(room: RoomState): boolean {
+  if (room.phase !== "game" || room.choicesOpen) {
+    return false;
+  }
+
+  const required = connectedPlayerIds(room);
+  if (!required.length) {
+    return false;
+  }
+
+  const ready = new Set(room.sceneReadyPlayerIds);
+  const allReady = required.every((playerId) => ready.has(playerId));
+  if (!allReady) {
+    return false;
+  }
+
+  room.choicesOpen = true;
+  room.turnDeadline = now() + TURN_DURATION_MS;
+  return true;
 }
 
 function getCurrentScene(room: RoomState): Scene | null {
@@ -392,6 +444,8 @@ export function createRoom(hostName: string) {
     turnOrder: [host.id],
     activePlayerIndex: 0,
     currentPlayerId: host.id,
+    sceneReadyPlayerIds: [],
+    choicesOpen: false,
     genre: null,
     currentNodeId: "start",
     currentSceneId: "start",
@@ -468,6 +522,9 @@ export function markPlayerConnection(code: string, playerId: string, connected: 
     throw new Error("Player not found");
   }
   player.connected = connected;
+  if (room.phase === "game" && !room.choicesOpen) {
+    maybeUnlockChoices(room);
+  }
   ensureHostAssigned(room);
 }
 
@@ -506,7 +563,7 @@ export function startGame(code: string, hostPlayerId: string) {
     step: room.history.length,
   });
   room.currentPlayerId = activePlayerId(room);
-  room.turnDeadline = null;
+  resetSceneReadiness(room);
 
   return {
     startAt: now() + 1200,
@@ -644,7 +701,7 @@ export function selectGenre(code: string, playerId: string, genre: GenreId) {
   room.endingScene = null;
   room.endingType = null;
   room.activePlayerIndex = 0;
-  room.turnDeadline = now() + TURN_DURATION_MS;
+  resetSceneReadiness(room);
   room.playerProfiles = ensurePlayerProfiles(room.players, room.playerProfiles ?? {});
   room.archetypeProgress = syncArchetypeProgress({
     players: room.players,
@@ -725,6 +782,38 @@ export function getGameState(code: string): RoomView {
   return getRoomView(code);
 }
 
+export function markSceneReady(code: string, playerId: string) {
+  const room = ensureFreshRoom(code);
+  if (room.phase !== "game") {
+    throw new Error("Game is not active");
+  }
+
+  const player = room.players.find((entry) => entry.id === playerId);
+  if (!player) {
+    throw new Error("Player not found");
+  }
+  if (player.connected === false) {
+    throw new Error("Player is disconnected");
+  }
+
+  const previouslyOpen = room.choicesOpen;
+  const ready = new Set(room.sceneReadyPlayerIds ?? []);
+  ready.add(playerId);
+  room.sceneReadyPlayerIds = [...ready];
+  const justOpened = maybeUnlockChoices(room);
+  const requiredPlayers = connectedPlayerIds(room);
+  room.expiresAt = now() + ROOM_TTL_MS;
+
+  return {
+    activePlayerId: activePlayerId(room),
+    readyCount: requiredPlayers.filter((id) => room.sceneReadyPlayerIds.includes(id)).length,
+    totalCount: requiredPlayers.length,
+    choicesOpen: room.choicesOpen,
+    turnDeadline: room.turnDeadline,
+    justOpened: !previouslyOpen && justOpened,
+  };
+}
+
 export function submitChoice(
   code: string,
   playerId: string,
@@ -733,6 +822,9 @@ export function submitChoice(
   const room = ensureFreshRoom(code);
   if (room.phase !== "game") {
     throw new Error("Game is not active");
+  }
+  if (!room.choicesOpen || !room.turnDeadline) {
+    throw new Error("Choices are locked until everyone is ready");
   }
 
   const activeId = activePlayerId(room);
@@ -973,7 +1065,7 @@ export function submitChoice(
     setRoomPhase(room, "recap");
     room.endingScene = nextScene;
     room.endingType = (nextScene.endingType ?? "doom") as EndingType;
-    room.turnDeadline = null;
+    resetSceneReadiness(room);
     room.currentPlayerId = null;
     const recapMemory = resolveRealityRemembers({
       roomCode: room.code,
@@ -1009,7 +1101,7 @@ export function submitChoice(
 
   room.activePlayerIndex = rotateToConnectedPlayer(room, room.activePlayerIndex);
   room.currentPlayerId = activePlayerId(room);
-  room.turnDeadline = now() + TURN_DURATION_MS;
+  resetSceneReadiness(room);
   const rememberLine = resolveRealityRemembers({
     roomCode: room.code,
     step: room.history.length,
@@ -1131,7 +1223,7 @@ export function restartSession(code: string) {
     current: room.archetypeProgress ?? {},
     step: 0,
   });
-  room.turnDeadline = null;
+  resetSceneReadiness(room);
   room.expiresAt = now() + ROOM_TTL_MS;
 
   return getRoomView(code);

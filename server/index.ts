@@ -10,6 +10,7 @@ import {
   getSocketPlayer,
   getPlayerByCodeAndId,
   getRoomView,
+  markSceneReady,
   markPlayerConnection,
   recordMinigameScore,
   registerSocket,
@@ -243,14 +244,14 @@ async function bootstrap() {
       return;
     }
 
-    if (snapshot.phase !== "game" || !snapshot.turnDeadline || !snapshot.activePlayerId) {
+    if (snapshot.phase !== "game" || !snapshot.choicesOpen || !snapshot.turnDeadline || !snapshot.activePlayerId) {
       return;
     }
 
     const emitTick = () => {
       try {
         const latest = getRoomView(code);
-        if (latest.phase !== "game" || !latest.turnDeadline || !latest.activePlayerId) {
+        if (latest.phase !== "game" || !latest.choicesOpen || !latest.turnDeadline || !latest.activePlayerId) {
           clearTurnTimer(code);
           return;
         }
@@ -276,6 +277,7 @@ async function bootstrap() {
       }
 
       const acquired = withRoomLock(code, () => {
+        clearTurnTimer(code);
         const result = timeoutChoice(code);
         emitNarration(code, result.narration);
         io.to(code).emit("turn_timeout", {
@@ -292,7 +294,6 @@ async function bootstrap() {
         }
 
         io.to(code).emit("scene_update", getRoomView(code));
-        scheduleTurnTimer(code);
       });
 
       if (!acquired) {
@@ -318,6 +319,7 @@ async function bootstrap() {
         });
         io.to(code).emit("room_updated", room);
         socket.emit("reconnect_state", room);
+        scheduleTurnTimer(code);
       } catch (error) {
         logger.warn("socket.join_room.failed", { payload, error });
         socket.emit("server_error", { message: error instanceof Error ? error.message : "Join failed" });
@@ -332,6 +334,7 @@ async function bootstrap() {
         socket.leave(code);
         io.to(code).emit("player_left", { playerId: payload.playerId });
         io.to(code).emit("room_updated", getRoomView(code));
+        scheduleTurnTimer(code);
       } catch {
         // Ignore stale leave events.
         logger.warn("socket.leave_room.stale", { payload });
@@ -420,10 +423,31 @@ async function bootstrap() {
         });
         emitNarration(code, selection.narration);
         io.to(code).emit("scene_update", getRoomView(code));
-        scheduleTurnTimer(code);
       } catch (error) {
         logger.warn("socket.genre_selected.failed", { payload, error });
         socket.emit("server_error", { message: error instanceof Error ? error.message : "Genre selection failed" });
+      }
+    });
+
+    socket.on("scene_ready", (payload: { code: string; playerId: string }) => {
+      try {
+        const code = payload.code.toUpperCase();
+        const playerId = assertSocketSession(socket.id, code, payload.playerId);
+        logger.info("socket.scene_ready", { code, playerId });
+        const acquired = withRoomLock(code, () => {
+          const result = markSceneReady(code, playerId);
+          io.to(code).emit("room_updated", getRoomView(code));
+          if (result.justOpened) {
+            io.to(code).emit("scene_update", getRoomView(code));
+            scheduleTurnTimer(code);
+          }
+        });
+        if (!acquired) {
+          socket.emit("server_error", { message: "Readiness update in progress. Try again." });
+        }
+      } catch (error) {
+        logger.warn("socket.scene_ready.failed", { payload, error });
+        socket.emit("server_error", { message: error instanceof Error ? error.message : "Readiness update failed" });
       }
     });
 
@@ -437,6 +461,7 @@ async function bootstrap() {
           choiceId: payload.choiceId ?? null,
         });
         const acquired = withRoomLock(code, () => {
+          clearTurnTimer(code);
           const result = submitChoice(code, playerId, {
             choiceId: payload.choiceId,
           });
@@ -466,7 +491,6 @@ async function bootstrap() {
           }
 
           io.to(code).emit("scene_update", getRoomView(code));
-          scheduleTurnTimer(code);
         });
 
         if (!acquired) {
@@ -485,6 +509,7 @@ async function bootstrap() {
         logger.info("socket.choice_timeout", { code, playerId });
         const timedOutPlayerId = getRoomView(code).activePlayerId ?? "";
         const acquired = withRoomLock(code, () => {
+          clearTurnTimer(code);
           const result = timeoutChoice(code);
           trackEvent("turn_timed_out", { code });
           trackEvent("rift_trigger_evaluated", {
@@ -518,7 +543,6 @@ async function bootstrap() {
           }
 
           io.to(code).emit("scene_update", getRoomView(code));
-          scheduleTurnTimer(code);
         });
 
         if (!acquired) {
@@ -558,14 +582,28 @@ async function bootstrap() {
         markPlayerConnection(mapping.code, mapping.playerId, false);
         io.to(mapping.code).emit("player_left", { playerId: mapping.playerId });
         io.to(mapping.code).emit("room_updated", getRoomView(mapping.code));
+        scheduleTurnTimer(mapping.code);
 
         const snapshot = getRoomView(mapping.code);
-        if (snapshot.phase === "game" && snapshot.activePlayerId === mapping.playerId) {
+        if (
+          snapshot.phase === "game" &&
+          snapshot.activePlayerId === mapping.playerId &&
+          snapshot.choicesOpen &&
+          Boolean(snapshot.turnDeadline)
+        ) {
           setTimeout(() => {
             try {
               const latest = getRoomView(mapping.code);
               const player = getPlayerByCodeAndId(mapping.code, mapping.playerId);
-              if (latest.phase === "game" && latest.activePlayerId === mapping.playerId && player && !player.connected) {
+              if (
+                latest.phase === "game" &&
+                latest.activePlayerId === mapping.playerId &&
+                latest.choicesOpen &&
+                Boolean(latest.turnDeadline) &&
+                player &&
+                !player.connected
+              ) {
+                clearTurnTimer(mapping.code);
                 const result = timeoutChoice(mapping.code);
                 trackEvent("turn_timed_out", { code: mapping.code, source: "disconnect" });
                 trackEvent("rift_trigger_evaluated", {
@@ -591,7 +629,6 @@ async function bootstrap() {
                   io.to(mapping.code).emit("game_end", result);
                 } else {
                   io.to(mapping.code).emit("scene_update", getRoomView(mapping.code));
-                  scheduleTurnTimer(mapping.code);
                 }
               }
             } catch {

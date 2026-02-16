@@ -250,7 +250,7 @@ export class RoomDurableObject {
       return;
     }
 
-    if (room.phase === "game" && room.turnDeadline && room.turnDeadline <= now()) {
+    if (room.phase === "game" && room.choicesOpen && room.turnDeadline && room.turnDeadline <= now()) {
       const timedOutPlayerId = this.activePlayerId(room);
       if (timedOutPlayerId) {
         const result = this.submitChoice(room, timedOutPlayerId, { timeout: true });
@@ -312,6 +312,8 @@ export class RoomDurableObject {
       turnOrder: [host.id],
       activePlayerIndex: 0,
       currentPlayerId: host.id,
+      sceneReadyPlayerIds: [],
+      choicesOpen: false,
       genre: null,
       currentNodeId: "start",
       currentSceneId: "start",
@@ -524,6 +526,16 @@ export class RoomDurableObject {
         return;
       }
 
+      if (envelope.event === "scene_ready") {
+        const result = this.markSceneReady(room, actorPlayerId);
+        await this.saveRoom(room);
+        await this.broadcast("room_updated", this.getRoomView(room), envelope.id);
+        if (result.justOpened) {
+          await this.broadcast("scene_update", this.getRoomView(room), envelope.id);
+        }
+        return;
+      }
+
       if (envelope.event === "submit_choice") {
         const choiceId = typeof payload.choiceId === "string" ? payload.choiceId : undefined;
         const result = this.submitChoice(room, actorPlayerId, { choiceId });
@@ -586,12 +598,18 @@ export class RoomDurableObject {
     }
 
     player.connected = false;
+    if (room.phase === "game" && !room.choicesOpen) {
+      this.maybeUnlockChoices(room);
+    }
     this.ensureHostAssigned(room);
     await this.saveRoom(room);
     await this.broadcast("player_left", { playerId });
     await this.broadcast("room_updated", this.getRoomView(room));
+    if (room.choicesOpen) {
+      await this.broadcast("scene_update", this.getRoomView(room));
+    }
 
-    if (room.phase === "game" && room.currentPlayerId === playerId) {
+    if (room.phase === "game" && room.currentPlayerId === playerId && room.choicesOpen && room.turnDeadline) {
       const existing = this.disconnectTimers.get(playerId);
       if (existing) {
         clearTimeout(existing);
@@ -606,7 +624,7 @@ export class RoomDurableObject {
   private async forceTimeoutIfDisconnected(playerId: string) {
     this.disconnectTimers.delete(playerId);
     const room = await this.getRoom();
-    if (!room || this.isExpired(room) || room.phase !== "game" || room.currentPlayerId !== playerId) {
+    if (!room || this.isExpired(room) || room.phase !== "game" || !room.choicesOpen || !room.turnDeadline || room.currentPlayerId !== playerId) {
       return;
     }
 
@@ -663,10 +681,16 @@ export class RoomDurableObject {
       throw new Error("Player not found");
     }
     player.connected = false;
+    if (room.phase === "game" && !room.choicesOpen) {
+      this.maybeUnlockChoices(room);
+    }
     this.ensureHostAssigned(room);
     await this.saveRoom(room);
     await this.broadcast("player_left", { playerId }, id);
     await this.broadcast("room_updated", this.getRoomView(room), id);
+    if (room.choicesOpen) {
+      await this.broadcast("scene_update", this.getRoomView(room), id);
+    }
   }
 
   private async expireRoom(room: RoomState) {
@@ -723,6 +747,22 @@ export class RoomDurableObject {
       ...player,
       orderIndex: player.orderIndex ?? player.turnOrder ?? index,
     }));
+    room.sceneReadyPlayerIds = this.normalizeSceneReadyPlayerIds(room);
+    if (room.phase === "game") {
+      const legacyChoicesOpen = (room as { choicesOpen?: boolean }).choicesOpen;
+      if (room.turnDeadline && typeof legacyChoicesOpen !== "boolean") {
+        room.choicesOpen = true;
+        room.sceneReadyPlayerIds = this.connectedPlayerIds(room);
+      }
+      room.choicesOpen = room.choicesOpen ?? false;
+      if (room.choicesOpen && !room.turnDeadline) {
+        room.turnDeadline = now() + TURN_DURATION_MS;
+      }
+    } else {
+      room.choicesOpen = false;
+      room.sceneReadyPlayerIds = [];
+      room.turnDeadline = null;
+    }
     if (!room.directedScene) {
       const scene = this.getCurrentScene(room);
       if (scene) {
@@ -752,7 +792,7 @@ export class RoomDurableObject {
 
   private async scheduleAlarm(room: RoomState): Promise<void> {
     let alarmAt = room.expiresAt;
-    if (room.phase === "game" && room.turnDeadline) {
+    if (room.phase === "game" && room.choicesOpen && room.turnDeadline) {
       alarmAt = Math.min(alarmAt, room.turnDeadline + 120);
     }
     await this.state.storage.setAlarm(alarmAt);
@@ -840,6 +880,42 @@ export class RoomDurableObject {
       return null;
     }
     return room.turnOrder[room.activePlayerIndex] ?? null;
+  }
+
+  private connectedPlayerIds(room: RoomState): string[] {
+    return room.players.filter((player) => player.connected !== false).map((player) => player.id);
+  }
+
+  private normalizeSceneReadyPlayerIds(room: RoomState): string[] {
+    const validIds = new Set(room.players.map((player) => player.id));
+    return [...new Set((room.sceneReadyPlayerIds ?? []).filter((playerId) => validIds.has(playerId)))];
+  }
+
+  private resetSceneReadiness(room: RoomState) {
+    room.sceneReadyPlayerIds = [];
+    room.choicesOpen = false;
+    room.turnDeadline = null;
+  }
+
+  private maybeUnlockChoices(room: RoomState): boolean {
+    if (room.phase !== "game" || room.choicesOpen) {
+      return false;
+    }
+
+    const required = this.connectedPlayerIds(room);
+    if (!required.length) {
+      return false;
+    }
+
+    const ready = new Set(room.sceneReadyPlayerIds ?? []);
+    const allReady = required.every((playerId) => ready.has(playerId));
+    if (!allReady) {
+      return false;
+    }
+
+    room.choicesOpen = true;
+    room.turnDeadline = now() + TURN_DURATION_MS;
+    return true;
   }
 
   private rotateToConnectedPlayer(room: RoomState, fromIndex: number): number {
@@ -999,7 +1075,7 @@ export class RoomDurableObject {
       player.rounds = [];
     });
     room.currentPlayerId = this.activePlayerId(room);
-    room.turnDeadline = null;
+    this.resetSceneReadiness(room);
     return { startAt: now() + 1200 };
   }
 
@@ -1129,7 +1205,7 @@ export class RoomDurableObject {
     const startScene = getStoryStartScene(genre);
     room.currentSceneId = startScene.id;
     room.currentNodeId = startScene.id;
-    room.turnDeadline = now() + TURN_DURATION_MS;
+    this.resetSceneReadiness(room);
     room.tensionLevel = startScene.tensionLevel ?? 1;
     room.chaosLevel = computeChaosLevel({
       genrePower: room.genrePower,
@@ -1159,6 +1235,35 @@ export class RoomDurableObject {
     };
   }
 
+  private markSceneReady(room: RoomState, playerId: string) {
+    if (room.phase !== "game") {
+      throw new Error("Game is not active");
+    }
+    const player = room.players.find((entry) => entry.id === playerId);
+    if (!player) {
+      throw new Error("Player not found");
+    }
+    if (player.connected === false) {
+      throw new Error("Player is disconnected");
+    }
+
+    const previouslyOpen = room.choicesOpen;
+    const ready = new Set(room.sceneReadyPlayerIds ?? []);
+    ready.add(playerId);
+    room.sceneReadyPlayerIds = [...ready];
+    const unlocked = this.maybeUnlockChoices(room);
+    const required = this.connectedPlayerIds(room);
+
+    return {
+      activePlayerId: this.activePlayerId(room),
+      readyCount: required.filter((id) => room.sceneReadyPlayerIds.includes(id)).length,
+      totalCount: required.length,
+      choicesOpen: room.choicesOpen,
+      turnDeadline: room.turnDeadline,
+      justOpened: !previouslyOpen && unlocked,
+    };
+  }
+
   private submitChoice(
     room: RoomState,
     playerId: string,
@@ -1166,6 +1271,9 @@ export class RoomDurableObject {
   ) {
     if (room.phase !== "game") {
       throw new Error("Game is not active");
+    }
+    if (!room.choicesOpen || !room.turnDeadline) {
+      throw new Error("Choices are locked until everyone is ready");
     }
 
     const activeId = this.activePlayerId(room);
@@ -1336,7 +1444,7 @@ export class RoomDurableObject {
       this.setRoomPhase(room, "recap");
       room.endingScene = nextScene;
       room.endingType = (nextScene.endingType ?? "doom") as EndingType;
-      room.turnDeadline = null;
+      this.resetSceneReadiness(room);
       room.currentPlayerId = null;
       const endingNarration = this.appendNarration(room, "ending", {
         sceneId: nextScene.id,
@@ -1359,7 +1467,7 @@ export class RoomDurableObject {
 
     room.activePlayerIndex = this.rotateToConnectedPlayer(room, room.activePlayerIndex);
     room.currentPlayerId = this.activePlayerId(room);
-    room.turnDeadline = now() + TURN_DURATION_MS;
+    this.resetSceneReadiness(room);
 
     return {
       ended: false,
@@ -1404,7 +1512,7 @@ export class RoomDurableObject {
     }));
     room.activePlayerIndex = 0;
     room.currentPlayerId = this.activePlayerId(room);
-    room.turnDeadline = null;
+    this.resetSceneReadiness(room);
   }
 
   private computeMVP(room: RoomState): MVP {
