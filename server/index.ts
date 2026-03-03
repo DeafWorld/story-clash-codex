@@ -7,11 +7,26 @@ import { loadEnvConfig } from "@next/env";
 import { logger } from "../src/lib/logger";
 import { trackEvent } from "../src/lib/analytics";
 import {
+  PROTOCOL_VERSION,
+  SERVER_CAPABILITIES,
+  SNAPSHOT_VERSION,
+  isSupportedProtocolVersion,
+  type ClientHelloPayload,
+  type ServerHelloPayload,
+} from "../protocol/protocol-version";
+import {
+  advanceGMBeat,
   getSocketPlayer,
   getPlayerByCodeAndId,
   getRoomView,
+  lockGMVoteIfDue,
   markSceneReady,
+  markGMPlayerReady,
+  markGMReady,
   markPlayerConnection,
+  publishGMBeat,
+  publishGMChoices,
+  publishGMConsequence,
   recordMinigameScore,
   registerSocket,
   removeSocket,
@@ -19,10 +34,12 @@ import {
   restartSession,
   selectGenre,
   startGame,
+  submitGMFreeform,
+  submitGMVote,
   submitChoice,
   timeoutChoice,
 } from "../src/lib/store";
-import type { GenreId, NarrationLine } from "../src/types/game";
+import type { GMChoice, GMSessionState, GenreId, NarrationLine } from "../src/types/game";
 
 const dev = process.env.NODE_ENV !== "production";
 const hostname = "0.0.0.0";
@@ -52,6 +69,19 @@ logger.info("server.env", {
   wsBaseUrl: process.env.NEXT_PUBLIC_WS_BASE_URL ?? null,
 });
 const require = createRequire(import.meta.url);
+const serverBuildId =
+  process.env.NEXT_PUBLIC_BUILD_ID?.trim() ||
+  process.env.VERCEL_GIT_COMMIT_SHA?.trim()?.slice(0, 12) ||
+  process.env.VERCEL_GIT_COMMIT_REF?.trim() ||
+  "node-dev";
+const GM_PERSONALITY_SET = new Set<NonNullable<GMChoice["personality"]>>([
+  "brave",
+  "analytical",
+  "defensive",
+  "chaotic",
+  "empathetic",
+  "opportunistic",
+]);
 
 async function tryServePublicAsset(urlPath: string, res: ServerResponse) {
   const cleanPath = urlPath.split("?")[0];
@@ -177,6 +207,59 @@ async function bootstrap() {
   const turnIntervals = new Map<string, NodeJS.Timeout>();
   const turnTimeouts = new Map<string, NodeJS.Timeout>();
   const roomLocks = new Set<string>();
+  const gmSnapshotTicks = new Map<string, number>();
+
+  const nextSnapshotTick = (code: string) => {
+    const next = (gmSnapshotTicks.get(code) ?? 0) + 1;
+    gmSnapshotTicks.set(code, next);
+    return next;
+  };
+
+  const serverHelloPayload = (accepted: boolean, reason?: string): ServerHelloPayload => ({
+    accepted,
+    protocolVersion: PROTOCOL_VERSION,
+    capabilities: [...SERVER_CAPABILITIES],
+    snapshotVersion: SNAPSHOT_VERSION,
+    serverTimeMs: Date.now(),
+    buildId: serverBuildId,
+    ...(reason ? { reason } : {}),
+  });
+
+  const gmStateUpdatePayload = (code: string, gmState: GMSessionState) => ({
+    roomCode: code,
+    gmState,
+    snapshotVersion: SNAPSHOT_VERSION,
+    serverTimeMs: Date.now(),
+    tick: nextSnapshotTick(code),
+  });
+
+  const trackReadinessGateCleared = (code: string, gmState: GMSessionState) => {
+    if (gmState.phase !== "voting_open") {
+      return;
+    }
+    const beatCreatedAt = gmState.currentBeat?.createdAt ?? 0;
+    const openedAt = gmState.voteState.openedAt ?? 0;
+    const readToReadyMs = beatCreatedAt > 0 && openedAt > 0 ? Math.max(0, openedAt - beatCreatedAt) : null;
+    trackEvent("readiness_gate_cleared", {
+      code,
+      beatIndex: gmState.beatIndex,
+      readToReadyMs,
+      requiredReadyCount: gmState.readyState.requiredReadyIds.length,
+      aiSource: gmState.aiSource ?? "local",
+    });
+  };
+
+  const trackVoteLockLatency = (code: string, gmState: GMSessionState, source: "vote" | "timeout" | "disconnect") => {
+    const openedAt = gmState.voteState.openedAt ?? 0;
+    const latencyMs = openedAt > 0 ? Math.max(0, Date.now() - openedAt) : null;
+    trackEvent("vote_lock_latency", {
+      code,
+      beatIndex: gmState.beatIndex,
+      source,
+      latencyMs,
+      lockedChoiceId: gmState.voteState.lockedChoiceId ?? null,
+    });
+  };
 
   const clearTurnTimer = (code: string) => {
     const interval = turnIntervals.get(code);
@@ -278,6 +361,18 @@ async function bootstrap() {
 
       const acquired = withRoomLock(code, () => {
         clearTurnTimer(code);
+        const mode = getRoomView(code).sessionMode;
+        if (mode === "gm") {
+          const gmTimeout = lockGMVoteIfDue(code, true);
+          if (gmTimeout.locked) {
+            trackVoteLockLatency(code, gmTimeout.gmState, "timeout");
+            io.to(code).emit("vote_locked", { roomCode: code, gmState: gmTimeout.gmState });
+            io.to(code).emit("gm_state_update", gmStateUpdatePayload(code, gmTimeout.gmState));
+            io.to(code).emit("room_updated", getRoomView(code));
+          }
+          return;
+        }
+
         const result = timeoutChoice(code);
         emitNarration(code, result.narration);
         io.to(code).emit("turn_timeout", {
@@ -304,15 +399,43 @@ async function bootstrap() {
   };
 
   io.on("connection", (socket) => {
+    socket.emit("server_hello", serverHelloPayload(true));
+
+    socket.on("client_hello", (payload: Partial<ClientHelloPayload> | undefined) => {
+      const protocolVersion = typeof payload?.protocolVersion === "string" ? payload.protocolVersion : "";
+      const accepted = isSupportedProtocolVersion(protocolVersion);
+      const reason = accepted
+        ? undefined
+        : `Unsupported protocol version ${protocolVersion || "unknown"}. Expected ${PROTOCOL_VERSION}.`;
+      trackEvent("protocol_hello_received", {
+        transport: "socketio",
+        accepted,
+        protocolVersion: protocolVersion || "unknown",
+      });
+      socket.emit("server_hello", serverHelloPayload(accepted, reason));
+      if (!accepted && reason) {
+        socket.emit("server_error", { message: reason });
+      }
+    });
+
     socket.on("join_room", (payload: { code: string; playerId: string }) => {
       try {
         const code = payload.code.toUpperCase();
         logger.info("socket.join_room", { code, playerId: payload.playerId });
+        const beforeJoin = getPlayerByCodeAndId(code, payload.playerId);
+        const wasConnected = beforeJoin?.connected !== false;
         socket.join(code);
         registerSocket(socket.id, code, payload.playerId);
         markPlayerConnection(code, payload.playerId, true);
         const room = getRoomView(code);
         const player = getPlayerByCodeAndId(code, payload.playerId);
+        if (!wasConnected) {
+          trackEvent("reconnect_recovered", {
+            code,
+            phase: room.phase,
+            gmPhase: room.gmState?.phase ?? null,
+          });
+        }
         io.to(code).emit("player_joined", {
           playerId: payload.playerId,
           playerName: player?.name ?? "Unknown",
@@ -451,6 +574,171 @@ async function bootstrap() {
       }
     });
 
+    socket.on(
+      "gm_publish_beat",
+      (payload: {
+        code: string;
+        playerId: string;
+        title?: string;
+        location?: string;
+        icon?: string;
+        rawText: string;
+        visualBeats: Array<{ type: string; content: string; speaker?: string; icon?: string }>;
+        aiSource?: "claude" | "local" | null;
+      }) => {
+        try {
+          const code = payload.code.toUpperCase();
+          const playerId = assertSocketSession(socket.id, code, payload.playerId);
+          const result = publishGMBeat(code, playerId, {
+            title: payload.title,
+            location: payload.location,
+            icon: payload.icon,
+            rawText: payload.rawText,
+            visualBeats: payload.visualBeats
+              .filter((entry) => ["text", "dialogue", "action", "separator"].includes(entry.type))
+              .map((entry) => ({
+                type: entry.type as "text" | "dialogue" | "action" | "separator",
+                content: entry.content,
+                speaker: entry.speaker,
+                icon: entry.icon,
+              })),
+            aiSource: payload.aiSource ?? null,
+          });
+          io.to(code).emit("beat_published", { roomCode: code, beat: result.beat, gmState: result.gmState });
+          io.to(code).emit("gm_state_update", gmStateUpdatePayload(code, result.gmState));
+          io.to(code).emit("room_updated", getRoomView(code));
+        } catch (error) {
+          socket.emit("server_error", { message: error instanceof Error ? error.message : "Failed to publish beat" });
+        }
+      }
+    );
+
+    socket.on("gm_mark_ready", (payload: { code: string; playerId: string }) => {
+      try {
+        const code = payload.code.toUpperCase();
+        const playerId = assertSocketSession(socket.id, code, payload.playerId);
+        const result = markGMReady(code, playerId);
+        io.to(code).emit("gm_state_update", gmStateUpdatePayload(code, result.gmState));
+        if (result.opened) {
+          trackReadinessGateCleared(code, result.gmState);
+          io.to(code).emit("choices_opened", { roomCode: code, gmState: result.gmState });
+          scheduleTurnTimer(code);
+        }
+        io.to(code).emit("room_updated", getRoomView(code));
+      } catch (error) {
+        socket.emit("server_error", { message: error instanceof Error ? error.message : "Failed to mark GM ready" });
+      }
+    });
+
+    socket.on("player_mark_ready", (payload: { code: string; playerId: string }) => {
+      try {
+        const code = payload.code.toUpperCase();
+        const playerId = assertSocketSession(socket.id, code, payload.playerId);
+        const result = markGMPlayerReady(code, playerId);
+        io.to(code).emit("gm_state_update", gmStateUpdatePayload(code, result.gmState));
+        if (result.opened) {
+          trackReadinessGateCleared(code, result.gmState);
+          io.to(code).emit("choices_opened", { roomCode: code, gmState: result.gmState });
+          scheduleTurnTimer(code);
+        }
+        io.to(code).emit("room_updated", getRoomView(code));
+      } catch (error) {
+        socket.emit("server_error", { message: error instanceof Error ? error.message : "Failed to mark ready" });
+      }
+    });
+
+    socket.on(
+      "gm_publish_choices",
+      (payload: {
+        code: string;
+        playerId: string;
+        timeLimitSec?: number;
+        choices: Array<{ id?: string; label?: string; icon?: string; stakes?: string; personality?: string }>;
+      }) => {
+        try {
+          const code = payload.code.toUpperCase();
+          const playerId = assertSocketSession(socket.id, code, payload.playerId);
+          const normalizedChoices = (payload.choices ?? []).map((choice) => ({
+            id: choice.id,
+            label: choice.label,
+            icon: choice.icon,
+            stakes: choice.stakes,
+            personality: GM_PERSONALITY_SET.has(choice.personality as NonNullable<GMChoice["personality"]>)
+              ? (choice.personality as NonNullable<GMChoice["personality"]>)
+              : undefined,
+          }));
+          const result = publishGMChoices(code, playerId, {
+            choices: normalizedChoices,
+            timeLimitSec: payload.timeLimitSec,
+          });
+          io.to(code).emit("gm_state_update", gmStateUpdatePayload(code, result.gmState));
+          if (result.opened) {
+            trackReadinessGateCleared(code, result.gmState);
+            io.to(code).emit("choices_opened", { roomCode: code, gmState: result.gmState });
+            scheduleTurnTimer(code);
+          }
+          io.to(code).emit("room_updated", getRoomView(code));
+        } catch (error) {
+          socket.emit("server_error", { message: error instanceof Error ? error.message : "Failed to publish choices" });
+        }
+      }
+    );
+
+    socket.on("player_vote", (payload: { code: string; playerId: string; choiceId: string }) => {
+      try {
+        const code = payload.code.toUpperCase();
+        const playerId = assertSocketSession(socket.id, code, payload.playerId);
+        const result = submitGMVote(code, playerId, payload.choiceId);
+        io.to(code).emit("vote_update", { roomCode: code, gmState: result.gmState });
+        io.to(code).emit("gm_state_update", gmStateUpdatePayload(code, result.gmState));
+        if (result.locked) {
+          clearTurnTimer(code);
+          trackVoteLockLatency(code, result.gmState, "vote");
+          io.to(code).emit("vote_locked", { roomCode: code, gmState: result.gmState });
+        }
+        io.to(code).emit("room_updated", getRoomView(code));
+      } catch (error) {
+        socket.emit("server_error", { message: error instanceof Error ? error.message : "Failed to submit vote" });
+      }
+    });
+
+    socket.on("player_freeform", (payload: { code: string; playerId: string; text: string }) => {
+      try {
+        const code = payload.code.toUpperCase();
+        const playerId = assertSocketSession(socket.id, code, payload.playerId);
+        const result = submitGMFreeform(code, playerId, payload.text);
+        io.to(code).emit("vote_update", { roomCode: code, gmState: result.gmState });
+        io.to(code).emit("gm_state_update", gmStateUpdatePayload(code, result.gmState));
+      } catch (error) {
+        socket.emit("server_error", { message: error instanceof Error ? error.message : "Failed to submit freeform" });
+      }
+    });
+
+    socket.on("gm_publish_consequence", (payload: { code: string; playerId: string; text: string }) => {
+      try {
+        const code = payload.code.toUpperCase();
+        const playerId = assertSocketSession(socket.id, code, payload.playerId);
+        const result = publishGMConsequence(code, playerId, payload.text);
+        io.to(code).emit("consequence_published", { roomCode: code, gmState: result.gmState });
+        io.to(code).emit("gm_state_update", gmStateUpdatePayload(code, result.gmState));
+        io.to(code).emit("room_updated", getRoomView(code));
+      } catch (error) {
+        socket.emit("server_error", { message: error instanceof Error ? error.message : "Failed to publish consequence" });
+      }
+    });
+
+    socket.on("gm_next_beat", (payload: { code: string; playerId: string }) => {
+      try {
+        const code = payload.code.toUpperCase();
+        const playerId = assertSocketSession(socket.id, code, payload.playerId);
+        const result = advanceGMBeat(code, playerId);
+        io.to(code).emit("gm_state_update", gmStateUpdatePayload(code, result.gmState));
+        io.to(code).emit("room_updated", getRoomView(code));
+      } catch (error) {
+        socket.emit("server_error", { message: error instanceof Error ? error.message : "Failed to advance beat" });
+      }
+    });
+
     socket.on("submit_choice", (payload: { code: string; playerId: string; choiceId?: string }) => {
       try {
         const code = payload.code.toUpperCase();
@@ -507,6 +795,17 @@ async function bootstrap() {
         const code = payload.code.toUpperCase();
         const playerId = assertSocketSession(socket.id, code, payload.playerId);
         logger.info("socket.choice_timeout", { code, playerId });
+        if (getRoomView(code).sessionMode === "gm") {
+          const locked = lockGMVoteIfDue(code, true);
+          if (locked.locked) {
+            clearTurnTimer(code);
+            trackVoteLockLatency(code, locked.gmState, "timeout");
+            io.to(code).emit("vote_locked", { roomCode: code, gmState: locked.gmState });
+            io.to(code).emit("gm_state_update", gmStateUpdatePayload(code, locked.gmState));
+            io.to(code).emit("room_updated", getRoomView(code));
+          }
+          return;
+        }
         const timedOutPlayerId = getRoomView(code).activePlayerId ?? "";
         const acquired = withRoomLock(code, () => {
           clearTurnTimer(code);
@@ -594,6 +893,17 @@ async function bootstrap() {
           setTimeout(() => {
             try {
               const latest = getRoomView(mapping.code);
+              if (latest.sessionMode === "gm") {
+                const locked = lockGMVoteIfDue(mapping.code, true);
+                if (locked.locked) {
+                  clearTurnTimer(mapping.code);
+                  trackVoteLockLatency(mapping.code, locked.gmState, "disconnect");
+                  io.to(mapping.code).emit("vote_locked", { roomCode: mapping.code, gmState: locked.gmState });
+                  io.to(mapping.code).emit("gm_state_update", gmStateUpdatePayload(mapping.code, locked.gmState));
+                  io.to(mapping.code).emit("room_updated", getRoomView(mapping.code));
+                }
+                return;
+              }
               const player = getPlayerByCodeAndId(mapping.code, mapping.playerId);
               if (
                 latest.phase === "game" &&

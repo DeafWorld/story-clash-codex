@@ -10,5 +10,9 @@ export default defineConfig({
   test: {
     environment: "node",
     include: ["tests/**/*.test.ts", "cloudflare/tests/**/*.test.ts"],
+    // macOS 26 + Node 20 has intermittent child-process stalls with forked workers.
+    // Threads keep test execution deterministic and unblock local/CI gates.
+    pool: "threads",
+    minWorkers: 1,
   },
 });

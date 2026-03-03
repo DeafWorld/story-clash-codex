@@ -1,9 +1,11 @@
 import { nanoid } from "nanoid";
-import { sanitizeDisplayName } from "./profanity";
+import { containsProfanity, sanitizeDisplayName } from "./profanity";
 import { generateRoomCode, validateRoomCode } from "./room-code";
 import { getScene, getStoryTitle } from "./stories";
 import { generateNarrationLine } from "./narrator";
 import { logger } from "./logger";
+import { sanitizeFreeformInput } from "./ai-copilot-local";
+import { deterministicTieBreakChoice, stableHash } from "../../protocol/deterministic-lock";
 import {
   applyEvolutionStep,
   createInitialPlayerProfile,
@@ -33,12 +35,18 @@ import {
 import type {
   Choice,
   EndingType,
+  GMChoice,
+  GMSessionState,
+  GMTranscriptEntry,
   GenreId,
+  HistoryEntry,
   MinigameOutcome,
   MVP,
   NarrationLine,
   NarrationTrigger,
   Player,
+  SessionMode,
+  StoryBeat,
   RoomState,
   RoomView,
   Scene,
@@ -52,6 +60,9 @@ const MAX_NARRATION_LOG = 30;
 const MAX_RIFT_HISTORY = 40;
 const MAX_DIRECTOR_TIMELINE = 40;
 const MAX_DIRECTOR_CALLBACKS = 28;
+const GM_DEFAULT_VOTE_SECONDS = 30;
+const MAX_GM_BEAT_HISTORY = 40;
+const MAX_GM_TRANSCRIPT = 120;
 
 const AVATARS = ["circle-cyan", "diamond-red", "hex-green", "triangle-blue", "square-gold", "ring-white"];
 const ROUND_TWO_SCORES = [940, 760, 670, 610, 560, 520];
@@ -94,15 +105,6 @@ globalThis.__STORY_CLASH_STATE__ = state;
 
 function now() {
   return Date.now();
-}
-
-function stableHash(input: string): number {
-  let hash = 2166136261;
-  for (let index = 0; index < input.length; index += 1) {
-    hash ^= input.charCodeAt(index);
-    hash = Math.imul(hash, 16777619);
-  }
-  return hash >>> 0;
 }
 
 function seededChoice<T>(items: T[], seed: string): T {
@@ -153,6 +155,12 @@ function ensureFreshRoom(code: string): RoomState {
 
   room.phase = room.phase ?? room.status ?? "lobby";
   room.status = room.status ?? room.phase;
+  room.sessionMode = (room.sessionMode ?? "classic") as SessionMode;
+  if (room.sessionMode === "gm") {
+    room.gmState = room.gmState ?? createInitialGMState(room.players.find((player) => player.isHost)?.id ?? null);
+  } else {
+    room.gmState = null;
+  }
   room.storyId = room.storyId ?? room.genre ?? null;
   room.currentNodeId = room.currentNodeId ?? room.currentSceneId;
   room.currentPlayerId = room.currentPlayerId ?? activePlayerId(room);
@@ -185,6 +193,32 @@ function ensureFreshRoom(code: string): RoomState {
     orderIndex: player.orderIndex ?? player.turnOrder ?? index,
   }));
   room.sceneReadyPlayerIds = normalizeSceneReadyPlayerIds(room);
+  if (room.sessionMode === "gm" && room.gmState) {
+    room.gmState.gmPlayerId =
+      room.gmState.gmPlayerId ??
+      room.players.find((player) => player.isHost)?.id ??
+      room.players[0]?.id ??
+      null;
+    room.gmState.beatHistory = (room.gmState.beatHistory ?? []).slice(-MAX_GM_BEAT_HISTORY);
+    room.gmState.transcript = (room.gmState.transcript ?? []).slice(-MAX_GM_TRANSCRIPT);
+    room.gmState.currentChoices = (room.gmState.currentChoices ?? []).slice(0, 3);
+    room.gmState.phase = room.gmState.phase ?? "writing_beat";
+    room.gmState.voteState = room.gmState.voteState ?? {
+      votesByPlayerId: {},
+      countsByChoiceId: {},
+      freeformByPlayerId: {},
+      lockedChoiceId: null,
+      openedAt: null,
+      deadlineAt: null,
+    };
+    room.gmState.readyState = room.gmState.readyState ?? {
+      readyPlayerIds: [],
+      readyGm: false,
+      requiredReadyIds: [],
+      allReady: false,
+    };
+    recomputeReadyState(room);
+  }
   if (room.phase === "game") {
     const legacyChoicesOpen = (room as { choicesOpen?: boolean }).choicesOpen;
     if (room.turnDeadline && typeof legacyChoicesOpen !== "boolean") {
@@ -382,6 +416,10 @@ function ensureHostAssigned(room: RoomState) {
     ...player,
     isHost: Boolean(nextHost && player.id === nextHost.id),
   }));
+  if (room.sessionMode === "gm" && room.gmState) {
+    room.gmState.gmPlayerId = nextHost?.id ?? room.gmState.gmPlayerId;
+    recomputeReadyState(room);
+  }
 }
 
 function computeMVP(room: RoomState): MVP {
@@ -405,6 +443,68 @@ function computeMVP(room: RoomState): MVP {
   };
 }
 
+function deriveGmEndingType(chaosLevel: number): EndingType {
+  if (chaosLevel >= 70) {
+    return "doom";
+  }
+  if (chaosLevel >= 35) {
+    return "survival";
+  }
+  return "triumph";
+}
+
+function buildGmHistory(room: RoomState, gmState: GMSessionState): HistoryEntry[] {
+  const beatsById = new Map(gmState.beatHistory.map((beat) => [beat.id, beat]));
+  return gmState.transcript
+    .filter((entry) => entry.phase === "vote_lock")
+    .map((entry, index) => {
+      const beat = beatsById.get(entry.beatId) ?? gmState.beatHistory[index] ?? null;
+      const choiceLabel = entry.winningChoiceLabel ?? "Continue";
+      const fallbackPlayer = room.players[index % Math.max(1, room.players.length)];
+      const playerName = fallbackPlayer?.name ?? "Crew";
+      return {
+        sceneId: beat?.id ?? `gm-scene-${entry.beatIndex}`,
+        sceneText: beat?.rawText ?? entry.beatText ?? "The scene shifted under Rift pressure.",
+        playerId: fallbackPlayer?.id ?? "gm",
+        player: playerName,
+        playerName,
+        choice: choiceLabel,
+        choiceLabel,
+        isFreeChoice: false,
+        nextNodeId: `gm-beat-${entry.beatIndex + 1}`,
+        tensionLevel: Math.min(5, 1 + Math.floor(room.chaosLevel / 20)),
+        timestamp: entry.createdAt,
+      };
+    });
+}
+
+function computeGmMvp(room: RoomState, gmState: GMSessionState): MVP {
+  const counts: Record<string, number> = {};
+  gmState.transcript
+    .filter((entry) => entry.phase === "vote_lock")
+    .forEach((entry) => {
+      (entry.freeform ?? []).forEach((item) => {
+        counts[item.playerId] = (counts[item.playerId] ?? 0) + 1;
+      });
+    });
+
+  const ranked = Object.entries(counts).sort((left, right) => right[1] - left[1]);
+  if (ranked.length > 0) {
+    const [playerId] = ranked[0];
+    const playerName = room.players.find((player) => player.id === playerId)?.name ?? "Unknown";
+    return {
+      player: playerName,
+      reason: "Kept feeding decisive ideas that shaped the group's outcomes.",
+    };
+  }
+
+  const gmName = room.players.find((player) => player.id === gmState.gmPlayerId)?.name ?? "GM";
+  return {
+    player: gmName,
+    reason: "Directed the crew through every Rift beat without losing narrative momentum.",
+  };
+}
+
 function ensureRoomCode(): string {
   for (let i = 0; i < 100; i += 1) {
     const code = generateRoomCode();
@@ -413,6 +513,165 @@ function ensureRoomCode(): string {
     }
   }
   throw new Error("Failed to generate room code");
+}
+
+function createInitialGMState(gmPlayerId: string | null): GMSessionState {
+  return {
+    mode: "gm",
+    gmPlayerId,
+    phase: "writing_beat",
+    beatIndex: 0,
+    currentBeat: null,
+    currentChoices: [],
+    currentOutcomeText: null,
+    readyState: {
+      readyPlayerIds: [],
+      readyGm: false,
+      requiredReadyIds: [],
+      allReady: false,
+    },
+    voteState: {
+      votesByPlayerId: {},
+      countsByChoiceId: {},
+      freeformByPlayerId: {},
+      lockedChoiceId: null,
+      openedAt: null,
+      deadlineAt: null,
+    },
+    aiSource: null,
+    beatHistory: [],
+    transcript: [],
+  };
+}
+
+function storyBeatToText(beat: StoryBeat): string {
+  if (beat.rawText?.trim()) {
+    return beat.rawText.trim();
+  }
+  return beat.visualBeats.map((entry) => entry.content).join("\n").trim();
+}
+
+function nextTranscriptEntryId() {
+  return `gm-log-${nanoid(10)}`;
+}
+
+function sanitizeChoiceLabel(value: string): string {
+  return value.trim().replace(/\s+/g, " ").slice(0, 40);
+}
+
+function recomputeReadyState(room: RoomState) {
+  if (room.sessionMode !== "gm" || !room.gmState) {
+    return;
+  }
+  const gmState = room.gmState;
+  const requiredPlayerIds = connectedPlayerIds(room).filter((id) => id !== gmState.gmPlayerId);
+  gmState.readyState.requiredReadyIds = requiredPlayerIds;
+  gmState.readyState.readyPlayerIds = gmState.readyState.readyPlayerIds.filter((id) => requiredPlayerIds.includes(id));
+  gmState.readyState.allReady =
+    gmState.readyState.readyGm &&
+    requiredPlayerIds.every((id) => gmState.readyState.readyPlayerIds.includes(id));
+}
+
+function resetGMReadiness(room: RoomState) {
+  if (room.sessionMode !== "gm" || !room.gmState) {
+    return;
+  }
+  room.gmState.readyState.readyPlayerIds = [];
+  room.gmState.readyState.readyGm = false;
+  recomputeReadyState(room);
+}
+
+function resetGMVoting(room: RoomState) {
+  if (room.sessionMode !== "gm" || !room.gmState) {
+    return;
+  }
+  room.gmState.voteState = {
+    votesByPlayerId: {},
+    countsByChoiceId: {},
+    freeformByPlayerId: {},
+    lockedChoiceId: null,
+    openedAt: null,
+    deadlineAt: null,
+  };
+}
+
+function maybeOpenGMVoting(room: RoomState, timeLimitSec = GM_DEFAULT_VOTE_SECONDS): boolean {
+  if (room.sessionMode !== "gm" || !room.gmState) {
+    return false;
+  }
+  const gmState = room.gmState;
+  if (!gmState.currentChoices.length || !gmState.readyState.allReady) {
+    return false;
+  }
+  const openedAt = now();
+  gmState.phase = "voting_open";
+  gmState.voteState.openedAt = openedAt;
+  gmState.voteState.deadlineAt = openedAt + Math.max(5, timeLimitSec) * 1000;
+  room.turnDeadline = gmState.voteState.deadlineAt;
+  room.choicesOpen = true;
+  room.sceneReadyPlayerIds = [...gmState.readyState.readyPlayerIds];
+  room.currentPlayerId = null;
+  return true;
+}
+
+function resolveLockedGMChoice(room: RoomState): string | null {
+  if (room.sessionMode !== "gm" || !room.gmState) {
+    return null;
+  }
+  const gmState = room.gmState;
+  const counts = gmState.voteState.countsByChoiceId;
+  const entries = Object.entries(counts);
+  if (!entries.length) {
+    return gmState.currentChoices[0]?.id ?? null;
+  }
+  const maxVotes = Math.max(...entries.map(([, count]) => count));
+  const topChoiceIds = entries
+    .filter(([, count]) => count === maxVotes)
+    .map(([choiceId]) => choiceId)
+    .sort((left, right) => left.localeCompare(right));
+  return deterministicTieBreakChoice({
+    roomCode: room.code,
+    beatIndex: gmState.beatIndex,
+    topChoiceIds,
+  });
+}
+
+function lockGMVote(room: RoomState): boolean {
+  if (room.sessionMode !== "gm" || !room.gmState) {
+    return false;
+  }
+  const gmState = room.gmState;
+  if (gmState.phase !== "voting_open") {
+    return false;
+  }
+
+  const lockedChoiceId = resolveLockedGMChoice(room);
+  gmState.voteState.lockedChoiceId = lockedChoiceId;
+  gmState.phase = "vote_locked";
+  room.choicesOpen = false;
+  room.turnDeadline = null;
+  room.sceneReadyPlayerIds = [];
+
+  const lockedChoice = gmState.currentChoices.find((choice) => choice.id === lockedChoiceId);
+  const freeform = Object.values(gmState.voteState.freeformByPlayerId).map((entry) => ({
+    playerId: entry.playerId,
+    playerName: entry.playerName,
+    text: entry.text,
+    timestamp: entry.timestamp,
+  }));
+  const logEntry: GMTranscriptEntry = {
+    id: nextTranscriptEntryId(),
+    beatId: gmState.currentBeat?.id ?? `beat-${gmState.beatIndex}`,
+    beatIndex: gmState.beatIndex,
+    phase: "vote_lock",
+    winningChoiceId: lockedChoiceId,
+    winningChoiceLabel: lockedChoice?.label ?? null,
+    voteCounts: { ...gmState.voteState.countsByChoiceId },
+    freeform,
+    createdAt: now(),
+  };
+  gmState.transcript = [...gmState.transcript, logEntry].slice(-MAX_GM_TRANSCRIPT);
+  return true;
 }
 
 export function roomExists(code: string): boolean {
@@ -437,6 +696,8 @@ export function createRoom(hostName: string) {
     createdAt: now(),
     expiresAt: now() + ROOM_TTL_MS,
     active: true,
+    sessionMode: "gm",
+    gmState: createInitialGMState(host.id),
     status: "lobby",
     phase: "lobby",
     storyId: null,
@@ -484,6 +745,7 @@ export function createRoom(hostName: string) {
     code,
     roomId: room.id,
     playerId: host.id,
+    sessionMode: room.sessionMode,
   };
 }
 
@@ -524,6 +786,12 @@ export function markPlayerConnection(code: string, playerId: string, connected: 
   player.connected = connected;
   if (room.phase === "game" && !room.choicesOpen) {
     maybeUnlockChoices(room);
+  }
+  if (room.sessionMode === "gm") {
+    recomputeReadyState(room);
+    if (room.gmState?.phase === "creating_choices") {
+      maybeOpenGMVoting(room);
+    }
   }
   ensureHostAssigned(room);
 }
@@ -768,6 +1036,12 @@ export function selectGenre(code: string, playerId: string, genre: GenreId) {
   });
   room.deferredCallbacks = memoryLine.queue;
   room.realityRemembersLine = memoryLine.line;
+  if (room.sessionMode === "gm") {
+    room.gmState = createInitialGMState(room.players.find((player) => player.isHost)?.id ?? playerId);
+    room.gmState.phase = "writing_beat";
+    room.gmState.beatIndex = 0;
+    recomputeReadyState(room);
+  }
 
   return {
     genre,
@@ -782,8 +1056,333 @@ export function getGameState(code: string): RoomView {
   return getRoomView(code);
 }
 
+function assertGMSession(room: RoomState): GMSessionState {
+  if (room.sessionMode !== "gm" || !room.gmState) {
+    throw new Error("Room is not in GM mode");
+  }
+  return room.gmState;
+}
+
+function assertGMControl(room: RoomState, gmPlayerId: string): GMSessionState {
+  const gmState = assertGMSession(room);
+  if (!gmState.gmPlayerId || gmState.gmPlayerId !== gmPlayerId) {
+    throw new Error("Only GM can perform this action");
+  }
+  return gmState;
+}
+
+export function publishGMBeat(
+  code: string,
+  gmPlayerId: string,
+  payload: {
+    title?: string;
+    location?: string;
+    icon?: string;
+    rawText: string;
+    visualBeats: StoryBeat["visualBeats"];
+    aiSource?: "claude" | "local" | null;
+  }
+) {
+  const room = ensureFreshRoom(code);
+  const gmState = assertGMControl(room, gmPlayerId);
+  if (room.phase !== "game") {
+    throw new Error("Game is not active");
+  }
+
+  const rawText = payload.rawText.trim();
+  if (!rawText) {
+    throw new Error("Beat text is required");
+  }
+
+  const beat: StoryBeat = {
+    id: `beat-${nanoid(10)}`,
+    title: payload.title?.trim().slice(0, 42) || "Rift Beat",
+    location: payload.location?.trim().slice(0, 42) || "Unknown Sector",
+    icon: payload.icon?.trim().slice(0, 4) || "⚡",
+    rawText: rawText.slice(0, 1600),
+    visualBeats: payload.visualBeats.slice(0, 48),
+    createdBy: gmPlayerId,
+    createdAt: now(),
+  };
+
+  gmState.currentBeat = beat;
+  gmState.currentOutcomeText = null;
+  gmState.currentChoices = [];
+  gmState.phase = "reading";
+  gmState.aiSource = payload.aiSource ?? gmState.aiSource ?? null;
+  gmState.beatHistory = [...gmState.beatHistory, beat].slice(-MAX_GM_BEAT_HISTORY);
+  gmState.beatIndex += 1;
+  resetGMReadiness(room);
+  resetGMVoting(room);
+  room.turnDeadline = null;
+  room.choicesOpen = false;
+  room.sceneReadyPlayerIds = [];
+
+  const transcriptEntry: GMTranscriptEntry = {
+    id: nextTranscriptEntryId(),
+    beatId: beat.id,
+    beatIndex: gmState.beatIndex,
+    phase: "beat",
+    beatText: storyBeatToText(beat),
+    createdAt: now(),
+  };
+  gmState.transcript = [...gmState.transcript, transcriptEntry].slice(-MAX_GM_TRANSCRIPT);
+  room.expiresAt = now() + ROOM_TTL_MS;
+
+  return {
+    gmState,
+    beat,
+  };
+}
+
+export function markGMReady(code: string, gmPlayerId: string) {
+  const room = ensureFreshRoom(code);
+  const gmState = assertGMControl(room, gmPlayerId);
+  if (room.phase !== "game") {
+    throw new Error("Game is not active");
+  }
+  if (!gmState.currentBeat) {
+    throw new Error("No active beat");
+  }
+
+  gmState.readyState.readyGm = true;
+  recomputeReadyState(room);
+  const opened = maybeOpenGMVoting(room);
+  room.expiresAt = now() + ROOM_TTL_MS;
+  return {
+    gmState,
+    opened,
+  };
+}
+
+export function markGMPlayerReady(code: string, playerId: string) {
+  const room = ensureFreshRoom(code);
+  const gmState = assertGMSession(room);
+  if (room.phase !== "game") {
+    throw new Error("Game is not active");
+  }
+  if (!gmState.currentBeat) {
+    throw new Error("No active beat");
+  }
+  const player = room.players.find((entry) => entry.id === playerId);
+  if (!player) {
+    throw new Error("Player not found");
+  }
+  if (playerId === gmState.gmPlayerId) {
+    throw new Error("GM should use gm_mark_ready");
+  }
+  if (player.connected === false) {
+    throw new Error("Player is disconnected");
+  }
+
+  const ready = new Set(gmState.readyState.readyPlayerIds);
+  ready.add(playerId);
+  gmState.readyState.readyPlayerIds = [...ready];
+  recomputeReadyState(room);
+  const opened = maybeOpenGMVoting(room);
+  room.expiresAt = now() + ROOM_TTL_MS;
+  return {
+    gmState,
+    opened,
+  };
+}
+
+export function publishGMChoices(
+  code: string,
+  gmPlayerId: string,
+  payload: { choices: Array<Partial<GMChoice>>; timeLimitSec?: number }
+) {
+  const room = ensureFreshRoom(code);
+  const gmState = assertGMControl(room, gmPlayerId);
+  if (room.phase !== "game") {
+    throw new Error("Game is not active");
+  }
+  if (!gmState.currentBeat) {
+    throw new Error("No active beat");
+  }
+
+  const normalizedChoices: GMChoice[] = payload.choices
+    .map((choice, index) => {
+      const label = sanitizeChoiceLabel(choice.label ?? "");
+      if (!label) {
+        return null;
+      }
+      return {
+        id: String(choice.id ?? `gm-choice-${index + 1}`),
+        label,
+        icon: String(choice.icon ?? "🎭").slice(0, 4),
+        stakes: choice.stakes?.trim().slice(0, 100),
+        personality: choice.personality,
+        order: index,
+      } as GMChoice;
+    })
+    .filter((choice): choice is GMChoice => Boolean(choice))
+    .slice(0, 3);
+
+  if (normalizedChoices.length < 2) {
+    throw new Error("At least two choices are required");
+  }
+
+  gmState.currentChoices = normalizedChoices;
+  gmState.phase = "creating_choices";
+  resetGMVoting(room);
+  gmState.voteState.countsByChoiceId = Object.fromEntries(normalizedChoices.map((choice) => [choice.id, 0]));
+  const opened = maybeOpenGMVoting(room, payload.timeLimitSec ?? GM_DEFAULT_VOTE_SECONDS);
+  room.expiresAt = now() + ROOM_TTL_MS;
+
+  return {
+    gmState,
+    opened,
+  };
+}
+
+export function submitGMVote(code: string, playerId: string, choiceId: string) {
+  const room = ensureFreshRoom(code);
+  const gmState = assertGMSession(room);
+  if (gmState.phase !== "voting_open") {
+    throw new Error("Voting is not open");
+  }
+  const player = room.players.find((entry) => entry.id === playerId);
+  if (!player) {
+    throw new Error("Player not found");
+  }
+  if (playerId === gmState.gmPlayerId) {
+    throw new Error("GM cannot vote in GM mode");
+  }
+  if (player.connected === false) {
+    throw new Error("Player is disconnected");
+  }
+  if (gmState.voteState.votesByPlayerId[playerId]) {
+    throw new Error("Player already voted");
+  }
+  const choice = gmState.currentChoices.find((entry) => entry.id === choiceId);
+  if (!choice) {
+    throw new Error("Invalid choice");
+  }
+
+  gmState.voteState.votesByPlayerId[playerId] = choice.id;
+  gmState.voteState.countsByChoiceId[choice.id] = (gmState.voteState.countsByChoiceId[choice.id] ?? 0) + 1;
+
+  const totalVoters = connectedPlayerIds(room).filter((id) => id !== gmState.gmPlayerId).length;
+  const votedCount = Object.keys(gmState.voteState.votesByPlayerId).length;
+  const majorityThreshold = Math.floor(Math.max(1, totalVoters) / 2) + 1;
+  const choiceVotes = gmState.voteState.countsByChoiceId[choice.id] ?? 0;
+  let locked = false;
+  if (choiceVotes >= majorityThreshold || votedCount >= totalVoters) {
+    locked = lockGMVote(room);
+  }
+  room.expiresAt = now() + ROOM_TTL_MS;
+  return {
+    gmState,
+    locked,
+  };
+}
+
+export function submitGMFreeform(code: string, playerId: string, rawText: string) {
+  const room = ensureFreshRoom(code);
+  const gmState = assertGMSession(room);
+  if (gmState.phase !== "voting_open") {
+    throw new Error("Freeform is only available during voting");
+  }
+  const player = room.players.find((entry) => entry.id === playerId);
+  if (!player) {
+    throw new Error("Player not found");
+  }
+  const sanitized = sanitizeFreeformInput(rawText);
+  if (!sanitized) {
+    throw new Error("Freeform cannot be empty");
+  }
+  if (containsProfanity(sanitized)) {
+    throw new Error("Freeform contains blocked language");
+  }
+
+  gmState.voteState.freeformByPlayerId[playerId] = {
+    playerId,
+    playerName: player.name,
+    text: sanitized,
+    timestamp: now(),
+  };
+  room.expiresAt = now() + ROOM_TTL_MS;
+  return {
+    gmState,
+    text: sanitized,
+  };
+}
+
+export function lockGMVoteIfDue(code: string, force = false) {
+  const room = ensureFreshRoom(code);
+  const gmState = assertGMSession(room);
+  if (gmState.phase !== "voting_open") {
+    return { locked: false, gmState };
+  }
+
+  const deadline = gmState.voteState.deadlineAt ?? 0;
+  if (!force && (!deadline || deadline > now())) {
+    return { locked: false, gmState };
+  }
+
+  const locked = lockGMVote(room);
+  room.expiresAt = now() + ROOM_TTL_MS;
+  return { locked, gmState };
+}
+
+export function publishGMConsequence(code: string, gmPlayerId: string, rawText: string) {
+  const room = ensureFreshRoom(code);
+  const gmState = assertGMControl(room, gmPlayerId);
+  if (gmState.phase !== "vote_locked") {
+    throw new Error("Vote must be locked before publishing a consequence");
+  }
+  const text = rawText.trim().slice(0, 2000);
+  if (!text) {
+    throw new Error("Consequence text is required");
+  }
+
+  gmState.currentOutcomeText = text;
+  gmState.phase = "writing_consequence";
+  const winningChoice = gmState.currentChoices.find((choice) => choice.id === gmState.voteState.lockedChoiceId);
+  gmState.transcript = [
+    ...gmState.transcript,
+    {
+      id: nextTranscriptEntryId(),
+      beatId: gmState.currentBeat?.id ?? `beat-${gmState.beatIndex}`,
+      beatIndex: gmState.beatIndex,
+      phase: "consequence" as const,
+      consequenceText: text,
+      winningChoiceId: gmState.voteState.lockedChoiceId,
+      winningChoiceLabel: winningChoice?.label ?? null,
+      createdAt: now(),
+    },
+  ].slice(-MAX_GM_TRANSCRIPT);
+  room.expiresAt = now() + ROOM_TTL_MS;
+  return {
+    gmState,
+  };
+}
+
+export function advanceGMBeat(code: string, gmPlayerId: string) {
+  const room = ensureFreshRoom(code);
+  const gmState = assertGMControl(room, gmPlayerId);
+  if (gmState.phase !== "writing_consequence") {
+    throw new Error("Publish consequence before advancing");
+  }
+  gmState.phase = "writing_beat";
+  gmState.currentBeat = null;
+  gmState.currentChoices = [];
+  gmState.currentOutcomeText = null;
+  resetGMReadiness(room);
+  resetGMVoting(room);
+  room.turnDeadline = null;
+  room.choicesOpen = false;
+  room.sceneReadyPlayerIds = [];
+  room.expiresAt = now() + ROOM_TTL_MS;
+  return { gmState };
+}
+
 export function markSceneReady(code: string, playerId: string) {
   const room = ensureFreshRoom(code);
+  if (room.sessionMode === "gm") {
+    throw new Error("Use player_mark_ready in GM mode");
+  }
   if (room.phase !== "game") {
     throw new Error("Game is not active");
   }
@@ -820,6 +1419,9 @@ export function submitChoice(
   payload: { choiceId?: string; timeout?: boolean }
 ) {
   const room = ensureFreshRoom(code);
+  if (room.sessionMode === "gm") {
+    throw new Error("Classic submit_choice is disabled in GM mode");
+  }
   if (room.phase !== "game") {
     throw new Error("Game is not active");
   }
@@ -1130,6 +1732,9 @@ export function submitChoice(
 
 export function timeoutChoice(code: string) {
   const room = ensureFreshRoom(code);
+  if (room.sessionMode === "gm") {
+    throw new Error("Classic timeout is disabled in GM mode");
+  }
   if (room.phase !== "game") {
     throw new Error("Game is not active");
   }
@@ -1144,6 +1749,52 @@ export function timeoutChoice(code: string) {
 
 export function getRecapState(code: string) {
   const room = ensureFreshRoom(code);
+  if (room.sessionMode === "gm" && room.gmState) {
+    const gmState = room.gmState;
+    const endingType = room.endingType ?? deriveGmEndingType(room.chaosLevel);
+    const endingText =
+      gmState.currentOutcomeText ??
+      [...gmState.transcript]
+        .reverse()
+        .find((entry) => entry.phase === "consequence")
+        ?.consequenceText ??
+      "Reality settles for now, but the Rift keeps score.";
+    const endingScene = room.endingScene ?? {
+      id: "gm-ending",
+      text: endingText,
+      ending: true,
+      endingType,
+    };
+    const history = room.history.length > 0 ? room.history : buildGmHistory(room, gmState);
+
+    return {
+      endingScene,
+      endingType,
+      history,
+      mvp: computeGmMvp(room, gmState),
+      genre: room.genre,
+      storyTitle: getStoryTitle(room.genre),
+      genrePower: room.genrePower,
+      chaosLevel: room.chaosLevel,
+      riftHistory: room.riftHistory,
+      latestNarration: room.latestNarration ?? null,
+      narrationLog: room.narrationLog ?? [],
+      worldState: room.worldState,
+      latestWorldEvent: room.latestWorldEvent,
+      playerProfiles: room.playerProfiles,
+      archetypeProgress: room.archetypeProgress,
+      splitVoteConsequence: room.splitVoteConsequence,
+      deferredCallbacks: room.deferredCallbacks,
+      realityRemembersLine: room.realityRemembersLine,
+      narrativeThreads: room.narrativeThreads,
+      activeThreadId: room.activeThreadId,
+      directedScene: room.directedScene,
+      directorTimeline: room.directorTimeline,
+      gmTranscript: gmState.transcript,
+      sessionMode: room.sessionMode,
+    };
+  }
+
   if (room.phase !== "recap" || !room.endingScene || !room.endingType) {
     throw new Error("Recap is not ready");
   }
@@ -1171,6 +1822,8 @@ export function getRecapState(code: string) {
     activeThreadId: room.activeThreadId,
     directedScene: room.directedScene,
     directorTimeline: room.directorTimeline,
+    gmTranscript: room.gmState?.transcript ?? [],
+    sessionMode: room.sessionMode,
   };
 }
 
@@ -1207,6 +1860,7 @@ export function restartSession(code: string) {
   room.activeThreadId = null;
   room.directedScene = null;
   room.directorTimeline = [];
+  room.gmState = room.sessionMode === "gm" ? createInitialGMState(room.players.find((player) => player.isHost)?.id ?? null) : null;
   room.turnOrder = room.players.map((player) => player.id);
   room.players = room.players.map((player, index) => ({
     ...player,

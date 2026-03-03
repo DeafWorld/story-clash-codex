@@ -77,7 +77,6 @@ describe("director v1", () => {
     const impact = applySplitVoteImpact({
       consequence,
       genrePower: { zombie: 40, alien: 34, haunted: 26 },
-      sceneId: "start",
     });
     expect(Object.keys(impact.genreShift).length).toBeGreaterThanOrEqual(2);
     expect(impact.chaosBonus).toBeGreaterThanOrEqual(4);

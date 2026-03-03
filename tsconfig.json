@@ -15,6 +15,11 @@
     "isolatedModules": true,
     "jsx": "preserve",
     "incremental": true,
+    "types": [
+      "node",
+      "react",
+      "react-dom"
+    ],
     "plugins": [
       {
         "name": "next"
@@ -33,6 +38,8 @@
     "src/**/*.ts",
     "src/**/*.tsx",
     "server/**/*.ts",
+    "protocol/**/*.ts",
+    "protocol/**/*.json",
     "tests/**/*.ts",
     "playwright.config.ts",
     "instrumentation.ts",

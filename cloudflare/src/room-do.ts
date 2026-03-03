@@ -19,9 +19,21 @@ import {
   getStoryStartScene,
   getStoryTitle,
 } from "./stories";
+import {
+  PROTOCOL_VERSION,
+  SERVER_CAPABILITIES,
+  SNAPSHOT_VERSION,
+  isSupportedProtocolVersion,
+  type ClientHelloPayload,
+  type ServerHelloPayload,
+} from "../../protocol/protocol-version";
+import { deterministicTieBreakChoice, stableHash } from "../../protocol/deterministic-lock";
 import type {
   ClientEnvelope,
   EndingType,
+  GMChoice,
+  GMSessionState,
+  GMTranscriptEntry,
   GenreId,
   MinigameOutcome,
   MVP,
@@ -33,6 +45,7 @@ import type {
   RoomView,
   Scene,
   ServerEnvelope,
+  StoryBeat,
 } from "./types";
 
 declare const WebSocketPair: {
@@ -46,7 +59,10 @@ const MIN_PLAYERS = 3;
 const MAX_NARRATION_LOG = 30;
 const MAX_RIFT_HISTORY = 40;
 const MAX_DIRECTOR_TIMELINE = 40;
+const MAX_GM_BEAT_HISTORY = 40;
+const MAX_GM_TRANSCRIPT = 120;
 const DISCONNECT_TIMEOUT_MS = 10_000;
+const workerBuildId = "cloudflare-worker";
 
 const AVATARS = ["circle-cyan", "diamond-red", "hex-green", "triangle-blue", "square-gold", "ring-white"];
 const ROUND_TWO_SCORES = [940, 760, 670, 610, 560, 520];
@@ -133,6 +149,41 @@ function createInitialWorldState(): RoomState["worldState"] {
   };
 }
 
+function createInitialGMState(gmPlayerId: string | null): GMSessionState {
+  return {
+    mode: "gm",
+    gmPlayerId,
+    phase: "writing_beat",
+    beatIndex: 0,
+    currentBeat: null,
+    currentChoices: [],
+    currentOutcomeText: null,
+    readyState: {
+      readyPlayerIds: [],
+      readyGm: false,
+      requiredReadyIds: [],
+      allReady: false,
+    },
+    voteState: {
+      votesByPlayerId: {},
+      countsByChoiceId: {},
+      freeformByPlayerId: {},
+      lockedChoiceId: null,
+      openedAt: null,
+      deadlineAt: null,
+    },
+    aiSource: null,
+    beatHistory: [],
+    transcript: [],
+  };
+}
+
+function sanitizeFreeformInput(raw: string): string {
+  const withoutTags = raw.replace(/<[^>]*>/g, " ");
+  const withoutControls = withoutTags.replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g, "");
+  return withoutControls.replace(/\s+/g, " ").trim().slice(0, 200);
+}
+
 function now(): number {
   return Date.now();
 }
@@ -170,15 +221,6 @@ function sceneChoiceLabel(scene: Scene, choiceId: string): string {
   return choice?.text ?? choice?.label ?? "Continue";
 }
 
-function stableHash(input: string): number {
-  let hash = 2166136261;
-  for (let index = 0; index < input.length; index += 1) {
-    hash ^= input.charCodeAt(index);
-    hash = Math.imul(hash, 16777619);
-  }
-  return hash >>> 0;
-}
-
 function seededChoice<T>(items: T[], seed: string): T {
   const index = stableHash(seed) % items.length;
   return items[index] ?? items[0];
@@ -208,9 +250,39 @@ export class RoomDurableObject {
 
   private disconnectTimers = new Map<string, number>();
 
+  private gmSnapshotTicks = new Map<string, number>();
+
   constructor(state: any, env: any) {
     this.state = state;
     this.env = env;
+  }
+
+  private nextSnapshotTick(roomCode: string): number {
+    const next = (this.gmSnapshotTicks.get(roomCode) ?? 0) + 1;
+    this.gmSnapshotTicks.set(roomCode, next);
+    return next;
+  }
+
+  private gmStateUpdatePayload(roomCode: string, gmState: GMSessionState) {
+    return {
+      roomCode,
+      gmState,
+      snapshotVersion: SNAPSHOT_VERSION,
+      serverTimeMs: now(),
+      tick: this.nextSnapshotTick(roomCode),
+    };
+  }
+
+  private serverHelloPayload(accepted: boolean, reason?: string): ServerHelloPayload {
+    return {
+      accepted,
+      protocolVersion: PROTOCOL_VERSION,
+      capabilities: [...SERVER_CAPABILITIES],
+      snapshotVersion: SNAPSHOT_VERSION,
+      serverTimeMs: now(),
+      buildId: this.env.WORKER_BUILD_ID?.toString?.() || workerBuildId,
+      ...(reason ? { reason } : {}),
+    };
   }
 
   async fetch(request: Request): Promise<Response> {
@@ -251,8 +323,20 @@ export class RoomDurableObject {
     }
 
     if (room.phase === "game" && room.choicesOpen && room.turnDeadline && room.turnDeadline <= now()) {
-      const timedOutPlayerId = this.activePlayerId(room);
-      if (timedOutPlayerId) {
+      if (room.sessionMode === "gm" && room.gmState) {
+        const locked = this.lockGMVoteIfDue(room, true);
+        await this.saveRoom(room);
+        if (locked.locked) {
+          await this.broadcast("vote_locked", { roomCode: room.code, gmState: locked.gmState });
+          await this.broadcast("gm_state_update", this.gmStateUpdatePayload(room.code, locked.gmState));
+          await this.broadcast("room_updated", this.getRoomView(room));
+        }
+      } else {
+        const timedOutPlayerId = this.activePlayerId(room);
+        if (!timedOutPlayerId) {
+          await this.scheduleAlarm(room);
+          return;
+        }
         const result = this.submitChoice(room, timedOutPlayerId, { timeout: true });
         await this.saveRoom(room);
         if (result.narration) {
@@ -305,6 +389,8 @@ export class RoomDurableObject {
       createdAt: now(),
       expiresAt: now() + ROOM_TTL_MS,
       active: true,
+      sessionMode: "gm",
+      gmState: createInitialGMState(host.id),
       status: "lobby",
       phase: "lobby",
       storyId: null,
@@ -342,6 +428,7 @@ export class RoomDurableObject {
         code: room.code,
         roomId: room.id,
         playerId: host.id,
+        sessionMode: room.sessionMode,
       },
       { status: 201 }
     );
@@ -391,7 +478,8 @@ export class RoomDurableObject {
 
   private async handleGetRecap(): Promise<Response> {
     const room = await this.requireFreshRoom();
-    if (room.phase !== "recap" || !room.endingScene || !room.endingType) {
+    const gmRecapReady = room.sessionMode === "gm" && (room.gmState?.transcript.length ?? 0) > 0;
+    if (!gmRecapReady && (room.phase !== "recap" || !room.endingScene || !room.endingType)) {
       return errorResponse("Recap is not ready", 404);
     }
     return Response.json(this.getRecapState(room));
@@ -413,10 +501,11 @@ export class RoomDurableObject {
 
     const pair = new WebSocketPair();
     const client = pair[0];
-    const server = pair[1];
+    const server = pair[1] as WebSocket & { accept: () => void };
     server.accept();
 
     this.bindSocket(server, requestedPlayerId);
+    this.emitToSocket(server, "server_hello", this.serverHelloPayload(true));
     const wasConnected = player.connected ?? false;
     player.connected = true;
     this.ensureHostAssigned(room);
@@ -468,6 +557,20 @@ export class RoomDurableObject {
     const actorPlayerId = socketPlayerId || claimedPlayerId;
 
     try {
+      if (envelope.event === "client_hello") {
+        const hello = (payload ?? {}) as Partial<ClientHelloPayload>;
+        const protocolVersion = typeof hello.protocolVersion === "string" ? hello.protocolVersion : "";
+        const accepted = isSupportedProtocolVersion(protocolVersion);
+        const reason = accepted
+          ? undefined
+          : `Unsupported protocol version ${protocolVersion || "unknown"}. Expected ${PROTOCOL_VERSION}.`;
+        this.emitToSocket(socket, "server_hello", this.serverHelloPayload(accepted, reason), envelope.id);
+        if (!accepted && reason) {
+          this.emitToSocket(socket, "server_error", { message: reason }, envelope.id);
+        }
+        return;
+      }
+
       if (envelope.event === "join_room") {
         await this.handleJoinRoomEvent(socket, room, actorPlayerId, envelope.id);
         return;
@@ -523,6 +626,115 @@ export class RoomDurableObject {
           await this.broadcast("narrator_update", { line: selection.narration, roomCode: room.code }, envelope.id);
         }
         await this.broadcast("scene_update", this.getRoomView(room), envelope.id);
+        return;
+      }
+
+      if (envelope.event === "gm_publish_beat") {
+        const result = this.publishGMBeat(room, actorPlayerId, {
+          title: typeof payload.title === "string" ? payload.title : undefined,
+          location: typeof payload.location === "string" ? payload.location : undefined,
+          icon: typeof payload.icon === "string" ? payload.icon : undefined,
+          rawText: typeof payload.rawText === "string" ? payload.rawText : "",
+          visualBeats: Array.isArray(payload.visualBeats)
+            ? payload.visualBeats
+                .map((entry) => (entry && typeof entry === "object" ? (entry as Record<string, unknown>) : null))
+                .filter((entry): entry is Record<string, unknown> => Boolean(entry))
+                .map((entry) => ({
+                  type: String(entry.type ?? "text") as "text" | "dialogue" | "action" | "separator",
+                  content: String(entry.content ?? ""),
+                  speaker: typeof entry.speaker === "string" ? entry.speaker : undefined,
+                  icon: typeof entry.icon === "string" ? entry.icon : undefined,
+                }))
+            : [],
+          aiSource:
+            payload.aiSource === "claude" || payload.aiSource === "local" || payload.aiSource === null
+              ? (payload.aiSource as "claude" | "local" | null)
+              : null,
+        });
+        await this.saveRoom(room);
+        await this.broadcast("beat_published", { roomCode: room.code, beat: result.beat, gmState: result.gmState }, envelope.id);
+        await this.broadcast("gm_state_update", this.gmStateUpdatePayload(room.code, result.gmState), envelope.id);
+        await this.broadcast("room_updated", this.getRoomView(room), envelope.id);
+        return;
+      }
+
+      if (envelope.event === "gm_mark_ready") {
+        const result = this.markGMReady(room, actorPlayerId);
+        await this.saveRoom(room);
+        await this.broadcast("gm_state_update", this.gmStateUpdatePayload(room.code, result.gmState), envelope.id);
+        if (result.opened) {
+          await this.broadcast("choices_opened", { roomCode: room.code, gmState: result.gmState }, envelope.id);
+        }
+        await this.broadcast("room_updated", this.getRoomView(room), envelope.id);
+        return;
+      }
+
+      if (envelope.event === "player_mark_ready") {
+        const result = this.markGMPlayerReady(room, actorPlayerId);
+        await this.saveRoom(room);
+        await this.broadcast("gm_state_update", this.gmStateUpdatePayload(room.code, result.gmState), envelope.id);
+        if (result.opened) {
+          await this.broadcast("choices_opened", { roomCode: room.code, gmState: result.gmState }, envelope.id);
+        }
+        await this.broadcast("room_updated", this.getRoomView(room), envelope.id);
+        return;
+      }
+
+      if (envelope.event === "gm_publish_choices") {
+        const result = this.publishGMChoices(room, actorPlayerId, {
+          choices: Array.isArray(payload.choices)
+            ? payload.choices.map((entry) =>
+                entry && typeof entry === "object" ? (entry as Partial<GMChoice>) : {}
+              )
+            : [],
+          timeLimitSec: Number(payload.timeLimitSec),
+        });
+        await this.saveRoom(room);
+        await this.broadcast("gm_state_update", this.gmStateUpdatePayload(room.code, result.gmState), envelope.id);
+        if (result.opened) {
+          await this.broadcast("choices_opened", { roomCode: room.code, gmState: result.gmState }, envelope.id);
+        }
+        await this.broadcast("room_updated", this.getRoomView(room), envelope.id);
+        return;
+      }
+
+      if (envelope.event === "player_vote") {
+        const choiceId = typeof payload.choiceId === "string" ? payload.choiceId : "";
+        const result = this.submitGMVote(room, actorPlayerId, choiceId);
+        await this.saveRoom(room);
+        await this.broadcast("vote_update", { roomCode: room.code, gmState: result.gmState }, envelope.id);
+        await this.broadcast("gm_state_update", this.gmStateUpdatePayload(room.code, result.gmState), envelope.id);
+        if (result.locked) {
+          await this.broadcast("vote_locked", { roomCode: room.code, gmState: result.gmState }, envelope.id);
+        }
+        await this.broadcast("room_updated", this.getRoomView(room), envelope.id);
+        return;
+      }
+
+      if (envelope.event === "player_freeform") {
+        const text = typeof payload.text === "string" ? payload.text : "";
+        const result = this.submitGMFreeform(room, actorPlayerId, text);
+        await this.saveRoom(room);
+        await this.broadcast("vote_update", { roomCode: room.code, gmState: result.gmState }, envelope.id);
+        await this.broadcast("gm_state_update", this.gmStateUpdatePayload(room.code, result.gmState), envelope.id);
+        return;
+      }
+
+      if (envelope.event === "gm_publish_consequence") {
+        const text = typeof payload.text === "string" ? payload.text : "";
+        const result = this.publishGMConsequence(room, actorPlayerId, text);
+        await this.saveRoom(room);
+        await this.broadcast("consequence_published", { roomCode: room.code, gmState: result.gmState }, envelope.id);
+        await this.broadcast("gm_state_update", this.gmStateUpdatePayload(room.code, result.gmState), envelope.id);
+        await this.broadcast("room_updated", this.getRoomView(room), envelope.id);
+        return;
+      }
+
+      if (envelope.event === "gm_next_beat") {
+        const result = this.advanceGMBeat(room, actorPlayerId);
+        await this.saveRoom(room);
+        await this.broadcast("gm_state_update", this.gmStateUpdatePayload(room.code, result.gmState), envelope.id);
+        await this.broadcast("room_updated", this.getRoomView(room), envelope.id);
         return;
       }
 
@@ -599,7 +811,12 @@ export class RoomDurableObject {
 
     player.connected = false;
     if (room.phase === "game" && !room.choicesOpen) {
-      this.maybeUnlockChoices(room);
+      if (room.sessionMode === "gm") {
+        this.recomputeGMReadyState(room);
+        this.maybeOpenGMVoting(room);
+      } else {
+        this.maybeUnlockChoices(room);
+      }
     }
     this.ensureHostAssigned(room);
     await this.saveRoom(room);
@@ -630,6 +847,17 @@ export class RoomDurableObject {
 
     const player = room.players.find((entry) => entry.id === playerId);
     if (!player || player.connected) {
+      return;
+    }
+
+    if (room.sessionMode === "gm" && room.gmState) {
+      const locked = this.lockGMVoteIfDue(room, true);
+      await this.saveRoom(room);
+      if (locked.locked) {
+        await this.broadcast("vote_locked", { roomCode: room.code, gmState: locked.gmState });
+        await this.broadcast("gm_state_update", this.gmStateUpdatePayload(room.code, locked.gmState));
+        await this.broadcast("room_updated", this.getRoomView(room));
+      }
       return;
     }
 
@@ -682,7 +910,12 @@ export class RoomDurableObject {
     }
     player.connected = false;
     if (room.phase === "game" && !room.choicesOpen) {
-      this.maybeUnlockChoices(room);
+      if (room.sessionMode === "gm") {
+        this.recomputeGMReadyState(room);
+        this.maybeOpenGMVoting(room);
+      } else {
+        this.maybeUnlockChoices(room);
+      }
     }
     this.ensureHostAssigned(room);
     await this.saveRoom(room);
@@ -721,6 +954,12 @@ export class RoomDurableObject {
 
     room.phase = room.phase ?? room.status ?? "lobby";
     room.status = room.status ?? room.phase;
+    room.sessionMode = room.sessionMode ?? "classic";
+    if (room.sessionMode === "gm") {
+      room.gmState = room.gmState ?? createInitialGMState(room.players.find((player) => player.isHost)?.id ?? null);
+    } else {
+      room.gmState = null;
+    }
     room.storyId = room.storyId ?? room.genre ?? null;
     room.currentNodeId = room.currentNodeId ?? room.currentSceneId;
     room.currentPlayerId = room.currentPlayerId ?? this.activePlayerId(room);
@@ -747,6 +986,32 @@ export class RoomDurableObject {
       ...player,
       orderIndex: player.orderIndex ?? player.turnOrder ?? index,
     }));
+    if (room.sessionMode === "gm" && room.gmState) {
+      room.gmState.gmPlayerId =
+        room.gmState.gmPlayerId ??
+        room.players.find((player) => player.isHost)?.id ??
+        room.players[0]?.id ??
+        null;
+      room.gmState.beatHistory = (room.gmState.beatHistory ?? []).slice(-MAX_GM_BEAT_HISTORY);
+      room.gmState.transcript = (room.gmState.transcript ?? []).slice(-MAX_GM_TRANSCRIPT);
+      room.gmState.currentChoices = (room.gmState.currentChoices ?? []).slice(0, 3);
+      room.gmState.phase = room.gmState.phase ?? "writing_beat";
+      room.gmState.readyState = room.gmState.readyState ?? {
+        readyPlayerIds: [],
+        readyGm: false,
+        requiredReadyIds: [],
+        allReady: false,
+      };
+      room.gmState.voteState = room.gmState.voteState ?? {
+        votesByPlayerId: {},
+        countsByChoiceId: {},
+        freeformByPlayerId: {},
+        lockedChoiceId: null,
+        openedAt: null,
+        deadlineAt: null,
+      };
+      this.recomputeGMReadyState(room);
+    }
     room.sceneReadyPlayerIds = this.normalizeSceneReadyPlayerIds(room);
     if (room.phase === "game") {
       const legacyChoicesOpen = (room as { choicesOpen?: boolean }).choicesOpen;
@@ -873,6 +1138,10 @@ export class RoomDurableObject {
       ...player,
       isHost: Boolean(nextHost && player.id === nextHost.id),
     }));
+    if (room.sessionMode === "gm" && room.gmState) {
+      room.gmState.gmPlayerId = nextHost?.id ?? room.gmState.gmPlayerId;
+      this.recomputeGMReadyState(room);
+    }
   }
 
   private activePlayerId(room: RoomState): string | null {
@@ -895,6 +1164,101 @@ export class RoomDurableObject {
     room.sceneReadyPlayerIds = [];
     room.choicesOpen = false;
     room.turnDeadline = null;
+  }
+
+  private recomputeGMReadyState(room: RoomState) {
+    if (room.sessionMode !== "gm" || !room.gmState) {
+      return;
+    }
+    const required = this.connectedPlayerIds(room).filter((id) => id !== room.gmState?.gmPlayerId);
+    room.gmState.readyState.requiredReadyIds = required;
+    room.gmState.readyState.readyPlayerIds = room.gmState.readyState.readyPlayerIds.filter((id) => required.includes(id));
+    room.gmState.readyState.allReady =
+      room.gmState.readyState.readyGm &&
+      required.every((id) => room.gmState?.readyState.readyPlayerIds.includes(id));
+  }
+
+  private resetGMReadiness(room: RoomState) {
+    if (room.sessionMode !== "gm" || !room.gmState) {
+      return;
+    }
+    room.gmState.readyState.readyPlayerIds = [];
+    room.gmState.readyState.readyGm = false;
+    this.recomputeGMReadyState(room);
+  }
+
+  private resetGMVoting(room: RoomState) {
+    if (room.sessionMode !== "gm" || !room.gmState) {
+      return;
+    }
+    room.gmState.voteState = {
+      votesByPlayerId: {},
+      countsByChoiceId: {},
+      freeformByPlayerId: {},
+      lockedChoiceId: null,
+      openedAt: null,
+      deadlineAt: null,
+    };
+  }
+
+  private maybeOpenGMVoting(room: RoomState, timeLimitSec = 30): boolean {
+    if (room.sessionMode !== "gm" || !room.gmState) {
+      return false;
+    }
+    const gmState = room.gmState;
+    if (!gmState.currentChoices.length || !gmState.readyState.allReady) {
+      return false;
+    }
+    const openedAt = now();
+    gmState.phase = "voting_open";
+    gmState.voteState.openedAt = openedAt;
+    gmState.voteState.deadlineAt = openedAt + Math.max(5, timeLimitSec) * 1000;
+    room.turnDeadline = gmState.voteState.deadlineAt;
+    room.choicesOpen = true;
+    room.sceneReadyPlayerIds = [...gmState.readyState.readyPlayerIds];
+    room.currentPlayerId = null;
+    return true;
+  }
+
+  private lockGMVote(room: RoomState): boolean {
+    if (room.sessionMode !== "gm" || !room.gmState) {
+      return false;
+    }
+    const gmState = room.gmState;
+    if (gmState.phase !== "voting_open") {
+      return false;
+    }
+    const entries = Object.entries(gmState.voteState.countsByChoiceId);
+    const maxVotes = entries.length ? Math.max(...entries.map(([, count]) => count)) : 0;
+    const top = entries
+      .filter(([, count]) => count === maxVotes)
+      .map(([id]) => id)
+      .sort((a, b) => a.localeCompare(b));
+    let winner =
+      deterministicTieBreakChoice({
+        roomCode: room.code,
+        beatIndex: gmState.beatIndex,
+        topChoiceIds: top,
+      }) ?? gmState.currentChoices[0]?.id ?? null;
+    gmState.voteState.lockedChoiceId = winner;
+    gmState.phase = "vote_locked";
+    room.turnDeadline = null;
+    room.choicesOpen = false;
+    room.sceneReadyPlayerIds = [];
+    const lockedChoice = gmState.currentChoices.find((choice) => choice.id === winner);
+    const transcript: GMTranscriptEntry = {
+      id: `gm-log-${randomId()}`,
+      beatId: gmState.currentBeat?.id ?? `beat-${gmState.beatIndex}`,
+      beatIndex: gmState.beatIndex,
+      phase: "vote_lock",
+      winningChoiceId: winner,
+      winningChoiceLabel: lockedChoice?.label ?? null,
+      voteCounts: { ...gmState.voteState.countsByChoiceId },
+      freeform: Object.values(gmState.voteState.freeformByPlayerId),
+      createdAt: now(),
+    };
+    gmState.transcript = [...gmState.transcript, transcript].slice(-MAX_GM_TRANSCRIPT);
+    return true;
   }
 
   private maybeUnlockChoices(room: RoomState): boolean {
@@ -1198,6 +1562,7 @@ export class RoomDurableObject {
     room.latestWorldEvent = null;
     room.directorTimeline = [];
     room.directedScene = null;
+    room.gmState = room.sessionMode === "gm" ? createInitialGMState(room.players.find((player) => player.isHost)?.id ?? null) : null;
     room.endingScene = null;
     room.endingType = null;
     room.activePlayerIndex = 0;
@@ -1225,6 +1590,10 @@ export class RoomDurableObject {
       room.worldState.timeline = [...room.worldState.timeline, ...directed.timelineEvents].slice(-60);
       room.latestWorldEvent = room.worldState.timeline.at(-1) ?? room.latestWorldEvent;
     }
+    if (room.sessionMode === "gm") {
+      room.gmState = createInitialGMState(room.players.find((player) => player.isHost)?.id ?? playerId);
+      this.recomputeGMReadyState(room);
+    }
 
     return {
       genre,
@@ -1236,6 +1605,9 @@ export class RoomDurableObject {
   }
 
   private markSceneReady(room: RoomState, playerId: string) {
+    if (room.sessionMode === "gm") {
+      throw new Error("Use player_mark_ready in GM mode");
+    }
     if (room.phase !== "game") {
       throw new Error("Game is not active");
     }
@@ -1264,11 +1636,252 @@ export class RoomDurableObject {
     };
   }
 
+  private assertGMSession(room: RoomState): GMSessionState {
+    if (room.sessionMode !== "gm" || !room.gmState) {
+      throw new Error("Room is not in GM mode");
+    }
+    return room.gmState;
+  }
+
+  private assertGMControl(room: RoomState, playerId: string): GMSessionState {
+    const gmState = this.assertGMSession(room);
+    if (!gmState.gmPlayerId || gmState.gmPlayerId !== playerId) {
+      throw new Error("Only GM can perform this action");
+    }
+    return gmState;
+  }
+
+  private publishGMBeat(room: RoomState, playerId: string, payload: {
+    title?: string;
+    location?: string;
+    icon?: string;
+    rawText: string;
+    visualBeats: StoryBeat["visualBeats"];
+    aiSource?: "claude" | "local" | null;
+  }) {
+    const gmState = this.assertGMControl(room, playerId);
+    if (room.phase !== "game") {
+      throw new Error("Game is not active");
+    }
+    const rawText = payload.rawText.trim();
+    if (!rawText) {
+      throw new Error("Beat text is required");
+    }
+
+    const beat: StoryBeat = {
+      id: `beat-${randomId()}`,
+      title: payload.title?.trim().slice(0, 42) || "Rift Beat",
+      location: payload.location?.trim().slice(0, 42) || "Unknown Sector",
+      icon: payload.icon?.trim().slice(0, 4) || "⚡",
+      rawText: rawText.slice(0, 1600),
+      visualBeats: payload.visualBeats.slice(0, 48),
+      createdBy: playerId,
+      createdAt: now(),
+    };
+
+    gmState.currentBeat = beat;
+    gmState.currentChoices = [];
+    gmState.currentOutcomeText = null;
+    gmState.phase = "reading";
+    gmState.aiSource = payload.aiSource ?? gmState.aiSource ?? null;
+    gmState.beatHistory = [...gmState.beatHistory, beat].slice(-MAX_GM_BEAT_HISTORY);
+    gmState.beatIndex += 1;
+    this.resetGMReadiness(room);
+    this.resetGMVoting(room);
+    room.choicesOpen = false;
+    room.turnDeadline = null;
+    room.sceneReadyPlayerIds = [];
+
+    const transcript: GMTranscriptEntry = {
+      id: `gm-log-${randomId()}`,
+      beatId: beat.id,
+      beatIndex: gmState.beatIndex,
+      phase: "beat",
+      beatText: beat.rawText,
+      createdAt: now(),
+    };
+    gmState.transcript = [...gmState.transcript, transcript].slice(-MAX_GM_TRANSCRIPT);
+    return { gmState, beat };
+  }
+
+  private markGMReady(room: RoomState, playerId: string) {
+    const gmState = this.assertGMControl(room, playerId);
+    gmState.readyState.readyGm = true;
+    this.recomputeGMReadyState(room);
+    const opened = this.maybeOpenGMVoting(room);
+    return { gmState, opened };
+  }
+
+  private markGMPlayerReady(room: RoomState, playerId: string) {
+    const gmState = this.assertGMSession(room);
+    const player = room.players.find((entry) => entry.id === playerId);
+    if (!player) {
+      throw new Error("Player not found");
+    }
+    if (playerId === gmState.gmPlayerId) {
+      throw new Error("GM should use gm_mark_ready");
+    }
+    const ready = new Set(gmState.readyState.readyPlayerIds);
+    ready.add(playerId);
+    gmState.readyState.readyPlayerIds = [...ready];
+    this.recomputeGMReadyState(room);
+    const opened = this.maybeOpenGMVoting(room);
+    return { gmState, opened };
+  }
+
+  private publishGMChoices(room: RoomState, playerId: string, payload: {
+    choices: Array<Partial<GMChoice>>;
+    timeLimitSec?: number;
+  }) {
+    const gmState = this.assertGMControl(room, playerId);
+    const choices: GMChoice[] = payload.choices
+      .map((choice, index) => {
+        const label = (choice.label ?? "").trim().replace(/\s+/g, " ").slice(0, 40);
+        if (!label) {
+          return null;
+        }
+        return {
+          id: String(choice.id ?? `gm-choice-${index + 1}`),
+          label,
+          icon: String(choice.icon ?? "🎭").slice(0, 4),
+          stakes: choice.stakes?.trim().slice(0, 100),
+          personality: choice.personality,
+          order: index,
+        } as GMChoice;
+      })
+      .filter((choice): choice is GMChoice => Boolean(choice))
+      .slice(0, 3);
+    if (choices.length < 2) {
+      throw new Error("At least two choices are required");
+    }
+
+    gmState.currentChoices = choices;
+    gmState.phase = "creating_choices";
+    this.resetGMVoting(room);
+    gmState.voteState.countsByChoiceId = Object.fromEntries(choices.map((choice) => [choice.id, 0]));
+    const safeTimeLimit =
+      typeof payload.timeLimitSec === "number" && Number.isFinite(payload.timeLimitSec)
+        ? payload.timeLimitSec
+        : 30;
+    const opened = this.maybeOpenGMVoting(room, safeTimeLimit);
+    return { gmState, opened };
+  }
+
+  private submitGMVote(room: RoomState, playerId: string, choiceId: string) {
+    const gmState = this.assertGMSession(room);
+    if (gmState.phase !== "voting_open") {
+      throw new Error("Voting is not open");
+    }
+    if (playerId === gmState.gmPlayerId) {
+      throw new Error("GM cannot vote in GM mode");
+    }
+    if (gmState.voteState.votesByPlayerId[playerId]) {
+      throw new Error("Player already voted");
+    }
+    if (!gmState.currentChoices.some((choice) => choice.id === choiceId)) {
+      throw new Error("Invalid choice");
+    }
+    gmState.voteState.votesByPlayerId[playerId] = choiceId;
+    gmState.voteState.countsByChoiceId[choiceId] = (gmState.voteState.countsByChoiceId[choiceId] ?? 0) + 1;
+    const total = this.connectedPlayerIds(room).filter((id) => id !== gmState.gmPlayerId).length;
+    const voted = Object.keys(gmState.voteState.votesByPlayerId).length;
+    const majorityThreshold = Math.floor(Math.max(1, total) / 2) + 1;
+    const choiceVotes = gmState.voteState.countsByChoiceId[choiceId] ?? 0;
+    const locked = choiceVotes >= majorityThreshold || voted >= total ? this.lockGMVote(room) : false;
+    return { gmState, locked };
+  }
+
+  private submitGMFreeform(room: RoomState, playerId: string, text: string) {
+    const gmState = this.assertGMSession(room);
+    if (gmState.phase !== "voting_open") {
+      throw new Error("Freeform is only available during voting");
+    }
+    const player = room.players.find((entry) => entry.id === playerId);
+    if (!player) {
+      throw new Error("Player not found");
+    }
+    const sanitized = sanitizeFreeformInput(text);
+    if (!sanitized) {
+      throw new Error("Freeform cannot be empty");
+    }
+    if (containsProfanity(sanitized)) {
+      throw new Error("Freeform contains blocked language");
+    }
+    gmState.voteState.freeformByPlayerId[playerId] = {
+      playerId,
+      playerName: player.name,
+      text: sanitized,
+      timestamp: now(),
+    };
+    return { gmState };
+  }
+
+  private lockGMVoteIfDue(room: RoomState, force = false) {
+    const gmState = this.assertGMSession(room);
+    if (gmState.phase !== "voting_open") {
+      return { gmState, locked: false };
+    }
+    const deadline = gmState.voteState.deadlineAt ?? 0;
+    if (!force && (!deadline || deadline > now())) {
+      return { gmState, locked: false };
+    }
+    const locked = this.lockGMVote(room);
+    return { gmState, locked };
+  }
+
+  private publishGMConsequence(room: RoomState, playerId: string, text: string) {
+    const gmState = this.assertGMControl(room, playerId);
+    if (gmState.phase !== "vote_locked") {
+      throw new Error("Vote must be locked before consequence");
+    }
+    const normalized = text.trim().slice(0, 2000);
+    if (!normalized) {
+      throw new Error("Consequence text is required");
+    }
+    gmState.currentOutcomeText = normalized;
+    gmState.phase = "writing_consequence";
+    const lockedChoice = gmState.currentChoices.find((choice) => choice.id === gmState.voteState.lockedChoiceId);
+    gmState.transcript = [
+      ...gmState.transcript,
+      {
+        id: `gm-log-${randomId()}`,
+        beatId: gmState.currentBeat?.id ?? `beat-${gmState.beatIndex}`,
+        beatIndex: gmState.beatIndex,
+        phase: "consequence" as const,
+        consequenceText: normalized,
+        winningChoiceId: gmState.voteState.lockedChoiceId,
+        winningChoiceLabel: lockedChoice?.label ?? null,
+        createdAt: now(),
+      },
+    ].slice(-MAX_GM_TRANSCRIPT);
+    return { gmState };
+  }
+
+  private advanceGMBeat(room: RoomState, playerId: string) {
+    const gmState = this.assertGMControl(room, playerId);
+    if (gmState.phase !== "writing_consequence") {
+      throw new Error("Publish consequence before advancing");
+    }
+    gmState.phase = "writing_beat";
+    gmState.currentBeat = null;
+    gmState.currentChoices = [];
+    gmState.currentOutcomeText = null;
+    this.resetGMReadiness(room);
+    this.resetGMVoting(room);
+    room.turnDeadline = null;
+    room.choicesOpen = false;
+    room.sceneReadyPlayerIds = [];
+    return { gmState };
+  }
+
   private submitChoice(
     room: RoomState,
     playerId: string,
     payload: { choiceId?: string; timeout?: boolean }
   ) {
+    if (room.sessionMode === "gm") {
+      throw new Error("Classic submit_choice is disabled in GM mode");
+    }
     if (room.phase !== "game") {
       throw new Error("Game is not active");
     }
@@ -1536,7 +2149,107 @@ export class RoomDurableObject {
     };
   }
 
+  private deriveGmEndingType(chaosLevel: number): EndingType {
+    if (chaosLevel >= 70) {
+      return "doom";
+    }
+    if (chaosLevel >= 35) {
+      return "survival";
+    }
+    return "triumph";
+  }
+
+  private buildGmHistory(room: RoomState, gmState: GMSessionState): RoomState["history"] {
+    const beatsById = new Map(gmState.beatHistory.map((beat) => [beat.id, beat]));
+    return gmState.transcript
+      .filter((entry) => entry.phase === "vote_lock")
+      .map((entry, index) => {
+        const beat = beatsById.get(entry.beatId) ?? gmState.beatHistory[index] ?? null;
+        const fallbackPlayer = room.players[index % Math.max(1, room.players.length)];
+        const playerName = fallbackPlayer?.name ?? "Crew";
+        return {
+          sceneId: beat?.id ?? `gm-scene-${entry.beatIndex}`,
+          sceneText: beat?.rawText ?? entry.beatText ?? "The scene shifted under Rift pressure.",
+          playerId: fallbackPlayer?.id ?? "gm",
+          player: playerName,
+          playerName,
+          choice: entry.winningChoiceLabel ?? "Continue",
+          choiceLabel: entry.winningChoiceLabel ?? "Continue",
+          isFreeChoice: false,
+          nextNodeId: `gm-beat-${entry.beatIndex + 1}`,
+          tensionLevel: Math.min(5, 1 + Math.floor(room.chaosLevel / 20)),
+          timestamp: entry.createdAt,
+        };
+      });
+  }
+
+  private computeGmMvp(room: RoomState, gmState: GMSessionState): MVP {
+    const counts: Record<string, number> = {};
+    gmState.transcript
+      .filter((entry) => entry.phase === "vote_lock")
+      .forEach((entry) => {
+        (entry.freeform ?? []).forEach((item) => {
+          counts[item.playerId] = (counts[item.playerId] ?? 0) + 1;
+        });
+      });
+
+    const ranked = Object.entries(counts).sort((left, right) => right[1] - left[1]);
+    if (ranked.length > 0) {
+      const [playerId] = ranked[0];
+      const playerName = room.players.find((player) => player.id === playerId)?.name ?? "Unknown";
+      return {
+        player: playerName,
+        reason: "Kept feeding decisive ideas that shaped the group's outcomes.",
+      };
+    }
+
+    const gmName = room.players.find((player) => player.id === gmState.gmPlayerId)?.name ?? "GM";
+    return {
+      player: gmName,
+      reason: "Directed the crew through every Rift beat without losing narrative momentum.",
+    };
+  }
+
   private getRecapState(room: RoomState): RecapPayload {
+    if (room.sessionMode === "gm" && room.gmState) {
+      const gmState = room.gmState;
+      const endingType = room.endingType ?? this.deriveGmEndingType(room.chaosLevel);
+      const endingScene = room.endingScene ?? {
+        id: "gm-ending",
+        text:
+          gmState.currentOutcomeText ??
+          [...gmState.transcript]
+            .reverse()
+            .find((entry) => entry.phase === "consequence")
+            ?.consequenceText ??
+          "Reality settles for now, but the Rift keeps score.",
+        ending: true,
+        endingType,
+      };
+
+      return {
+        endingScene,
+        endingType,
+        history: room.history.length > 0 ? room.history : this.buildGmHistory(room, gmState),
+        mvp: this.computeGmMvp(room, gmState),
+        genre: room.genre,
+        storyTitle: getStoryTitle(room.genre),
+        genrePower: room.genrePower,
+        chaosLevel: room.chaosLevel,
+        riftHistory: room.riftHistory,
+        latestNarration: room.latestNarration ?? null,
+        narrationLog: room.narrationLog ?? [],
+        worldState: room.worldState,
+        latestWorldEvent: room.latestWorldEvent,
+        narrativeThreads: room.narrativeThreads,
+        activeThreadId: room.activeThreadId,
+        directedScene: room.directedScene,
+        directorTimeline: room.directorTimeline,
+        gmTranscript: gmState.transcript,
+        sessionMode: room.sessionMode,
+      };
+    }
+
     if (!room.endingScene || !room.endingType) {
       throw new Error("Recap is not ready");
     }
@@ -1558,6 +2271,8 @@ export class RoomDurableObject {
       activeThreadId: room.activeThreadId,
       directedScene: room.directedScene,
       directorTimeline: room.directorTimeline,
+      gmTranscript: room.gmState?.transcript ?? [],
+      sessionMode: room.sessionMode,
     };
   }
 

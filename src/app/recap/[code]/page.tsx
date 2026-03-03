@@ -14,6 +14,7 @@ import WorldEventTimeline from "../../../components/world-event-timeline";
 import DirectorBeatTimeline from "../../../components/director-beat-timeline";
 import SceneShell from "../../../components/motion/scene-shell";
 import LottieStinger from "../../../components/motion/lottie-stinger";
+import ShareableRecap from "../../../components/shared/shareable-recap";
 import { getDemoEndingText, getDemoSession, getDemoStoryTree, initDemoRoom } from "../../../lib/demo-session";
 import SessionTopBar from "../../../components/session-top-bar";
 import type { EndingType, RecapPayload } from "../../../types/game";
@@ -210,6 +211,12 @@ function RealtimeRecap({ code, playerId }: RealtimeRecapProps) {
         if (mounted) {
           setRecap(data);
           setNarrationText(data.latestNarration?.text ?? "");
+          trackEvent("recap_share_reach", {
+            code,
+            sessionMode: data.sessionMode ?? "classic",
+            historyCount: data.history.length,
+            endingType: data.endingType,
+          });
           window.setTimeout(() => setShowTimeline(true), 5000);
         }
       } catch (err) {
@@ -300,6 +307,20 @@ function RealtimeRecap({ code, playerId }: RealtimeRecapProps) {
     const u = shareUrl || (typeof window !== "undefined" ? window.location.href : "");
     return `https://wa.me/?text=${encodeURIComponent(shareText + "\n" + u)}`;
   }, [shareText, shareUrl]);
+
+  const recapChoices = useMemo(() => {
+    if (!recap) {
+      return [];
+    }
+    return recap.history.slice(-5).map((entry) => entry.choiceLabel ?? entry.choice);
+  }, [recap]);
+  const leadArchetype = useMemo(() => {
+    if (!recap) {
+      return null;
+    }
+    const progress = Object.values(recap.archetypeProgress ?? {});
+    return progress[0]?.currentArchetype ?? null;
+  }, [recap]);
 
   async function copyShare() {
     const url = shareUrl || window.location.href;
@@ -508,6 +529,11 @@ function RealtimeRecap({ code, playerId }: RealtimeRecapProps) {
 
             <section className="panel space-y-3 p-5">
               <h2 className="text-xl font-semibold">Player Archetypes</h2>
+              {leadArchetype ? (
+                <p className="w-fit rounded-full border border-cyan-300/40 bg-cyan-500/10 px-3 py-1 text-xs text-cyan-100">
+                  Archetype reveal: {leadArchetype}
+                </p>
+              ) : null}
               <div className="space-y-2">
                 {Object.entries(safeProfiles).map(([playerEntryId, profile]) => {
                   const displayName =
@@ -576,10 +602,34 @@ function RealtimeRecap({ code, playerId }: RealtimeRecapProps) {
           <button type="button" className="btn btn-secondary w-full py-3" onClick={playAgain}>
             Play Again with Same Crew
           </button>
+          <ShareableRecap
+            title={recap.storyTitle ?? "Story Clash"}
+            ending={endingLabel(recap.endingType)}
+            roomCode={code}
+            choices={recapChoices}
+            chaosLevel={recap.chaosLevel}
+            onShared={() => trackEvent("recap_shared", { code, method: "generated_card" })}
+          />
           <button type="button" className="btn btn-secondary" onClick={() => router.push("/")}>
             Exit
           </button>
         </section>
+
+        {recap.sessionMode === "gm" && (recap.gmTranscript?.length ?? 0) > 0 ? (
+          <section className="panel space-y-3 p-5">
+            <h2 className="text-xl font-semibold">GM Transcript</h2>
+            <div className="space-y-2">
+              {recap.gmTranscript?.slice(-8).map((entry) => (
+                <article key={entry.id} className="rounded-xl border border-white/10 bg-black/20 p-3 text-sm">
+                  <p className="text-xs uppercase tracking-[0.16em] text-zinc-400">{entry.phase.replaceAll("_", " ")}</p>
+                  {entry.beatText ? <p className="mt-1 line-clamp-3 text-zinc-200">{entry.beatText}</p> : null}
+                  {entry.winningChoiceLabel ? <p className="mt-1 text-cyan-200">Locked: {entry.winningChoiceLabel}</p> : null}
+                  {entry.consequenceText ? <p className="mt-1 line-clamp-3 text-zinc-200">{entry.consequenceText}</p> : null}
+                </article>
+              ))}
+            </div>
+          </section>
+        ) : null}
 
         {toast ? <p className="text-sm text-cyan-300">{toast}</p> : null}
       </div>
