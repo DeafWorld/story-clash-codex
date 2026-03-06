@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "story-clash/protocol/gm-state-update-v1",
+  "title": "GM State Update Envelope",
+  "type": "object",
+  "properties": {
+    "roomCode": {
+      "type": "string",
+      "minLength": 4,
+      "maxLength": 8
+    },
+    "gmState": {
+      "type": "object"
+    },
+    "snapshotVersion": {
+      "type": "integer",
+      "const": 1
+    },
+    "serverTimeMs": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "tick": {
+      "type": "integer",
+      "minimum": 1
+    }
+  },
+  "required": ["roomCode", "gmState", "snapshotVersion", "serverTimeMs", "tick"],
+  "additionalProperties": true
+}

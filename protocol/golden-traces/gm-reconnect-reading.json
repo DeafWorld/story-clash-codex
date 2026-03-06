@@ -1,0 +1,12 @@
+{
+  "id": "gm-reconnect-reading",
+  "description": "Reconnect during reading restores beat and readiness state.",
+  "events": [
+    "gm_publish_beat",
+    "reconnect_state"
+  ],
+  "expected": {
+    "phase": "reading",
+    "hasCurrentBeat": true
+  }
+}

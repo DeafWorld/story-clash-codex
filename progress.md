@@ -324,3 +324,54 @@ TODO:
 - Validation attempt update:
   - Multiple `vitest` / `tsc` invocations remained stalled in this shell (no stdout; forced process cleanup).
   - Completed manual static review of all touched code paths; follow-up gate run still required in a clean shell/CI worker.
+
+---
+
+- Continued ROI implementation pass for Unity migration + protocol/runtime parity.
+- Added CI protocol parity gate:
+  - `/Users/deafgod/Desktop/Codex/scripts/check-protocol-parity.mjs`
+  - `/Users/deafgod/Desktop/Codex/unity/client-stubs/gm-events.stub.json`
+  - `/Users/deafgod/Desktop/Codex/unity/client-stubs/snapshot.stub.json`
+  - `/Users/deafgod/Desktop/Codex/unity/client-stubs/protocol-meta.stub.json`
+  - `/Users/deafgod/Desktop/Codex/unity/vertical-slice/Scripts/Runtime/Protocol/ProtocolStubs.cs`
+  - wired in `/Users/deafgod/Desktop/Codex/package.json` as `protocol:check`
+  - wired in `/Users/deafgod/Desktop/Codex/.github/workflows/ci.yml` (`protocol-parity` job blocks `test` job)
+- Added deterministic vote-lock parity harness and Cloudflare GM flow coverage:
+  - `/Users/deafgod/Desktop/Codex/cloudflare/tests/room-do-gm-flow.test.ts`
+  - `/Users/deafgod/Desktop/Codex/tests/golden-trace-vote-lock-harness.test.ts`
+  - `/Users/deafgod/Desktop/Codex/tests/reconnect-snapshot-parity.test.ts`
+- Patched authoritative analytics + reconnect instrumentation in `/Users/deafgod/Desktop/Codex/server/index.ts`:
+  - readiness gate clear tracking now emitted when voting opens
+  - vote-lock latency tracking now emitted for vote/timeout/disconnect locks
+  - reconnect recovery tracking on socket rejoin when player was disconnected
+- Added performance budget breach checks in `/Users/deafgod/Desktop/Codex/src/lib/motion/perf-monitor.ts`:
+  - p95 frame time
+  - long-frame rate
+  - memory growth
+  - emits `perf_budget_breach` on threshold violations
+- Added alpha launch gate tooling:
+  - `/Users/deafgod/Desktop/Codex/scripts/check-alpha-gate.mjs`
+  - `/Users/deafgod/Desktop/Codex/docs/alpha/session-results.template.json`
+  - `alpha:gate` script in `/Users/deafgod/Desktop/Codex/package.json`
+- Added Unity vertical slice runtime scaffolding:
+  - `/Users/deafgod/Desktop/Codex/unity/vertical-slice/Scripts/Runtime/Core/GmLoopStateMachine.cs`
+  - `/Users/deafgod/Desktop/Codex/unity/vertical-slice/Scripts/Runtime/Networking/AuthoritativeSnapshotReconciler.cs`
+  - `/Users/deafgod/Desktop/Codex/unity/vertical-slice/Scripts/Runtime/UI/MobileVotingLayoutSpec.cs`
+  - `/Users/deafgod/Desktop/Codex/unity/vertical-slice/Scripts/Runtime/Performance/PerformanceBudgetGate.cs`
+  - `/Users/deafgod/Desktop/Codex/unity/vertical-slice/Scripts/Runtime/Visual/UrpVisualIdentityPass.cs`
+  - `/Users/deafgod/Desktop/Codex/unity/vertical-slice/Scripts/Runtime/Visual/RiftContaminationSettings.cs`
+  - `/Users/deafgod/Desktop/Codex/unity/vertical-slice/Scripts/Runtime/FX/FxPool.cs`
+  - `/Users/deafgod/Desktop/Codex/unity/vertical-slice/Scripts/Runtime/FX/QualityGovernor.cs`
+  - `/Users/deafgod/Desktop/Codex/unity/vertical-slice/Scripts/Runtime/Analytics/SessionFunnelAnalyticsV2.cs`
+  - `/Users/deafgod/Desktop/Codex/unity/vertical-slice/Scripts/Runtime/Alpha/AlphaGateEvaluator.cs`
+  - docs: `/Users/deafgod/Desktop/Codex/unity/vertical-slice/README.md`, `/Users/deafgod/Desktop/Codex/unity/README.md`, `/Users/deafgod/Desktop/Codex/docs/README.md`
+
+Validation status:
+- `npm run protocol:check` passes.
+- TypeScript transpile sanity checks pass for newly added/updated TS files.
+- Full `vitest` execution remains unstable in this shell (hangs/timeouts observed after startup); targeted runtime verification still required in clean CI/runner.
+
+TODO next agent:
+- Run full `npm run test` and resolve any functional regressions.
+- Add CI step to run deterministic harness subset if runtime allows (currently only protocol gate added as hard fail).
+- Execute multiplayer/manual flow validation for reconnect parity in browser and in Unity vertical slice prototype scene.

@@ -1,8 +1,9 @@
 "use client";
 
 import { io, type Socket } from "socket.io-client";
-import type { ClientEnvelope, RealtimeEventName, ServerEnvelope } from "../types/realtime";
+import type { ClientEnvelope, ClientHelloPayload, RealtimeEventName, ServerEnvelope } from "../types/realtime";
 import { isServerEnvelope } from "../types/realtime";
+import { PROTOCOL_VERSION } from "../../protocol/protocol-version";
 
 type RealtimeTransport = "socketio" | "ws";
 type Handler = (payload: unknown) => void;
@@ -60,6 +61,23 @@ function resolveWsBaseUrl(): string {
   return "ws://localhost:3000";
 }
 
+function resolveBuildId(): string {
+  return (
+    process.env.NEXT_PUBLIC_BUILD_ID?.trim() ||
+    process.env.NEXT_PUBLIC_VERCEL_GIT_COMMIT_SHA?.trim()?.slice(0, 12) ||
+    process.env.NEXT_PUBLIC_VERCEL_GIT_COMMIT_REF?.trim() ||
+    "web-dev"
+  );
+}
+
+function helloPayload(clientType: "web" | "unity"): ClientHelloPayload {
+  return {
+    clientType,
+    protocolVersion: PROTOCOL_VERSION,
+    buildId: resolveBuildId(),
+  };
+}
+
 function safeEnvelopeParse(message: string): ServerEnvelope | null {
   try {
     const parsed = JSON.parse(message) as unknown;
@@ -80,6 +98,9 @@ class SocketIoRealtimeClient implements RealtimeClient {
       reconnection: true,
       reconnectionAttempts: 8,
       reconnectionDelay: 500,
+    });
+    this.socket.on("connect", () => {
+      this.socket.emit("client_hello", helloPayload("web"));
     });
   }
 
@@ -143,6 +164,10 @@ class NativeWsRealtimeClient implements RealtimeClient {
 
     this.ws.onopen = () => {
       this.reconnectAttempts = 0;
+      this.sendEnvelope({
+        event: "client_hello",
+        data: helloPayload("web"),
+      });
       this.flushQueue();
       if (this.reconnecting && this.lastJoinPayload && this.currentCode && this.currentPlayerId) {
         this.sendEnvelope({ event: "join_room", data: this.lastJoinPayload });

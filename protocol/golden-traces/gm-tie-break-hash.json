@@ -1,0 +1,17 @@
+{
+  "id": "gm-tie-break-hash",
+  "description": "Vote split 1-1 locks deterministically using roomCode+beatIndex+sortedChoiceIds hash.",
+  "events": [
+    "gm_publish_beat",
+    "gm_publish_choices",
+    "player_mark_ready",
+    "player_mark_ready",
+    "gm_mark_ready",
+    "player_vote",
+    "player_vote"
+  ],
+  "expected": {
+    "phase": "vote_locked",
+    "deterministicLock": true
+  }
+}

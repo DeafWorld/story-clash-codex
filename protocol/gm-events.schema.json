@@ -1,0 +1,51 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "story-clash/protocol/gm-events-v1",
+  "title": "Story Clash GM Events v1",
+  "type": "object",
+  "properties": {
+    "clientEvents": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "client_hello",
+          "join_room",
+          "leave_room",
+          "gm_publish_beat",
+          "gm_publish_choices",
+          "gm_mark_ready",
+          "player_mark_ready",
+          "player_vote",
+          "player_freeform",
+          "gm_publish_consequence",
+          "gm_next_beat"
+        ]
+      },
+      "minItems": 11,
+      "uniqueItems": true
+    },
+    "serverEvents": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "server_hello",
+          "reconnect_state",
+          "gm_state_update",
+          "beat_published",
+          "choices_opened",
+          "vote_update",
+          "vote_locked",
+          "consequence_published",
+          "room_updated",
+          "server_error"
+        ]
+      },
+      "minItems": 10,
+      "uniqueItems": true
+    }
+  },
+  "required": ["clientEvents", "serverEvents"],
+  "additionalProperties": false
+}

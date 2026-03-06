@@ -1,0 +1,9 @@
+[
+  {
+    "sessionId": "alpha-001",
+    "reachedRecap": true,
+    "gmWouldRunAgain": true,
+    "blockerCount": 0,
+    "notes": "Split vote + reconnect scenario"
+  }
+]

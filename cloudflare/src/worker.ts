@@ -9,6 +9,7 @@ type Env = {
   };
   ALLOWED_ORIGINS?: string;
   FRONTEND_URL?: string;
+  WORKER_BUILD_ID?: string;
 };
 
 type RateBucket = {

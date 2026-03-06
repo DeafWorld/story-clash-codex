@@ -1,0 +1,27 @@
+{
+  "clientEvents": [
+    "client_hello",
+    "join_room",
+    "leave_room",
+    "gm_publish_beat",
+    "gm_publish_choices",
+    "gm_mark_ready",
+    "player_mark_ready",
+    "player_vote",
+    "player_freeform",
+    "gm_publish_consequence",
+    "gm_next_beat"
+  ],
+  "serverEvents": [
+    "server_hello",
+    "reconnect_state",
+    "gm_state_update",
+    "beat_published",
+    "choices_opened",
+    "vote_update",
+    "vote_locked",
+    "consequence_published",
+    "room_updated",
+    "server_error"
+  ]
+}

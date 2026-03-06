@@ -1,0 +1,3 @@
+{
+  "required": ["roomCode", "gmState", "snapshotVersion", "serverTimeMs", "tick"]
+}

@@ -1,6 +1,23 @@
 export type GenreId = "zombie" | "alien" | "haunted";
 export type EndingType = "triumph" | "survival" | "doom";
 export type RoomPhase = "lobby" | "minigame" | "game" | "recap";
+export type SessionMode = "classic" | "gm";
+export type GMPhase =
+  | "writing_beat"
+  | "reading"
+  | "creating_choices"
+  | "voting_open"
+  | "vote_locked"
+  | "writing_consequence"
+  | "recap";
+export type ProtocolVersion = "1.0.0";
+export type SnapshotVersion = 1;
+export type ClientType = "web" | "unity";
+export type CapabilityFlag =
+  | "gm_mode_v1"
+  | "reconnect_snapshot_v1"
+  | "vote_lock_deterministic_v1"
+  | "freeform_v1";
 export type NarrationTone = "calm" | "uneasy" | "urgent" | "desperate" | "hopeful" | "grim";
 export type NarrationTrigger = "scene_enter" | "choice_submitted" | "turn_timeout" | "ending";
 export type RiftEventType = "rift_genre_surge" | "rift_reality_fracture";
@@ -186,6 +203,90 @@ export type StoryTree = {
   scenes: Scene[];
 };
 
+export type VisualBeat = {
+  type: "text" | "dialogue" | "action" | "separator";
+  content: string;
+  speaker?: string;
+  icon?: string;
+};
+
+export type StoryBeat = {
+  id: string;
+  title: string;
+  location: string;
+  icon: string;
+  rawText: string;
+  visualBeats: VisualBeat[];
+  createdBy: string;
+  createdAt: number;
+};
+
+export type GMChoice = {
+  id: string;
+  label: string;
+  icon: string;
+  stakes?: string;
+  personality?: "brave" | "analytical" | "defensive" | "chaotic" | "empathetic" | "opportunistic";
+  order: number;
+};
+
+export type FreeformSubmission = {
+  playerId: string;
+  playerName: string;
+  text: string;
+  timestamp: number;
+};
+
+export type VoteState = {
+  votesByPlayerId: Record<string, string>;
+  countsByChoiceId: Record<string, number>;
+  freeformByPlayerId: Record<string, FreeformSubmission>;
+  lockedChoiceId: string | null;
+  openedAt: number | null;
+  deadlineAt: number | null;
+};
+
+export type ReadyState = {
+  readyPlayerIds: string[];
+  readyGm: boolean;
+  requiredReadyIds: string[];
+  allReady: boolean;
+};
+
+export type GMTranscriptEntry = {
+  id: string;
+  beatId: string;
+  beatIndex: number;
+  phase: "beat" | "vote_lock" | "consequence";
+  beatText?: string;
+  winningChoiceId?: string | null;
+  winningChoiceLabel?: string | null;
+  voteCounts?: Record<string, number>;
+  freeform?: Array<{
+    playerId: string;
+    playerName: string;
+    text: string;
+    timestamp: number;
+  }>;
+  consequenceText?: string | null;
+  createdAt: number;
+};
+
+export type GMSessionState = {
+  mode: "gm";
+  gmPlayerId: string | null;
+  phase: GMPhase;
+  beatIndex: number;
+  currentBeat: StoryBeat | null;
+  currentChoices: GMChoice[];
+  currentOutcomeText: string | null;
+  readyState: ReadyState;
+  voteState: VoteState;
+  aiSource: "claude" | "local" | null;
+  beatHistory: StoryBeat[];
+  transcript: GMTranscriptEntry[];
+};
+
 export type Player = {
   id: string;
   name: string;
@@ -243,6 +344,8 @@ export type RoomState = {
   createdAt: number;
   expiresAt: number;
   active: boolean;
+  sessionMode: SessionMode;
+  gmState: GMSessionState | null;
   status: RoomPhase;
   phase: RoomPhase;
   storyId: GenreId | null;
@@ -303,6 +406,8 @@ export type RecapPayload = {
   activeThreadId: string | null;
   directedScene: DirectedSceneView | null;
   directorTimeline: DirectorBeatRecord[];
+  gmTranscript?: GMTranscriptEntry[];
+  sessionMode?: SessionMode;
 };
 
 export type NarratorUpdatePayload = {
@@ -310,14 +415,76 @@ export type NarratorUpdatePayload = {
   roomCode: string;
 };
 
+export type ClientEventName =
+  | "client_hello"
+  | "join_room"
+  | "leave_room"
+  | "start_game"
+  | "minigame_score"
+  | "minigame_spin"
+  | "genre_selected"
+  | "scene_ready"
+  | "submit_choice"
+  | "restart_session"
+  | "gm_publish_beat"
+  | "gm_publish_choices"
+  | "gm_mark_ready"
+  | "player_mark_ready"
+  | "player_vote"
+  | "player_freeform"
+  | "gm_publish_consequence"
+  | "gm_next_beat";
+
+export type ServerEventName =
+  | "server_hello"
+  | "room_updated"
+  | "game_started"
+  | "minigame_start"
+  | "minigame_complete"
+  | "genre_selected"
+  | "narrator_update"
+  | "scene_update"
+  | "turn_timeout"
+  | "turn_timer"
+  | "game_end"
+  | "reconnect_state"
+  | "session_restarted"
+  | "server_error"
+  | "player_joined"
+  | "player_left"
+  | "gm_state_update"
+  | "beat_published"
+  | "choices_opened"
+  | "vote_update"
+  | "vote_locked"
+  | "consequence_published";
+
+export type ServerHelloPayload = {
+  accepted: boolean;
+  protocolVersion: ProtocolVersion;
+  capabilities: CapabilityFlag[];
+  snapshotVersion: SnapshotVersion;
+  serverTimeMs: number;
+  buildId: string;
+  reason?: string;
+};
+
+export type GMStateUpdatePayload = {
+  roomCode: string;
+  gmState: GMSessionState;
+  snapshotVersion: SnapshotVersion;
+  serverTimeMs: number;
+  tick: number;
+};
+
 export type ClientEnvelope = {
-  event: string;
+  event: ClientEventName | (string & {});
   data?: unknown;
   id?: string;
 };
 
 export type ServerEnvelope = {
-  event: string;
+  event: ServerEventName | (string & {});
   data?: unknown;
   id?: string;
 };

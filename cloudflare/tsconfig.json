@@ -12,6 +12,8 @@
   },
   "include": [
     "src/**/*.ts",
-    "../src/data/stories/*.json"
+    "../src/data/stories/*.json",
+    "../protocol/**/*.ts",
+    "../protocol/**/*.json"
   ]
 }

@@ -1,0 +1,18 @@
+{
+  "id": "gm-freeform-overwrite",
+  "description": "One freeform per player per beat; latest submission overwrites prior text.",
+  "events": [
+    "gm_publish_beat",
+    "gm_publish_choices",
+    "player_mark_ready",
+    "player_mark_ready",
+    "gm_mark_ready",
+    "player_freeform",
+    "player_freeform"
+  ],
+  "expected": {
+    "phase": "voting_open",
+    "singleEntryPerPlayer": true,
+    "sanitized": true
+  }
+}

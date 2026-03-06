@@ -28,6 +28,12 @@ export type AnalyticsEventName =
   | "rift_overlay_rendered"
   | "rift_overlay_fallback_used"
   | "rift_event_resolved"
+  | "protocol_hello_received"
+  | "readiness_gate_cleared"
+  | "vote_lock_latency"
+  | "reconnect_recovered"
+  | "recap_share_reach"
+  | "perf_budget_breach"
   | "cron_daily";
 
 type AnalyticsEvent = {

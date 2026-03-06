@@ -1,0 +1,18 @@
+{
+  "id": "gm-reconnect-voting",
+  "description": "Reconnect during voting restores open choices, timer deadline, and existing vote.",
+  "events": [
+    "gm_publish_beat",
+    "gm_publish_choices",
+    "player_mark_ready",
+    "player_mark_ready",
+    "gm_mark_ready",
+    "player_vote",
+    "reconnect_state"
+  ],
+  "expected": {
+    "phase": "voting_open",
+    "timerVisible": true,
+    "voteRestored": true
+  }
+}

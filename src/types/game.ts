@@ -3,6 +3,23 @@ export type GenreId = "zombie" | "alien" | "haunted";
 export type EndingType = "triumph" | "survival" | "doom";
 
 export type RoomPhase = "lobby" | "minigame" | "game" | "recap";
+export type SessionMode = "classic" | "gm";
+export type GMPhase =
+  | "writing_beat"
+  | "reading"
+  | "creating_choices"
+  | "voting_open"
+  | "vote_locked"
+  | "writing_consequence"
+  | "recap";
+export type ProtocolVersion = "1.0.0";
+export type SnapshotVersion = 1;
+export type ClientType = "web" | "unity";
+export type CapabilityFlag =
+  | "gm_mode_v1"
+  | "reconnect_snapshot_v1"
+  | "vote_lock_deterministic_v1"
+  | "freeform_v1";
 
 export type NarrationTone = "calm" | "uneasy" | "urgent" | "desperate" | "hopeful" | "grim";
 export type NarrationTrigger = "scene_enter" | "choice_submitted" | "turn_timeout" | "ending";
@@ -316,6 +333,90 @@ export interface StoryTree {
   scenes: Scene[];
 }
 
+export interface VisualBeat {
+  type: "text" | "dialogue" | "action" | "separator";
+  content: string;
+  speaker?: string;
+  icon?: string;
+}
+
+export interface StoryBeat {
+  id: string;
+  title: string;
+  location: string;
+  icon: string;
+  rawText: string;
+  visualBeats: VisualBeat[];
+  createdBy: string;
+  createdAt: number;
+}
+
+export interface GMChoice {
+  id: string;
+  label: string;
+  icon: string;
+  stakes?: string;
+  personality?: "brave" | "analytical" | "defensive" | "chaotic" | "empathetic" | "opportunistic";
+  order: number;
+}
+
+export interface FreeformSubmission {
+  playerId: string;
+  playerName: string;
+  text: string;
+  timestamp: number;
+}
+
+export interface VoteState {
+  votesByPlayerId: Record<string, string>;
+  countsByChoiceId: Record<string, number>;
+  freeformByPlayerId: Record<string, FreeformSubmission>;
+  lockedChoiceId: string | null;
+  openedAt: number | null;
+  deadlineAt: number | null;
+}
+
+export interface ReadyState {
+  readyPlayerIds: string[];
+  readyGm: boolean;
+  requiredReadyIds: string[];
+  allReady: boolean;
+}
+
+export interface GMTranscriptEntry {
+  id: string;
+  beatId: string;
+  beatIndex: number;
+  phase: "beat" | "vote_lock" | "consequence";
+  beatText?: string;
+  winningChoiceId?: string | null;
+  winningChoiceLabel?: string | null;
+  voteCounts?: Record<string, number>;
+  freeform?: Array<{
+    playerId: string;
+    playerName: string;
+    text: string;
+    timestamp: number;
+  }>;
+  consequenceText?: string | null;
+  createdAt: number;
+}
+
+export interface GMSessionState {
+  mode: "gm";
+  gmPlayerId: string | null;
+  phase: GMPhase;
+  beatIndex: number;
+  currentBeat: StoryBeat | null;
+  currentChoices: GMChoice[];
+  currentOutcomeText: string | null;
+  readyState: ReadyState;
+  voteState: VoteState;
+  aiSource: "claude" | "local" | null;
+  beatHistory: StoryBeat[];
+  transcript: GMTranscriptEntry[];
+}
+
 export interface Player {
   id: string;
   name: string;
@@ -383,6 +484,8 @@ export interface RoomState extends Room, StoryState {
   createdAt: number;
   expiresAt: number;
   active: boolean;
+  sessionMode: SessionMode;
+  gmState: GMSessionState | null;
   phase: RoomPhase;
   turnOrder: string[];
   activePlayerIndex: number;
@@ -427,6 +530,8 @@ export interface RecapPayload {
   activeThreadId: string | null;
   directedScene: DirectedSceneView | null;
   directorTimeline: DirectorBeatRecord[];
+  gmTranscript?: GMTranscriptEntry[];
+  sessionMode?: SessionMode;
 }
 
 export interface StoryChoiceNode {

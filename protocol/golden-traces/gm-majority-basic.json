@@ -1,0 +1,18 @@
+{
+  "id": "gm-majority-basic",
+  "description": "Two player votes converge to a majority lock and consequence publish.",
+  "events": [
+    "gm_publish_beat",
+    "gm_publish_choices",
+    "player_mark_ready",
+    "player_mark_ready",
+    "gm_mark_ready",
+    "player_vote",
+    "player_vote",
+    "gm_publish_consequence"
+  ],
+  "expected": {
+    "phases": ["reading", "creating_choices", "voting_open", "vote_locked", "writing_consequence"],
+    "transcriptPhases": ["beat", "vote_lock", "consequence"]
+  }
+}

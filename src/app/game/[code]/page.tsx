@@ -379,6 +379,7 @@ function RealtimeGame({ code, playerId }: RealtimeGameProps) {
   const [rememberToast, setRememberToast] = useState<string | null>(null);
   const [riftTier, setRiftTier] = useState<"high" | "medium" | "low">("medium");
   const [missedEventsNotice, setMissedEventsNotice] = useState<string | null>(null);
+  const redirectedRef = useRef(false);
   const lastNarrationIdRef = useRef<string | null>(null);
   const lastRiftIdRef = useRef<string | null>(null);
   const roomRef = useRef<RoomView | null>(null);
@@ -388,6 +389,7 @@ function RealtimeGame({ code, playerId }: RealtimeGameProps) {
     [room]
   );
   const selfPlayer = useMemo(() => room?.players.find((player) => player.id === playerId) ?? null, [room, playerId]);
+  const isSelfHost = Boolean(selfPlayer?.isHost);
 
   const isActivePlayer = room?.activePlayerId === playerId;
   const connectedPlayers = useMemo(
@@ -408,6 +410,15 @@ function RealtimeGame({ code, playerId }: RealtimeGameProps) {
   useEffect(() => {
     roomRef.current = room;
   }, [room]);
+
+  useEffect(() => {
+    if (!room || room.sessionMode !== "gm" || redirectedRef.current) {
+      return;
+    }
+    redirectedRef.current = true;
+    const destination = isSelfHost ? `/gm/${code}?player=${playerId}` : `/play/${code}?player=${playerId}`;
+    router.replace(destination);
+  }, [code, isSelfHost, playerId, room, router]);
 
   useEffect(() => {
     setRiftTier(detectRiftVisualTier());

@@ -10,6 +10,19 @@ describe("realtime envelope guard", () => {
         data: { line: { id: "1", text: "line" } },
       })
     ).toBe(true);
+    expect(
+      isServerEnvelope({
+        event: "server_hello",
+        data: {
+          accepted: true,
+          protocolVersion: "1.0.0",
+          capabilities: ["gm_mode_v1"],
+          snapshotVersion: 1,
+          serverTimeMs: Date.now(),
+          buildId: "test-build",
+        },
+      })
+    ).toBe(true);
   });
 
   it("rejects invalid payloads", () => {

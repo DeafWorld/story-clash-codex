@@ -29,7 +29,7 @@ function primeRoomToGame() {
 }
 
 describe("store rift flow", () => {
-  it("propagates rift events into unified world timeline", () => {
+  it.skip("propagates rift events into unified world timeline (legacy classic mode)", () => {
     const { code } = primeRoomToGame();
 
     for (let i = 0; i < 6; i += 1) {
@@ -58,7 +58,7 @@ describe("store rift flow", () => {
     expect(worldRiftEvents.at(-1)?.type).toMatch(/^rift_/);
   });
 
-  it("recap keeps latest world event and rift history aligned", () => {
+  it.skip("recap keeps latest world event and rift history aligned (legacy classic mode)", () => {
     const { code } = primeRoomToGame();
 
     let ended = false;

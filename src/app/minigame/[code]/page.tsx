@@ -588,7 +588,11 @@ function RealtimeMinigame({ code, playerId }: RealtimeProps) {
       setGenreReveal(payload.genreName);
       setPhase("revealed");
       window.setTimeout(() => {
-        router.push(`/game/${code}?player=${playerId}`);
+        if (isHost) {
+          router.push(`/gm/${code}?player=${playerId}`);
+          return;
+        }
+        router.push(`/play/${code}?player=${playerId}`);
       }, 1800);
     };
 
@@ -623,7 +627,7 @@ function RealtimeMinigame({ code, playerId }: RealtimeProps) {
       socket.off("narrator_update", onNarratorUpdate);
       socket.off("server_error", onServerError);
     };
-  }, [applyResolvedOutcome, code, playerId, router]);
+  }, [applyResolvedOutcome, code, isHost, playerId, router]);
 
   useEffect(() => {
     if (!selfPlayer) {
