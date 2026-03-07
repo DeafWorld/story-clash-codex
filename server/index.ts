@@ -261,6 +261,71 @@ async function bootstrap() {
     });
   };
 
+  const payloadSummary = (payload: unknown): Record<string, unknown> => {
+    if (!payload || typeof payload !== "object") {
+      return {};
+    }
+    const record = payload as Record<string, unknown>;
+    const summary: Record<string, unknown> = {};
+    const fields = ["code", "playerId", "choiceId", "round", "genre", "timeLimitSec"];
+    for (const field of fields) {
+      if (field in record) {
+        summary[field] = record[field];
+      }
+    }
+    return summary;
+  };
+
+  const roomCodeFromPayload = (payload: unknown): string | null => {
+    if (!payload || typeof payload !== "object") {
+      return null;
+    }
+    const record = payload as Record<string, unknown>;
+    if (typeof record.code !== "string") {
+      return null;
+    }
+    return record.code.toUpperCase();
+  };
+
+  const roomContext = (roomCode: string | null) => {
+    if (!roomCode) {
+      return {};
+    }
+    try {
+      const room = getRoomView(roomCode);
+      return {
+        roomCode,
+        phase: room.phase,
+        gmPhase: room.gmState?.phase ?? null,
+        sessionMode: room.sessionMode,
+      };
+    } catch {
+      return {
+        roomCode,
+      };
+    }
+  };
+
+  const emitSocketFailure = (
+    socket: { emit: (event: string, payload: { message: string }) => void },
+    socketEvent: string,
+    payload: unknown,
+    error: unknown,
+    fallbackMessage: string
+  ) => {
+    const message = error instanceof Error ? error.message : fallbackMessage;
+    const roomCode = roomCodeFromPayload(payload);
+    logger.error("socket.event.failed", {
+      transport: "socketio",
+      socketEvent,
+      failureMode: socketEvent,
+      ...roomContext(roomCode),
+      ...payloadSummary(payload),
+      error: error instanceof Error ? error : new Error(message),
+    });
+    socket.emit("server_error", { message });
+  };
+
   const clearTurnTimer = (code: string) => {
     const interval = turnIntervals.get(code);
     if (interval) {
@@ -444,8 +509,7 @@ async function bootstrap() {
         socket.emit("reconnect_state", room);
         scheduleTurnTimer(code);
       } catch (error) {
-        logger.warn("socket.join_room.failed", { payload, error });
-        socket.emit("server_error", { message: error instanceof Error ? error.message : "Join failed" });
+        emitSocketFailure(socket, "join_room", payload, error, "Join failed");
       }
     });
 
@@ -476,8 +540,7 @@ async function bootstrap() {
         io.to(code).emit("minigame_start", { startAt: started.startAt });
         io.to(code).emit("room_updated", getRoomView(code));
       } catch (error) {
-        logger.warn("socket.start_game.failed", { payload, error });
-        socket.emit("server_error", { message: error instanceof Error ? error.message : "Unable to start" });
+        emitSocketFailure(socket, "start_game", payload, error, "Unable to start");
       }
     });
 
@@ -500,10 +563,7 @@ async function bootstrap() {
             logger.debug("socket.minigame_ready", { code });
           }
         } catch (error) {
-          logger.warn("socket.minigame_score.failed", { payload, error });
-          socket.emit("server_error", {
-            message: error instanceof Error ? error.message : "Failed to submit minigame score",
-          });
+          emitSocketFailure(socket, "minigame_score", payload, error, "Failed to submit minigame score");
         }
       }
     );
@@ -523,13 +583,16 @@ async function bootstrap() {
         });
 
         if (!acquired) {
-          socket.emit("server_error", { message: "Minigame resolution in progress. Try again." });
+          emitSocketFailure(
+            socket,
+            "minigame_spin",
+            payload,
+            new Error("Minigame resolution in progress. Try again."),
+            "Minigame resolution in progress. Try again."
+          );
         }
       } catch (error) {
-        logger.warn("socket.minigame_spin.failed", { payload, error });
-        socket.emit("server_error", {
-          message: error instanceof Error ? error.message : "Failed to resolve minigame",
-        });
+        emitSocketFailure(socket, "minigame_spin", payload, error, "Failed to resolve minigame");
       }
     });
 
@@ -547,8 +610,7 @@ async function bootstrap() {
         emitNarration(code, selection.narration);
         io.to(code).emit("scene_update", getRoomView(code));
       } catch (error) {
-        logger.warn("socket.genre_selected.failed", { payload, error });
-        socket.emit("server_error", { message: error instanceof Error ? error.message : "Genre selection failed" });
+        emitSocketFailure(socket, "genre_selected", payload, error, "Genre selection failed");
       }
     });
 
@@ -566,11 +628,16 @@ async function bootstrap() {
           }
         });
         if (!acquired) {
-          socket.emit("server_error", { message: "Readiness update in progress. Try again." });
+          emitSocketFailure(
+            socket,
+            "scene_ready",
+            payload,
+            new Error("Readiness update in progress. Try again."),
+            "Readiness update in progress. Try again."
+          );
         }
       } catch (error) {
-        logger.warn("socket.scene_ready.failed", { payload, error });
-        socket.emit("server_error", { message: error instanceof Error ? error.message : "Readiness update failed" });
+        emitSocketFailure(socket, "scene_ready", payload, error, "Readiness update failed");
       }
     });
 
@@ -608,7 +675,7 @@ async function bootstrap() {
           io.to(code).emit("gm_state_update", gmStateUpdatePayload(code, result.gmState));
           io.to(code).emit("room_updated", getRoomView(code));
         } catch (error) {
-          socket.emit("server_error", { message: error instanceof Error ? error.message : "Failed to publish beat" });
+          emitSocketFailure(socket, "gm_publish_beat", payload, error, "Failed to publish beat");
         }
       }
     );
@@ -626,7 +693,7 @@ async function bootstrap() {
         }
         io.to(code).emit("room_updated", getRoomView(code));
       } catch (error) {
-        socket.emit("server_error", { message: error instanceof Error ? error.message : "Failed to mark GM ready" });
+        emitSocketFailure(socket, "gm_mark_ready", payload, error, "Failed to mark GM ready");
       }
     });
 
@@ -643,7 +710,7 @@ async function bootstrap() {
         }
         io.to(code).emit("room_updated", getRoomView(code));
       } catch (error) {
-        socket.emit("server_error", { message: error instanceof Error ? error.message : "Failed to mark ready" });
+        emitSocketFailure(socket, "player_mark_ready", payload, error, "Failed to mark ready");
       }
     });
 
@@ -679,7 +746,7 @@ async function bootstrap() {
           }
           io.to(code).emit("room_updated", getRoomView(code));
         } catch (error) {
-          socket.emit("server_error", { message: error instanceof Error ? error.message : "Failed to publish choices" });
+          emitSocketFailure(socket, "gm_publish_choices", payload, error, "Failed to publish choices");
         }
       }
     );
@@ -698,7 +765,7 @@ async function bootstrap() {
         }
         io.to(code).emit("room_updated", getRoomView(code));
       } catch (error) {
-        socket.emit("server_error", { message: error instanceof Error ? error.message : "Failed to submit vote" });
+        emitSocketFailure(socket, "player_vote", payload, error, "Failed to submit vote");
       }
     });
 
@@ -710,7 +777,7 @@ async function bootstrap() {
         io.to(code).emit("vote_update", { roomCode: code, gmState: result.gmState });
         io.to(code).emit("gm_state_update", gmStateUpdatePayload(code, result.gmState));
       } catch (error) {
-        socket.emit("server_error", { message: error instanceof Error ? error.message : "Failed to submit freeform" });
+        emitSocketFailure(socket, "player_freeform", payload, error, "Failed to submit freeform");
       }
     });
 
@@ -723,7 +790,7 @@ async function bootstrap() {
         io.to(code).emit("gm_state_update", gmStateUpdatePayload(code, result.gmState));
         io.to(code).emit("room_updated", getRoomView(code));
       } catch (error) {
-        socket.emit("server_error", { message: error instanceof Error ? error.message : "Failed to publish consequence" });
+        emitSocketFailure(socket, "gm_publish_consequence", payload, error, "Failed to publish consequence");
       }
     });
 
@@ -735,7 +802,7 @@ async function bootstrap() {
         io.to(code).emit("gm_state_update", gmStateUpdatePayload(code, result.gmState));
         io.to(code).emit("room_updated", getRoomView(code));
       } catch (error) {
-        socket.emit("server_error", { message: error instanceof Error ? error.message : "Failed to advance beat" });
+        emitSocketFailure(socket, "gm_next_beat", payload, error, "Failed to advance beat");
       }
     });
 
@@ -782,11 +849,16 @@ async function bootstrap() {
         });
 
         if (!acquired) {
-          socket.emit("server_error", { message: "Turn update in progress. Try again." });
+          emitSocketFailure(
+            socket,
+            "submit_choice",
+            payload,
+            new Error("Turn update in progress. Try again."),
+            "Turn update in progress. Try again."
+          );
         }
       } catch (error) {
-        logger.warn("socket.submit_choice.failed", { payload, error });
-        socket.emit("server_error", { message: error instanceof Error ? error.message : "Choice failed" });
+        emitSocketFailure(socket, "submit_choice", payload, error, "Choice failed");
       }
     });
 
@@ -845,11 +917,16 @@ async function bootstrap() {
         });
 
         if (!acquired) {
-          socket.emit("server_error", { message: "Turn update in progress. Try again." });
+          emitSocketFailure(
+            socket,
+            "choice_timeout",
+            payload,
+            new Error("Turn update in progress. Try again."),
+            "Turn update in progress. Try again."
+          );
         }
       } catch (error) {
-        logger.warn("socket.choice_timeout.failed", { payload, error });
-        socket.emit("server_error", { message: error instanceof Error ? error.message : "Timeout handling failed" });
+        emitSocketFailure(socket, "choice_timeout", payload, error, "Timeout handling failed");
       }
     });
 
@@ -864,8 +941,7 @@ async function bootstrap() {
         io.to(code).emit("session_restarted");
         io.to(code).emit("room_updated", getRoomView(code));
       } catch (error) {
-        logger.warn("socket.restart_session.failed", { payload, error });
-        socket.emit("server_error", { message: error instanceof Error ? error.message : "Restart failed" });
+        emitSocketFailure(socket, "restart_session", payload, error, "Restart failed");
       }
     });
 
@@ -941,15 +1017,29 @@ async function bootstrap() {
                   io.to(mapping.code).emit("scene_update", getRoomView(mapping.code));
                 }
               }
-            } catch {
-              // Ignore stale room state after disconnect timeout.
-              logger.warn("socket.disconnect.timeout_cleanup_failed", { mapping });
+            } catch (error) {
+              logger.error("socket.disconnect.timeout_cleanup_failed", {
+                transport: "socketio",
+                socketEvent: "disconnect",
+                failureMode: "disconnect_timeout_cleanup",
+                roomCode: mapping.code,
+                playerId: mapping.playerId,
+                ...roomContext(mapping.code),
+                error: error instanceof Error ? error : new Error("disconnect timeout cleanup failed"),
+              });
             }
           }, 10_000);
         }
-      } catch {
-        // Ignore stale rooms after disconnect.
-        logger.warn("socket.disconnect.stale_room", { mapping });
+      } catch (error) {
+        logger.error("socket.disconnect.stale_room", {
+          transport: "socketio",
+          socketEvent: "disconnect",
+          failureMode: "disconnect_stale_room",
+          roomCode: mapping.code,
+          playerId: mapping.playerId,
+          ...roomContext(mapping.code),
+          error: error instanceof Error ? error : new Error("disconnect stale room"),
+        });
       }
     });
   });

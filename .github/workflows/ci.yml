@@ -51,5 +51,5 @@ jobs:
       - name: Install Playwright browsers
         run: npx playwright install --with-deps
 
-      - name: E2E tests
-        run: npm run test:e2e
+      - name: Multiplayer + smoke E2E gate
+        run: npm run test:e2e:gate

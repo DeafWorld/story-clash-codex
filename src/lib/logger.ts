@@ -43,18 +43,94 @@ async function reportToSentry(event: string, context: LogContext) {
   }
   try {
     const sentry = await import("@sentry/nextjs");
+    const tags = buildSentryTags(event, context);
     const maybeError = context.error;
+    const extra: LogContext = { ...context };
+    delete extra.error;
     if (maybeError instanceof Error) {
-      sentry.captureException(maybeError, { tags: { event } });
+      sentry.captureException(maybeError, { tags, extra });
       return;
     }
     sentry.captureMessage(event, {
       level: "error",
-      extra: context,
+      tags,
+      extra,
     });
   } catch {
     // Never throw from logger.
   }
+}
+
+function toTagValue(value: unknown): string | undefined {
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    return trimmed ? trimmed : undefined;
+  }
+  if (typeof value === "number" || typeof value === "boolean") {
+    return String(value);
+  }
+  return undefined;
+}
+
+function firstTagValue(context: LogContext, keys: string[]): string | undefined {
+  for (const key of keys) {
+    if (!(key in context)) {
+      continue;
+    }
+    const tag = toTagValue(context[key]);
+    if (tag) {
+      return tag;
+    }
+  }
+  return undefined;
+}
+
+export function buildSentryTags(event: string, context: LogContext): Record<string, string> {
+  const tags: Record<string, string> = {
+    event,
+  };
+
+  const roomCode = firstTagValue(context, ["roomCode", "room_code", "code", "room"]);
+  if (roomCode) {
+    tags.room_code = roomCode;
+  }
+
+  const phase = firstTagValue(context, ["phase"]);
+  if (phase) {
+    tags.phase = phase;
+  }
+
+  const gmPhase = firstTagValue(context, ["gmPhase", "gm_phase"]);
+  if (gmPhase) {
+    tags.gm_phase = gmPhase;
+  }
+
+  const transport = firstTagValue(context, ["transport"]);
+  if (transport) {
+    tags.transport = transport;
+  }
+
+  const sessionMode = firstTagValue(context, ["sessionMode", "session_mode"]);
+  if (sessionMode) {
+    tags.session_mode = sessionMode;
+  }
+
+  const socketEvent = firstTagValue(context, ["socketEvent", "socket_event"]);
+  if (socketEvent) {
+    tags.socket_event = socketEvent;
+  }
+
+  const failureMode = firstTagValue(context, ["failureMode", "failure_mode"]);
+  if (failureMode) {
+    tags.failure_mode = failureMode;
+  }
+
+  const source = firstTagValue(context, ["source"]);
+  if (source) {
+    tags.source = source;
+  }
+
+  return tags;
 }
 
 function shouldLog(level: LogLevel): boolean {
