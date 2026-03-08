@@ -1,0 +1,9 @@
+ETSY IMAGE PREP CHECKLIST
+
+1. Pick the Etsy surface first.
+2. Start from the largest original available.
+3. Check the target ratio in the Etsy image helper.
+4. Keep the focal subject away from the edges.
+5. Export at the recommended size for the selected preset.
+6. Recheck the file after any crop-heavy edits.
+7. Upload only after the source clears the quality warning.

@@ -1,0 +1,16 @@
+{
+  "name": "@factory/site-etsy-image-helper",
+  "version": "0.2.0",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@factory/analytics": "0.1.0",
+    "@factory/niche-config": "0.1.0",
+    "@factory/seo": "0.1.0",
+    "@factory/site-runtime": "0.1.0",
+    "@factory/tool-widgets": "0.1.0",
+    "@factory/ui": "0.1.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  }
+}

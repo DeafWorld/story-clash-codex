@@ -1,0 +1,11 @@
+{
+  "apps/site-etsy-image-helper/src/client.tsx": {
+    "file": "assets/client-zPM3ewnV.js",
+    "name": "client",
+    "src": "apps/site-etsy-image-helper/src/client.tsx",
+    "isEntry": true,
+    "css": [
+      "assets/client-jBT-qNIH.css"
+    ]
+  }
+}

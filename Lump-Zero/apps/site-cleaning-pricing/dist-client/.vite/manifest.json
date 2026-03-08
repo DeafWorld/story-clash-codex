@@ -1,0 +1,11 @@
+{
+  "apps/site-cleaning-pricing/src/client.tsx": {
+    "file": "assets/client-CRp-SSC6.js",
+    "name": "client",
+    "src": "apps/site-cleaning-pricing/src/client.tsx",
+    "isEntry": true,
+    "css": [
+      "assets/client-jBT-qNIH.css"
+    ]
+  }
+}

@@ -1,0 +1,1987 @@
+{
+  "brief": {
+    "id": "etsy-image-helper",
+    "name": "Etsy Image Helper",
+    "slug": "etsy-image-helper",
+    "target_user": "Etsy sellers who need store graphics and listing visuals to fit cleanly without trial and error.",
+    "core_problem": "Sellers waste time resizing, cropping, and re-exporting Etsy images because every surface has different aspect ratios and minimum size expectations.",
+    "primary_intent": [
+      "etsy image size helper",
+      "etsy banner size guide",
+      "etsy listing photo size"
+    ],
+    "secondary_intent": [
+      "etsy shop icon size",
+      "etsy mini banner vs big banner",
+      "etsy listing thumbnail crop tips"
+    ],
+    "tool_type": "calculator",
+    "tool_output": "Recommended Etsy dimensions, crop guidance, quality warning, and a copyable prep summary.",
+    "content_clusters": [
+      "image size guides",
+      "banner comparisons",
+      "listing photo workflow",
+      "shop branding FAQ",
+      "downloadable prep resources"
+    ],
+    "monetization_path": [
+      "downloadable premium visual audit checklist",
+      "waitlist for advanced template pack"
+    ],
+    "expansion_paths": [
+      "listing image crop simulator",
+      "shop branding pack builder",
+      "seasonal banner planner"
+    ],
+    "constraints": [
+      "static only",
+      "no backend",
+      "no auth",
+      "no paid APIs"
+    ],
+    "success_signals": [
+      "strong tool engagement",
+      "repeat visits before listing refreshes",
+      "resource download clicks"
+    ],
+    "risk_notes": [
+      "avoid claiming affiliation with Etsy",
+      "describe dimensions as guidance and preparation support"
+    ],
+    "site_config": {
+      "navigation_labels": {
+        "home": "Home",
+        "tool": "Tool",
+        "guides": "Guides",
+        "resource": "Checklist",
+        "feedback": "Next Build"
+      },
+      "cta_labels": {
+        "primary": "Open the Etsy image helper",
+        "resource": "Download the prep checklist"
+      },
+      "resource_label": "Download prep checklist",
+      "homepage": {
+        "hero_kicker": "Zero-guesswork Etsy prep",
+        "hero_title": "Etsy image helper for cleaner crops and faster exports",
+        "hero_intro": "Match the right Etsy surface, catch weak source files early, and stop re-exporting the same artwork until it finally fits.",
+        "lede": "This site combines a live Etsy image helper with focused guides for listing photos, banners, icons, thumbnails, and shop branding surfaces.",
+        "value_intro": "The value is speed to a cleaner export workflow, not inflated page count.",
+        "value_points": [
+          "See the best-fit export target for each major Etsy surface.",
+          "Catch weak source files before you waste time polishing them.",
+          "Move from sizing question to finished export with a checklist and linked guides."
+        ],
+        "next_step": "Start with the live tool, then use the linked guides to tighten the crop strategy for each surface.",
+        "workflow_steps": [
+          "Pick the Etsy surface you are preparing.",
+          "Enter the current width and height.",
+          "Copy or print the result before exporting the final artwork."
+        ],
+        "who_for_title": "Who this is for",
+        "who_for_body": "Use this when you manage your own Etsy visuals and need one practical reference point for listing photos, banners, icons, and profile assets.",
+        "tool_preview_title": "What the helper covers",
+        "tool_preview_body": "The tool returns recommended dimensions, aspect ratio guidance, source-quality warnings, and crop notes before you export.",
+        "faq_preview_title": "Fast answers to common Etsy image questions",
+        "faq_preview_intro": "These are the image questions that usually trigger re-export loops in the middle of a shop update.",
+        "comparison_preview_title": "Banner and photo choices worth checking",
+        "comparison_preview_intro": "Mini vs big banners and square vs vertical images change the way your artwork behaves across Etsy surfaces.",
+        "resource_preview_title": "Keep the workflow portable",
+        "resource_preview_intro": "Use the checklist when you want the same prep rhythm across your shop refresh, banner swap, and product upload sessions."
+      },
+      "tool_page": {
+        "hero_kicker": "Live utility",
+        "title": "Etsy image helper tool",
+        "intro": "Choose a target surface, enter the current width and height, and get instant crop and resize guidance for Etsy-friendly exports.",
+        "inputs_intro": "Keep the input set lean so you can check a file in seconds while you are actively exporting.",
+        "input_labels": [
+          "Surface preset",
+          "Source width and height",
+          "Crop preference"
+        ],
+        "result_intro": "The result combines recommended dimensions with a quality verdict.",
+        "result_detail": "You also get a crop note, resize note, and a copyable summary you can drop into your editing checklist.",
+        "trust_title": "How to use the result",
+        "trust_paragraphs": [
+          "Treat the helper as a prep assistant, not as a replacement for visual judgment. The goal is to get your file into the right ratio and quality range before you fine-tune the composition.",
+          "If the tool flags a risky source, go back to the largest original available instead of trying to rescue a small export."
+        ],
+        "trust_callout": "Static-first rule: everything here runs in the browser, so you can use the tool on a draft machine or during a batch content sprint without any account setup.",
+        "next_steps": [
+          "Confirm the target ratio first.",
+          "Adjust the crop before export.",
+          "Copy or print the summary before uploading."
+        ]
+      },
+      "about_page": {
+        "title": "Why Etsy image prep turns into a time sink",
+        "lede": "Most sellers are not missing creativity. They are missing a stable preparation system that keeps every export aligned to the right ratio from the start.",
+        "takeaway": "One square-first master and a short preset list beat endless last-minute resizing.",
+        "detail": "Once you separate listing imagery, banners, icons, and profile photos into clear surface rules, your brand files become much easier to update without visual drift.",
+        "next_action": "Use the helper to verify the next file you plan to upload, then keep the checklist beside your editor so every export follows the same logic."
+      },
+      "feedback_page": {
+        "hero_kicker": "Next build",
+        "title": "What Etsy image workflow should come next?",
+        "intro": "This release stays static-first, so the feedback route is a notes page that defines the best next signals to collect once the site earns a lightweight intake flow.",
+        "prompts_title": "Best prompts to collect later",
+        "prompts": [
+          "Which Etsy surface still causes the most resize churn?",
+          "Would a crop simulator or a template pack help more next?",
+          "Which part of the upload workflow still feels fragile after using the helper?"
+        ],
+        "callout": "Keep this page honest until a real winner earns a live form integration."
+      },
+      "tool": {
+        "component": "etsy-image-helper",
+        "default_values": {
+          "presetId": "listing-photo",
+          "width": 2000,
+          "height": 2000,
+          "cropPreference": "center"
+        }
+      },
+      "theme": {
+        "accent": "#0e7c86",
+        "accent_strong": "#074d54",
+        "accent_warm": "#d87935",
+        "accent_rose": "#9f5d5c",
+        "background_start": "#fcf6ee",
+        "background_mid": "#f2e7d6",
+        "background_end": "#ebdcc8",
+        "glow_one": "rgba(216, 121, 53, 0.28)",
+        "glow_two": "rgba(14, 124, 134, 0.2)"
+      }
+    },
+    "content_plan": {
+      "faq_topics": [
+        {
+          "slug": "what-size-should-etsy-listing-photos-be",
+          "question": "What size should Etsy listing photos be?",
+          "short_answer": "Use a square-first workflow and export at 2000 by 2000 pixels when you can. Etsy will accept smaller images, but large square files hold up better in crop-heavy layouts.",
+          "reason": "The first listing image gets squeezed into thumbnails, mobile grids, and zoom views. Oversized square exports give you more room to crop without losing clarity.",
+          "next_step": "Run the tool with your current photo size and confirm whether your source is safely above the recommended square target."
+        },
+        {
+          "slug": "what-size-is-an-etsy-shop-icon",
+          "question": "What size is an Etsy shop icon?",
+          "short_answer": "Prepare the shop icon as a square and export at 500 by 500 pixels. Keep the logo or mark centered so it survives circular or tight crops.",
+          "reason": "Small branding surfaces punish edge-heavy artwork. A centered square icon keeps your mark readable in the app, on desktop, and in small account previews.",
+          "next_step": "Check the shop icon preset in the tool before exporting any rebrand assets."
+        },
+        {
+          "slug": "how-wide-is-an-etsy-big-banner",
+          "question": "How wide is an Etsy big banner?",
+          "short_answer": "A big banner works best at 1600 by 400 pixels, which gives you a clean 4 to 1 layout. Wider source files are fine as long as the important content stays in the middle band.",
+          "reason": "Horizontal banners break fast when text or products sit too close to the edges. Knowing the target ratio up front saves you from awkward last-minute crops.",
+          "next_step": "Compare your source image to the big banner preset and trim the safe area before you export."
+        },
+        {
+          "slug": "should-i-use-mini-or-big-banner-on-etsy",
+          "question": "Should I use the mini or big banner on Etsy?",
+          "short_answer": "Use a mini banner when you want a thin branding strip and a big banner when the header itself needs to carry messaging or product context.",
+          "reason": "The two banner styles are not interchangeable. Each one rewards a different layout approach, so forcing the same art into both usually looks cramped.",
+          "next_step": "Review the comparison page before committing to one banner layout for your shop refresh."
+        },
+        {
+          "slug": "why-do-my-etsy-thumbnails-crop-weirdly",
+          "question": "Why do Etsy thumbnails crop weirdly?",
+          "short_answer": "Thumbnails usually look wrong when the product sits too close to an edge or the source aspect ratio fights the square-first listing layout.",
+          "reason": "Etsy compresses wide and tall photos into smaller previews. Centering the subject and leaving breathing room around the edges makes the crop feel intentional instead of accidental.",
+          "next_step": "Use the tool and the thumbnail guide together to decide whether you need a recrop or a fresh export."
+        },
+        {
+          "slug": "can-i-fix-a-small-etsy-image-with-upscaling",
+          "question": "Can I fix a small Etsy image with upscaling?",
+          "short_answer": "Upscaling can help in a pinch, but it is safer to start from the largest original you have. Enlarging a weak source often softens detail and makes text or edges look fuzzy.",
+          "reason": "Etsy surfaces are visual trust signals. Soft artwork makes the whole listing feel less polished, even if the dimensions technically pass.",
+          "next_step": "Let the tool flag risky source files before you spend time editing them."
+        }
+      ],
+      "guides": [
+        {
+          "slug": "etsy-listing-photo-size-guide",
+          "title": "Etsy listing photo size guide for square-first product shots",
+          "lede": "Build listing photos around a square master so one export can handle gallery views, thumbnails, and zoom states without surprise crops.",
+          "takeaway": "Start with the cleanest square crop you can and keep the product slightly inside the edges.",
+          "detail": "Square exports make batch editing easier, reduce thumbnail guesswork, and let you reuse the same crop logic across collections.",
+          "next_action": "Use the listing photo preset in the tool and compare your current width and height before you upload."
+        },
+        {
+          "slug": "etsy-banner-safe-area-guide",
+          "title": "Etsy banner safe area guide for text, logos, and product cutouts",
+          "lede": "Banner dimensions matter, but safe-area discipline matters more. The center band should carry the real message while the edges stay quiet.",
+          "takeaway": "Treat the outer edges as disposable space and keep text inside the middle third of the artwork.",
+          "detail": "This approach protects both big banners and mini banners from awkward crops and lets you reuse seasonal artwork with fewer edits.",
+          "next_action": "Check the banner presets in the tool and line up your focal point before exporting."
+        },
+        {
+          "slug": "etsy-thumbnail-crop-tips",
+          "title": "Etsy thumbnail crop tips that keep the product readable on mobile",
+          "lede": "Mobile grids punish edge-to-edge compositions. The fastest fix is to crop with breathing room and keep the focal object centered.",
+          "takeaway": "Leave margin around the hero product so the square thumbnail does not amputate it.",
+          "detail": "Even simple items photograph better when the product sits in a stable crop zone with negative space around it.",
+          "next_action": "Run your image through the tool, then compare the ratio advice to your current composition."
+        },
+        {
+          "slug": "etsy-shop-icon-design-rules",
+          "title": "Etsy shop icon design rules for logos that survive small screens",
+          "lede": "Shop icons are tiny trust markers. Clear shapes, high contrast, and centered artwork outperform detailed illustrations every time.",
+          "takeaway": "Strip the icon down to one recognizable mark and let negative space do the work.",
+          "detail": "Small avatars fail when the design relies on fine text or thin decorative elements that disappear on mobile.",
+          "next_action": "Use the icon preset and confirm your export size before you rebuild the brand mark."
+        },
+        {
+          "slug": "etsy-profile-photo-sizing-workflow",
+          "title": "Etsy profile photo sizing workflow for founder shots and studio portraits",
+          "lede": "Profile photos should feel warm, legible, and tightly composed. Start with a square crop and make sure the face or subject stays centered.",
+          "takeaway": "Keep eyes and facial features away from the edges so compression does not cut them off.",
+          "detail": "Even a simple square portrait looks stronger when the subject is framed with a small margin instead of filling the whole image.",
+          "next_action": "Check the profile preset in the tool and match the recommended square size before exporting."
+        },
+        {
+          "slug": "etsy-order-receipt-banner-setup",
+          "title": "Etsy order receipt banner setup for clean post-purchase branding",
+          "lede": "The order receipt banner is narrow, so it works best with restrained branding and a single message.",
+          "takeaway": "Use bold text, simple contrast, and one focal element instead of a busy collage.",
+          "detail": "Narrow receipt banners collapse fast when they try to carry the full shop identity. Think confirmation strip, not homepage hero.",
+          "next_action": "Use the receipt banner preset and export a lean layout built for the 760 by 100 shape."
+        }
+      ],
+      "comparisons": [
+        {
+          "slug": "etsy-big-banner-vs-mini-banner",
+          "title": "Etsy big banner vs mini banner for handmade shops",
+          "lede": "Both banner types can work, but they solve different jobs. One is a statement piece and the other is a lightweight identifier.",
+          "option_one": "big banner",
+          "option_one_body": "Choose the big banner when the header needs to feel cinematic or when you want to show product context, a tagline, or seasonal art.",
+          "option_two": "mini banner",
+          "option_two_body": "Choose the mini banner when the shop header just needs a fast brand strip that stays out of the way of listings and categories.",
+          "decision_shortcut": "If the banner must communicate more than a logo, pick the big banner. If it only needs to reinforce branding, pick the mini banner."
+        },
+        {
+          "slug": "etsy-shop-icon-vs-profile-photo",
+          "title": "Etsy shop icon vs profile photo and when each matters",
+          "lede": "The icon sells the brand mark while the profile photo sells the person behind the shop. Treat them as separate trust layers, not duplicates.",
+          "option_one": "shop icon",
+          "option_one_body": "Use the icon for logos, monograms, or simple illustrations that need to look consistent across every Etsy surface.",
+          "option_two": "profile photo",
+          "option_two_body": "Use the profile photo when your shop story matters and you want buyers to connect with the maker behind the products.",
+          "decision_shortcut": "If the surface needs brand recognition, prioritize the icon. If it needs warmth or founder credibility, prioritize the profile photo."
+        },
+        {
+          "slug": "etsy-square-photos-vs-vertical-photos",
+          "title": "Etsy square photos vs vertical photos for catalog consistency",
+          "lede": "Square photos are easier to manage at scale, while vertical photos can feel more editorial when the product demands height.",
+          "option_one": "square photos",
+          "option_one_body": "Use square exports when you want consistent thumbnails, faster batch editing, and less unpredictable cropping in category views.",
+          "option_two": "vertical photos",
+          "option_two_body": "Use vertical compositions when the product needs height, but protect the center area so the image still survives square previews.",
+          "decision_shortcut": "Default to square for repeatable storefront systems and switch to vertical only when the product story clearly improves."
+        }
+      ],
+      "resource": {
+        "slug": "etsy-image-prep-checklist",
+        "title": "Etsy image prep checklist",
+        "lede": "Download a plain-English prep checklist before your next listing update or shop rebrand.",
+        "resource_contents": "A surface-by-surface export checklist covering listing photos, banners, icons, profile photos, and receipt branding.",
+        "usage_steps": "Review the target surface, export from the largest source available, confirm the ratio in the tool, and keep focal content inside the safe area.",
+        "next_action": "Pair the checklist with the helper tool so you catch weak source files before you upload."
+      }
+    }
+  },
+  "navigation": [
+    {
+      "href": "/",
+      "label": "Home",
+      "description": "Return to the Etsy Image Helper homepage.",
+      "eyebrow": "Base"
+    },
+    {
+      "href": "/tool/",
+      "label": "Tool",
+      "description": "Recommended Etsy dimensions, crop guidance, quality warning, and a copyable prep summary.",
+      "eyebrow": "Tool"
+    },
+    {
+      "href": "/guides/etsy-listing-photo-size-guide/",
+      "label": "Guides",
+      "description": "Build listing photos around a square master so one export can handle gallery views, thumbnails, and zoom states without surprise crops.",
+      "eyebrow": "Guides"
+    },
+    {
+      "href": "/resources/etsy-image-prep-checklist/",
+      "label": "Checklist",
+      "description": "Download a plain-English prep checklist before your next listing update or shop rebrand.",
+      "eyebrow": "Resource"
+    },
+    {
+      "href": "/feedback/",
+      "label": "Next Build",
+      "description": "This release stays static-first, so the feedback route is a notes page that defines the best next signals to collect once the site earns a lightweight intake flow.",
+      "eyebrow": "Feedback"
+    }
+  ],
+  "pages": [
+    {
+      "id": "etsy-image-helper-home",
+      "type": "home",
+      "slug": "",
+      "href": "/",
+      "navLabel": "Home",
+      "title": "Etsy Image Helper",
+      "description": "Sellers waste time resizing, cropping, and re-exporting Etsy images because every surface has different aspect ratios and minimum size expectations.",
+      "heroKicker": "Zero-guesswork Etsy prep",
+      "heroTitle": "Etsy image helper for cleaner crops and faster exports",
+      "heroIntro": "Match the right Etsy surface, catch weak source files early, and stop re-exporting the same artwork until it finally fits.",
+      "metaTitle": "Etsy Image Helper | etsy image size helper",
+      "metaDescription": "Match the right Etsy surface, catch weak source files early, and stop re-exporting the same artwork until it finally fits.",
+      "sections": [
+        {
+          "id": "what-you-get",
+          "heading": "What you get",
+          "paragraphs": [
+            "The value is speed to a cleaner export workflow, not inflated page count."
+          ],
+          "bullets": [
+            "See the best-fit export target for each major Etsy surface.",
+            "Catch weak source files before you waste time polishing them.",
+            "Move from sizing question to finished export with a checklist and linked guides."
+          ]
+        },
+        {
+          "id": "best-next-step",
+          "heading": "Best next step",
+          "paragraphs": [
+            "Start with the live tool, then use the linked guides to tighten the crop strategy for each surface."
+          ]
+        },
+        {
+          "id": "who-this-is-for",
+          "heading": "Who this is for",
+          "paragraphs": [
+            "Use this when you manage your own Etsy visuals and need one practical reference point for listing photos, banners, icons, and profile assets.",
+            "Core problem: Sellers waste time resizing, cropping, and re-exporting Etsy images because every surface has different aspect ratios and minimum size expectations."
+          ],
+          "bullets": [
+            "image size guides",
+            "banner comparisons",
+            "listing photo workflow",
+            "shop branding FAQ"
+          ]
+        },
+        {
+          "id": "tool-preview",
+          "heading": "What the helper covers",
+          "paragraphs": [
+            "The tool returns recommended dimensions, aspect ratio guidance, source-quality warnings, and crop notes before you export."
+          ],
+          "bullets": [
+            "Surface preset",
+            "Source width and height",
+            "Crop preference"
+          ],
+          "links": [
+            {
+              "href": "/tool/",
+              "label": "Open the Etsy image helper",
+              "description": "Recommended Etsy dimensions, crop guidance, quality warning, and a copyable prep summary.",
+              "eyebrow": "Primary"
+            },
+            {
+              "href": "/guides/etsy-listing-photo-size-guide/",
+              "label": "Etsy listing photo size guide for square-first product shots",
+              "description": "Build listing photos around a square master so one export can handle gallery views, thumbnails, and zoom states without surprise crops.",
+              "eyebrow": "Guide"
+            }
+          ]
+        },
+        {
+          "id": "workflow",
+          "heading": "Three-step workflow",
+          "paragraphs": [
+            "The factory standard is speed to value in one visit: inputs first, result second, next action third."
+          ],
+          "bullets": [
+            "Pick the Etsy surface you are preparing.",
+            "Enter the current width and height.",
+            "Copy or print the result before exporting the final artwork."
+          ]
+        },
+        {
+          "id": "faq-preview",
+          "heading": "Fast answers to common Etsy image questions",
+          "paragraphs": [
+            "These are the image questions that usually trigger re-export loops in the middle of a shop update."
+          ],
+          "links": [
+            {
+              "href": "/faq/what-size-should-etsy-listing-photos-be/",
+              "label": "What size should Etsy listing photos be?",
+              "description": "Use a square-first workflow and export at 2000 by 2000 pixels when you can. Etsy will accept smaller images, but large square files hold up better in crop-heavy layouts.",
+              "eyebrow": "FAQ"
+            },
+            {
+              "href": "/faq/what-size-is-an-etsy-shop-icon/",
+              "label": "What size is an Etsy shop icon?",
+              "description": "Prepare the shop icon as a square and export at 500 by 500 pixels. Keep the logo or mark centered so it survives circular or tight crops.",
+              "eyebrow": "FAQ"
+            },
+            {
+              "href": "/faq/how-wide-is-an-etsy-big-banner/",
+              "label": "How wide is an Etsy big banner?",
+              "description": "A big banner works best at 1600 by 400 pixels, which gives you a clean 4 to 1 layout. Wider source files are fine as long as the important content stays in the middle band.",
+              "eyebrow": "FAQ"
+            }
+          ]
+        },
+        {
+          "id": "comparison-preview",
+          "heading": "Banner and photo choices worth checking",
+          "paragraphs": [
+            "Mini vs big banners and square vs vertical images change the way your artwork behaves across Etsy surfaces."
+          ],
+          "links": [
+            {
+              "href": "/comparisons/etsy-big-banner-vs-mini-banner/",
+              "label": "Etsy big banner vs mini banner for handmade shops",
+              "description": "Both banner types can work, but they solve different jobs. One is a statement piece and the other is a lightweight identifier.",
+              "eyebrow": "Compare"
+            },
+            {
+              "href": "/comparisons/etsy-shop-icon-vs-profile-photo/",
+              "label": "Etsy shop icon vs profile photo and when each matters",
+              "description": "The icon sells the brand mark while the profile photo sells the person behind the shop. Treat them as separate trust layers, not duplicates.",
+              "eyebrow": "Compare"
+            }
+          ]
+        },
+        {
+          "id": "resource-preview",
+          "heading": "Keep the workflow portable",
+          "paragraphs": [
+            "Use the checklist when you want the same prep rhythm across your shop refresh, banner swap, and product upload sessions."
+          ],
+          "links": [
+            {
+              "href": "/resources/etsy-image-prep-checklist/",
+              "label": "Download prep checklist",
+              "description": "Download a plain-English prep checklist before your next listing update or shop rebrand.",
+              "eyebrow": "Resource"
+            }
+          ]
+        }
+      ],
+      "cta": {
+        "label": "Open the Etsy image helper",
+        "href": "/tool/",
+        "variant": "primary"
+      },
+      "relatedLinks": [
+        {
+          "href": "/tool/",
+          "label": "Open the Etsy image helper",
+          "description": "Recommended Etsy dimensions, crop guidance, quality warning, and a copyable prep summary.",
+          "eyebrow": "Primary"
+        },
+        {
+          "href": "/guides/etsy-listing-photo-size-guide/",
+          "label": "Etsy listing photo size guide for square-first product shots",
+          "description": "Build listing photos around a square master so one export can handle gallery views, thumbnails, and zoom states without surprise crops.",
+          "eyebrow": "Guide"
+        },
+        {
+          "href": "/comparisons/etsy-big-banner-vs-mini-banner/",
+          "label": "Etsy big banner vs mini banner for handmade shops",
+          "description": "Both banner types can work, but they solve different jobs. One is a statement piece and the other is a lightweight identifier.",
+          "eyebrow": "Compare"
+        },
+        {
+          "href": "/resources/etsy-image-prep-checklist/",
+          "label": "Download prep checklist",
+          "description": "Download a plain-English prep checklist before your next listing update or shop rebrand.",
+          "eyebrow": "Resource"
+        }
+      ]
+    },
+    {
+      "id": "etsy-image-helper-tool",
+      "type": "tool",
+      "slug": "tool",
+      "href": "/tool/",
+      "navLabel": "Tool",
+      "title": "Etsy image helper tool",
+      "description": "Recommended Etsy dimensions, crop guidance, quality warning, and a copyable prep summary.",
+      "heroKicker": "Live utility",
+      "heroTitle": "Etsy image helper tool",
+      "heroIntro": "Choose a target surface, enter the current width and height, and get instant crop and resize guidance for Etsy-friendly exports.",
+      "metaTitle": "Etsy image helper tool | Etsy Image Helper",
+      "metaDescription": "Recommended Etsy dimensions, crop guidance, quality warning, and a copyable prep summary.",
+      "sections": [
+        {
+          "id": "inputs-to-gather",
+          "heading": "Inputs to gather",
+          "paragraphs": [
+            "Keep the input set lean so you can check a file in seconds while you are actively exporting."
+          ],
+          "bullets": [
+            "Surface preset",
+            "Source width and height",
+            "Crop preference"
+          ]
+        },
+        {
+          "id": "result-to-expect",
+          "heading": "Result to expect",
+          "paragraphs": [
+            "The result combines recommended dimensions with a quality verdict.",
+            "You also get a crop note, resize note, and a copyable summary you can drop into your editing checklist."
+          ]
+        },
+        {
+          "id": "tool-trust",
+          "heading": "How to use the result",
+          "paragraphs": [
+            "Treat the helper as a prep assistant, not as a replacement for visual judgment. The goal is to get your file into the right ratio and quality range before you fine-tune the composition.",
+            "If the tool flags a risky source, go back to the largest original available instead of trying to rescue a small export."
+          ],
+          "bullets": [
+            "Confirm the target ratio first.",
+            "Adjust the crop before export.",
+            "Copy or print the summary before uploading."
+          ],
+          "callout": "Static-first rule: everything here runs in the browser, so you can use the tool on a draft machine or during a batch content sprint without any account setup."
+        }
+      ],
+      "cta": {
+        "label": "Download the prep checklist",
+        "href": "/resources/etsy-image-prep-checklist/",
+        "variant": "secondary"
+      },
+      "toolMountId": "calculator",
+      "relatedLinks": [
+        {
+          "href": "/guides/etsy-listing-photo-size-guide/",
+          "label": "Etsy listing photo size guide for square-first product shots",
+          "description": "Build listing photos around a square master so one export can handle gallery views, thumbnails, and zoom states without surprise crops.",
+          "eyebrow": "Guide"
+        },
+        {
+          "href": "/comparisons/etsy-big-banner-vs-mini-banner/",
+          "label": "Etsy big banner vs mini banner for handmade shops",
+          "description": "Both banner types can work, but they solve different jobs. One is a statement piece and the other is a lightweight identifier.",
+          "eyebrow": "Compare"
+        },
+        {
+          "href": "/resources/etsy-image-prep-checklist/",
+          "label": "Download prep checklist",
+          "description": "Download a plain-English prep checklist before your next listing update or shop rebrand.",
+          "eyebrow": "Resource"
+        }
+      ]
+    },
+    {
+      "id": "etsy-image-helper-about",
+      "type": "about",
+      "slug": "why-this-tool-matters",
+      "href": "/about/why-this-tool-matters/",
+      "title": "Why Etsy image prep turns into a time sink",
+      "description": "Sellers waste time resizing, cropping, and re-exporting Etsy images because every surface has different aspect ratios and minimum size expectations.",
+      "heroKicker": "Problem explainer",
+      "heroTitle": "Why Etsy image prep turns into a time sink",
+      "heroIntro": "Most sellers are not missing creativity. They are missing a stable preparation system that keeps every export aligned to the right ratio from the start.",
+      "metaTitle": "Why Etsy image prep turns into a time sink | Etsy Image Helper",
+      "metaDescription": "Most sellers are not missing creativity. They are missing a stable preparation system that keeps every export aligned to the right ratio from the start.",
+      "sections": [
+        {
+          "id": "key-takeaway",
+          "heading": "Key takeaway",
+          "paragraphs": [
+            "One square-first master and a short preset list beat endless last-minute resizing."
+          ]
+        },
+        {
+          "id": "practical-detail",
+          "heading": "Practical detail",
+          "paragraphs": [
+            "Once you separate listing imagery, banners, icons, and profile photos into clear surface rules, your brand files become much easier to update without visual drift."
+          ]
+        },
+        {
+          "id": "next-action",
+          "heading": "Next action",
+          "paragraphs": [
+            "Use the helper to verify the next file you plan to upload, then keep the checklist beside your editor so every export follows the same logic."
+          ]
+        }
+      ],
+      "cta": {
+        "label": "Open the Etsy image helper",
+        "href": "/tool/",
+        "variant": "primary"
+      },
+      "relatedLinks": [
+        {
+          "href": "/tool/",
+          "label": "Open the Etsy image helper",
+          "description": "Recommended Etsy dimensions, crop guidance, quality warning, and a copyable prep summary.",
+          "eyebrow": "Primary"
+        },
+        {
+          "href": "/guides/etsy-listing-photo-size-guide/",
+          "label": "Etsy listing photo size guide for square-first product shots",
+          "description": "Build listing photos around a square master so one export can handle gallery views, thumbnails, and zoom states without surprise crops.",
+          "eyebrow": "Guide"
+        },
+        {
+          "href": "/comparisons/etsy-big-banner-vs-mini-banner/",
+          "label": "Etsy big banner vs mini banner for handmade shops",
+          "description": "Both banner types can work, but they solve different jobs. One is a statement piece and the other is a lightweight identifier.",
+          "eyebrow": "Compare"
+        },
+        {
+          "href": "/resources/etsy-image-prep-checklist/",
+          "label": "Download prep checklist",
+          "description": "Download a plain-English prep checklist before your next listing update or shop rebrand.",
+          "eyebrow": "Resource"
+        }
+      ]
+    },
+    {
+      "id": "etsy-image-helper-faq-what-size-should-etsy-listing-photos-be",
+      "type": "faq",
+      "slug": "what-size-should-etsy-listing-photos-be",
+      "href": "/faq/what-size-should-etsy-listing-photos-be/",
+      "title": "What size should Etsy listing photos be?",
+      "description": "Use a square-first workflow and export at 2000 by 2000 pixels when you can. Etsy will accept smaller images, but large square files hold up better in crop-heavy layouts.",
+      "heroKicker": "FAQ",
+      "heroTitle": "What size should Etsy listing photos be?",
+      "heroIntro": "A short answer is useful, but the real leverage comes from understanding the decision behind it.",
+      "metaTitle": "What size should Etsy listing photos be? | Etsy Image Helper",
+      "metaDescription": "Use a square-first workflow and export at 2000 by 2000 pixels when you can. Etsy will accept smaller images, but large square files hold up better in crop-heavy layouts.",
+      "sections": [
+        {
+          "id": "direct-answer",
+          "heading": "Direct answer",
+          "paragraphs": [
+            "Use a square-first workflow and export at 2000 by 2000 pixels when you can. Etsy will accept smaller images, but large square files hold up better in crop-heavy layouts."
+          ]
+        },
+        {
+          "id": "why-it-matters",
+          "heading": "Why it matters",
+          "paragraphs": [
+            "The first listing image gets squeezed into thumbnails, mobile grids, and zoom views. Oversized square exports give you more room to crop without losing clarity."
+          ]
+        },
+        {
+          "id": "next-step",
+          "heading": "Next step",
+          "paragraphs": [
+            "Run the tool with your current photo size and confirm whether your source is safely above the recommended square target."
+          ]
+        }
+      ],
+      "cta": {
+        "label": "Open the Etsy image helper",
+        "href": "/tool/",
+        "variant": "primary"
+      },
+      "relatedLinks": [
+        {
+          "href": "/tool/",
+          "label": "Open the Etsy image helper",
+          "description": "Recommended Etsy dimensions, crop guidance, quality warning, and a copyable prep summary.",
+          "eyebrow": "Primary"
+        },
+        {
+          "href": "/guides/etsy-listing-photo-size-guide/",
+          "label": "Etsy listing photo size guide for square-first product shots",
+          "description": "Build listing photos around a square master so one export can handle gallery views, thumbnails, and zoom states without surprise crops.",
+          "eyebrow": "Guide"
+        },
+        {
+          "href": "/comparisons/etsy-big-banner-vs-mini-banner/",
+          "label": "Etsy big banner vs mini banner for handmade shops",
+          "description": "Both banner types can work, but they solve different jobs. One is a statement piece and the other is a lightweight identifier.",
+          "eyebrow": "Compare"
+        },
+        {
+          "href": "/resources/etsy-image-prep-checklist/",
+          "label": "Download prep checklist",
+          "description": "Download a plain-English prep checklist before your next listing update or shop rebrand.",
+          "eyebrow": "Resource"
+        }
+      ]
+    },
+    {
+      "id": "etsy-image-helper-faq-what-size-is-an-etsy-shop-icon",
+      "type": "faq",
+      "slug": "what-size-is-an-etsy-shop-icon",
+      "href": "/faq/what-size-is-an-etsy-shop-icon/",
+      "title": "What size is an Etsy shop icon?",
+      "description": "Prepare the shop icon as a square and export at 500 by 500 pixels. Keep the logo or mark centered so it survives circular or tight crops.",
+      "heroKicker": "FAQ",
+      "heroTitle": "What size is an Etsy shop icon?",
+      "heroIntro": "A short answer is useful, but the real leverage comes from understanding the decision behind it.",
+      "metaTitle": "What size is an Etsy shop icon? | Etsy Image Helper",
+      "metaDescription": "Prepare the shop icon as a square and export at 500 by 500 pixels. Keep the logo or mark centered so it survives circular or tight crops.",
+      "sections": [
+        {
+          "id": "direct-answer",
+          "heading": "Direct answer",
+          "paragraphs": [
+            "Prepare the shop icon as a square and export at 500 by 500 pixels. Keep the logo or mark centered so it survives circular or tight crops."
+          ]
+        },
+        {
+          "id": "why-it-matters",
+          "heading": "Why it matters",
+          "paragraphs": [
+            "Small branding surfaces punish edge-heavy artwork. A centered square icon keeps your mark readable in the app, on desktop, and in small account previews."
+          ]
+        },
+        {
+          "id": "next-step",
+          "heading": "Next step",
+          "paragraphs": [
+            "Check the shop icon preset in the tool before exporting any rebrand assets."
+          ]
+        }
+      ],
+      "cta": {
+        "label": "Open the Etsy image helper",
+        "href": "/tool/",
+        "variant": "primary"
+      },
+      "relatedLinks": [
+        {
+          "href": "/tool/",
+          "label": "Open the Etsy image helper",
+          "description": "Recommended Etsy dimensions, crop guidance, quality warning, and a copyable prep summary.",
+          "eyebrow": "Primary"
+        },
+        {
+          "href": "/guides/etsy-listing-photo-size-guide/",
+          "label": "Etsy listing photo size guide for square-first product shots",
+          "description": "Build listing photos around a square master so one export can handle gallery views, thumbnails, and zoom states without surprise crops.",
+          "eyebrow": "Guide"
+        },
+        {
+          "href": "/comparisons/etsy-big-banner-vs-mini-banner/",
+          "label": "Etsy big banner vs mini banner for handmade shops",
+          "description": "Both banner types can work, but they solve different jobs. One is a statement piece and the other is a lightweight identifier.",
+          "eyebrow": "Compare"
+        },
+        {
+          "href": "/resources/etsy-image-prep-checklist/",
+          "label": "Download prep checklist",
+          "description": "Download a plain-English prep checklist before your next listing update or shop rebrand.",
+          "eyebrow": "Resource"
+        }
+      ]
+    },
+    {
+      "id": "etsy-image-helper-faq-how-wide-is-an-etsy-big-banner",
+      "type": "faq",
+      "slug": "how-wide-is-an-etsy-big-banner",
+      "href": "/faq/how-wide-is-an-etsy-big-banner/",
+      "title": "How wide is an Etsy big banner?",
+      "description": "A big banner works best at 1600 by 400 pixels, which gives you a clean 4 to 1 layout. Wider source files are fine as long as the important content stays in the middle band.",
+      "heroKicker": "FAQ",
+      "heroTitle": "How wide is an Etsy big banner?",
+      "heroIntro": "A short answer is useful, but the real leverage comes from understanding the decision behind it.",
+      "metaTitle": "How wide is an Etsy big banner? | Etsy Image Helper",
+      "metaDescription": "A big banner works best at 1600 by 400 pixels, which gives you a clean 4 to 1 layout. Wider source files are fine as long as the important content stays in the middle band.",
+      "sections": [
+        {
+          "id": "direct-answer",
+          "heading": "Direct answer",
+          "paragraphs": [
+            "A big banner works best at 1600 by 400 pixels, which gives you a clean 4 to 1 layout. Wider source files are fine as long as the important content stays in the middle band."
+          ]
+        },
+        {
+          "id": "why-it-matters",
+          "heading": "Why it matters",
+          "paragraphs": [
+            "Horizontal banners break fast when text or products sit too close to the edges. Knowing the target ratio up front saves you from awkward last-minute crops."
+          ]
+        },
+        {
+          "id": "next-step",
+          "heading": "Next step",
+          "paragraphs": [
+            "Compare your source image to the big banner preset and trim the safe area before you export."
+          ]
+        }
+      ],
+      "cta": {
+        "label": "Open the Etsy image helper",
+        "href": "/tool/",
+        "variant": "primary"
+      },
+      "relatedLinks": [
+        {
+          "href": "/tool/",
+          "label": "Open the Etsy image helper",
+          "description": "Recommended Etsy dimensions, crop guidance, quality warning, and a copyable prep summary.",
+          "eyebrow": "Primary"
+        },
+        {
+          "href": "/guides/etsy-listing-photo-size-guide/",
+          "label": "Etsy listing photo size guide for square-first product shots",
+          "description": "Build listing photos around a square master so one export can handle gallery views, thumbnails, and zoom states without surprise crops.",
+          "eyebrow": "Guide"
+        },
+        {
+          "href": "/comparisons/etsy-big-banner-vs-mini-banner/",
+          "label": "Etsy big banner vs mini banner for handmade shops",
+          "description": "Both banner types can work, but they solve different jobs. One is a statement piece and the other is a lightweight identifier.",
+          "eyebrow": "Compare"
+        },
+        {
+          "href": "/resources/etsy-image-prep-checklist/",
+          "label": "Download prep checklist",
+          "description": "Download a plain-English prep checklist before your next listing update or shop rebrand.",
+          "eyebrow": "Resource"
+        }
+      ]
+    },
+    {
+      "id": "etsy-image-helper-faq-should-i-use-mini-or-big-banner-on-etsy",
+      "type": "faq",
+      "slug": "should-i-use-mini-or-big-banner-on-etsy",
+      "href": "/faq/should-i-use-mini-or-big-banner-on-etsy/",
+      "title": "Should I use the mini or big banner on Etsy?",
+      "description": "Use a mini banner when you want a thin branding strip and a big banner when the header itself needs to carry messaging or product context.",
+      "heroKicker": "FAQ",
+      "heroTitle": "Should I use the mini or big banner on Etsy?",
+      "heroIntro": "A short answer is useful, but the real leverage comes from understanding the decision behind it.",
+      "metaTitle": "Should I use the mini or big banner on Etsy? | Etsy Image Helper",
+      "metaDescription": "Use a mini banner when you want a thin branding strip and a big banner when the header itself needs to carry messaging or product context.",
+      "sections": [
+        {
+          "id": "direct-answer",
+          "heading": "Direct answer",
+          "paragraphs": [
+            "Use a mini banner when you want a thin branding strip and a big banner when the header itself needs to carry messaging or product context."
+          ]
+        },
+        {
+          "id": "why-it-matters",
+          "heading": "Why it matters",
+          "paragraphs": [
+            "The two banner styles are not interchangeable. Each one rewards a different layout approach, so forcing the same art into both usually looks cramped."
+          ]
+        },
+        {
+          "id": "next-step",
+          "heading": "Next step",
+          "paragraphs": [
+            "Review the comparison page before committing to one banner layout for your shop refresh."
+          ]
+        }
+      ],
+      "cta": {
+        "label": "Open the Etsy image helper",
+        "href": "/tool/",
+        "variant": "primary"
+      },
+      "relatedLinks": [
+        {
+          "href": "/tool/",
+          "label": "Open the Etsy image helper",
+          "description": "Recommended Etsy dimensions, crop guidance, quality warning, and a copyable prep summary.",
+          "eyebrow": "Primary"
+        },
+        {
+          "href": "/guides/etsy-listing-photo-size-guide/",
+          "label": "Etsy listing photo size guide for square-first product shots",
+          "description": "Build listing photos around a square master so one export can handle gallery views, thumbnails, and zoom states without surprise crops.",
+          "eyebrow": "Guide"
+        },
+        {
+          "href": "/comparisons/etsy-big-banner-vs-mini-banner/",
+          "label": "Etsy big banner vs mini banner for handmade shops",
+          "description": "Both banner types can work, but they solve different jobs. One is a statement piece and the other is a lightweight identifier.",
+          "eyebrow": "Compare"
+        },
+        {
+          "href": "/resources/etsy-image-prep-checklist/",
+          "label": "Download prep checklist",
+          "description": "Download a plain-English prep checklist before your next listing update or shop rebrand.",
+          "eyebrow": "Resource"
+        }
+      ]
+    },
+    {
+      "id": "etsy-image-helper-faq-why-do-my-etsy-thumbnails-crop-weirdly",
+      "type": "faq",
+      "slug": "why-do-my-etsy-thumbnails-crop-weirdly",
+      "href": "/faq/why-do-my-etsy-thumbnails-crop-weirdly/",
+      "title": "Why do Etsy thumbnails crop weirdly?",
+      "description": "Thumbnails usually look wrong when the product sits too close to an edge or the source aspect ratio fights the square-first listing layout.",
+      "heroKicker": "FAQ",
+      "heroTitle": "Why do Etsy thumbnails crop weirdly?",
+      "heroIntro": "A short answer is useful, but the real leverage comes from understanding the decision behind it.",
+      "metaTitle": "Why do Etsy thumbnails crop weirdly? | Etsy Image Helper",
+      "metaDescription": "Thumbnails usually look wrong when the product sits too close to an edge or the source aspect ratio fights the square-first listing layout.",
+      "sections": [
+        {
+          "id": "direct-answer",
+          "heading": "Direct answer",
+          "paragraphs": [
+            "Thumbnails usually look wrong when the product sits too close to an edge or the source aspect ratio fights the square-first listing layout."
+          ]
+        },
+        {
+          "id": "why-it-matters",
+          "heading": "Why it matters",
+          "paragraphs": [
+            "Etsy compresses wide and tall photos into smaller previews. Centering the subject and leaving breathing room around the edges makes the crop feel intentional instead of accidental."
+          ]
+        },
+        {
+          "id": "next-step",
+          "heading": "Next step",
+          "paragraphs": [
+            "Use the tool and the thumbnail guide together to decide whether you need a recrop or a fresh export."
+          ]
+        }
+      ],
+      "cta": {
+        "label": "Open the Etsy image helper",
+        "href": "/tool/",
+        "variant": "primary"
+      },
+      "relatedLinks": [
+        {
+          "href": "/tool/",
+          "label": "Open the Etsy image helper",
+          "description": "Recommended Etsy dimensions, crop guidance, quality warning, and a copyable prep summary.",
+          "eyebrow": "Primary"
+        },
+        {
+          "href": "/guides/etsy-listing-photo-size-guide/",
+          "label": "Etsy listing photo size guide for square-first product shots",
+          "description": "Build listing photos around a square master so one export can handle gallery views, thumbnails, and zoom states without surprise crops.",
+          "eyebrow": "Guide"
+        },
+        {
+          "href": "/comparisons/etsy-big-banner-vs-mini-banner/",
+          "label": "Etsy big banner vs mini banner for handmade shops",
+          "description": "Both banner types can work, but they solve different jobs. One is a statement piece and the other is a lightweight identifier.",
+          "eyebrow": "Compare"
+        },
+        {
+          "href": "/resources/etsy-image-prep-checklist/",
+          "label": "Download prep checklist",
+          "description": "Download a plain-English prep checklist before your next listing update or shop rebrand.",
+          "eyebrow": "Resource"
+        }
+      ]
+    },
+    {
+      "id": "etsy-image-helper-faq-can-i-fix-a-small-etsy-image-with-upscaling",
+      "type": "faq",
+      "slug": "can-i-fix-a-small-etsy-image-with-upscaling",
+      "href": "/faq/can-i-fix-a-small-etsy-image-with-upscaling/",
+      "title": "Can I fix a small Etsy image with upscaling?",
+      "description": "Upscaling can help in a pinch, but it is safer to start from the largest original you have. Enlarging a weak source often softens detail and makes text or edges look fuzzy.",
+      "heroKicker": "FAQ",
+      "heroTitle": "Can I fix a small Etsy image with upscaling?",
+      "heroIntro": "A short answer is useful, but the real leverage comes from understanding the decision behind it.",
+      "metaTitle": "Can I fix a small Etsy image with upscaling? | Etsy Image Helper",
+      "metaDescription": "Upscaling can help in a pinch, but it is safer to start from the largest original you have. Enlarging a weak source often softens detail and makes text or edges look fuzzy.",
+      "sections": [
+        {
+          "id": "direct-answer",
+          "heading": "Direct answer",
+          "paragraphs": [
+            "Upscaling can help in a pinch, but it is safer to start from the largest original you have. Enlarging a weak source often softens detail and makes text or edges look fuzzy."
+          ]
+        },
+        {
+          "id": "why-it-matters",
+          "heading": "Why it matters",
+          "paragraphs": [
+            "Etsy surfaces are visual trust signals. Soft artwork makes the whole listing feel less polished, even if the dimensions technically pass."
+          ]
+        },
+        {
+          "id": "next-step",
+          "heading": "Next step",
+          "paragraphs": [
+            "Let the tool flag risky source files before you spend time editing them."
+          ]
+        }
+      ],
+      "cta": {
+        "label": "Open the Etsy image helper",
+        "href": "/tool/",
+        "variant": "primary"
+      },
+      "relatedLinks": [
+        {
+          "href": "/tool/",
+          "label": "Open the Etsy image helper",
+          "description": "Recommended Etsy dimensions, crop guidance, quality warning, and a copyable prep summary.",
+          "eyebrow": "Primary"
+        },
+        {
+          "href": "/guides/etsy-listing-photo-size-guide/",
+          "label": "Etsy listing photo size guide for square-first product shots",
+          "description": "Build listing photos around a square master so one export can handle gallery views, thumbnails, and zoom states without surprise crops.",
+          "eyebrow": "Guide"
+        },
+        {
+          "href": "/comparisons/etsy-big-banner-vs-mini-banner/",
+          "label": "Etsy big banner vs mini banner for handmade shops",
+          "description": "Both banner types can work, but they solve different jobs. One is a statement piece and the other is a lightweight identifier.",
+          "eyebrow": "Compare"
+        },
+        {
+          "href": "/resources/etsy-image-prep-checklist/",
+          "label": "Download prep checklist",
+          "description": "Download a plain-English prep checklist before your next listing update or shop rebrand.",
+          "eyebrow": "Resource"
+        }
+      ]
+    },
+    {
+      "id": "etsy-image-helper-guide-etsy-listing-photo-size-guide",
+      "type": "guide",
+      "slug": "etsy-listing-photo-size-guide",
+      "href": "/guides/etsy-listing-photo-size-guide/",
+      "title": "Etsy listing photo size guide for square-first product shots",
+      "description": "Build listing photos around a square master so one export can handle gallery views, thumbnails, and zoom states without surprise crops.",
+      "heroKicker": "Guide",
+      "heroTitle": "Etsy listing photo size guide for square-first product shots",
+      "heroIntro": "Build listing photos around a square master so one export can handle gallery views, thumbnails, and zoom states without surprise crops.",
+      "metaTitle": "Etsy listing photo size guide for square-first product shots | Etsy Image Helper",
+      "metaDescription": "Build listing photos around a square master so one export can handle gallery views, thumbnails, and zoom states without surprise crops.",
+      "sections": [
+        {
+          "id": "key-takeaway",
+          "heading": "Key takeaway",
+          "paragraphs": [
+            "Start with the cleanest square crop you can and keep the product slightly inside the edges."
+          ]
+        },
+        {
+          "id": "practical-detail",
+          "heading": "Practical detail",
+          "paragraphs": [
+            "Square exports make batch editing easier, reduce thumbnail guesswork, and let you reuse the same crop logic across collections."
+          ]
+        },
+        {
+          "id": "next-action",
+          "heading": "Next action",
+          "paragraphs": [
+            "Use the listing photo preset in the tool and compare your current width and height before you upload."
+          ]
+        }
+      ],
+      "cta": {
+        "label": "Open the Etsy image helper",
+        "href": "/tool/",
+        "variant": "primary"
+      },
+      "relatedLinks": [
+        {
+          "href": "/tool/",
+          "label": "Open the Etsy image helper",
+          "description": "Recommended Etsy dimensions, crop guidance, quality warning, and a copyable prep summary.",
+          "eyebrow": "Primary"
+        },
+        {
+          "href": "/comparisons/etsy-big-banner-vs-mini-banner/",
+          "label": "Etsy big banner vs mini banner for handmade shops",
+          "description": "Both banner types can work, but they solve different jobs. One is a statement piece and the other is a lightweight identifier.",
+          "eyebrow": "Compare"
+        },
+        {
+          "href": "/resources/etsy-image-prep-checklist/",
+          "label": "Download prep checklist",
+          "description": "Download a plain-English prep checklist before your next listing update or shop rebrand.",
+          "eyebrow": "Resource"
+        }
+      ]
+    },
+    {
+      "id": "etsy-image-helper-guide-etsy-banner-safe-area-guide",
+      "type": "guide",
+      "slug": "etsy-banner-safe-area-guide",
+      "href": "/guides/etsy-banner-safe-area-guide/",
+      "title": "Etsy banner safe area guide for text, logos, and product cutouts",
+      "description": "Banner dimensions matter, but safe-area discipline matters more. The center band should carry the real message while the edges stay quiet.",
+      "heroKicker": "Guide",
+      "heroTitle": "Etsy banner safe area guide for text, logos, and product cutouts",
+      "heroIntro": "Banner dimensions matter, but safe-area discipline matters more. The center band should carry the real message while the edges stay quiet.",
+      "metaTitle": "Etsy banner safe area guide for text, logos, and product cutouts | Etsy Image Helper",
+      "metaDescription": "Banner dimensions matter, but safe-area discipline matters more. The center band should carry the real message while the edges stay quiet.",
+      "sections": [
+        {
+          "id": "key-takeaway",
+          "heading": "Key takeaway",
+          "paragraphs": [
+            "Treat the outer edges as disposable space and keep text inside the middle third of the artwork."
+          ]
+        },
+        {
+          "id": "practical-detail",
+          "heading": "Practical detail",
+          "paragraphs": [
+            "This approach protects both big banners and mini banners from awkward crops and lets you reuse seasonal artwork with fewer edits."
+          ]
+        },
+        {
+          "id": "next-action",
+          "heading": "Next action",
+          "paragraphs": [
+            "Check the banner presets in the tool and line up your focal point before exporting."
+          ]
+        }
+      ],
+      "cta": {
+        "label": "Open the Etsy image helper",
+        "href": "/tool/",
+        "variant": "primary"
+      },
+      "relatedLinks": [
+        {
+          "href": "/tool/",
+          "label": "Open the Etsy image helper",
+          "description": "Recommended Etsy dimensions, crop guidance, quality warning, and a copyable prep summary.",
+          "eyebrow": "Primary"
+        },
+        {
+          "href": "/guides/etsy-listing-photo-size-guide/",
+          "label": "Etsy listing photo size guide for square-first product shots",
+          "description": "Build listing photos around a square master so one export can handle gallery views, thumbnails, and zoom states without surprise crops.",
+          "eyebrow": "Guide"
+        },
+        {
+          "href": "/comparisons/etsy-big-banner-vs-mini-banner/",
+          "label": "Etsy big banner vs mini banner for handmade shops",
+          "description": "Both banner types can work, but they solve different jobs. One is a statement piece and the other is a lightweight identifier.",
+          "eyebrow": "Compare"
+        },
+        {
+          "href": "/resources/etsy-image-prep-checklist/",
+          "label": "Download prep checklist",
+          "description": "Download a plain-English prep checklist before your next listing update or shop rebrand.",
+          "eyebrow": "Resource"
+        }
+      ]
+    },
+    {
+      "id": "etsy-image-helper-guide-etsy-thumbnail-crop-tips",
+      "type": "guide",
+      "slug": "etsy-thumbnail-crop-tips",
+      "href": "/guides/etsy-thumbnail-crop-tips/",
+      "title": "Etsy thumbnail crop tips that keep the product readable on mobile",
+      "description": "Mobile grids punish edge-to-edge compositions. The fastest fix is to crop with breathing room and keep the focal object centered.",
+      "heroKicker": "Guide",
+      "heroTitle": "Etsy thumbnail crop tips that keep the product readable on mobile",
+      "heroIntro": "Mobile grids punish edge-to-edge compositions. The fastest fix is to crop with breathing room and keep the focal object centered.",
+      "metaTitle": "Etsy thumbnail crop tips that keep the product readable on mobile | Etsy Image Helper",
+      "metaDescription": "Mobile grids punish edge-to-edge compositions. The fastest fix is to crop with breathing room and keep the focal object centered.",
+      "sections": [
+        {
+          "id": "key-takeaway",
+          "heading": "Key takeaway",
+          "paragraphs": [
+            "Leave margin around the hero product so the square thumbnail does not amputate it."
+          ]
+        },
+        {
+          "id": "practical-detail",
+          "heading": "Practical detail",
+          "paragraphs": [
+            "Even simple items photograph better when the product sits in a stable crop zone with negative space around it."
+          ]
+        },
+        {
+          "id": "next-action",
+          "heading": "Next action",
+          "paragraphs": [
+            "Run your image through the tool, then compare the ratio advice to your current composition."
+          ]
+        }
+      ],
+      "cta": {
+        "label": "Open the Etsy image helper",
+        "href": "/tool/",
+        "variant": "primary"
+      },
+      "relatedLinks": [
+        {
+          "href": "/tool/",
+          "label": "Open the Etsy image helper",
+          "description": "Recommended Etsy dimensions, crop guidance, quality warning, and a copyable prep summary.",
+          "eyebrow": "Primary"
+        },
+        {
+          "href": "/guides/etsy-listing-photo-size-guide/",
+          "label": "Etsy listing photo size guide for square-first product shots",
+          "description": "Build listing photos around a square master so one export can handle gallery views, thumbnails, and zoom states without surprise crops.",
+          "eyebrow": "Guide"
+        },
+        {
+          "href": "/comparisons/etsy-big-banner-vs-mini-banner/",
+          "label": "Etsy big banner vs mini banner for handmade shops",
+          "description": "Both banner types can work, but they solve different jobs. One is a statement piece and the other is a lightweight identifier.",
+          "eyebrow": "Compare"
+        },
+        {
+          "href": "/resources/etsy-image-prep-checklist/",
+          "label": "Download prep checklist",
+          "description": "Download a plain-English prep checklist before your next listing update or shop rebrand.",
+          "eyebrow": "Resource"
+        }
+      ]
+    },
+    {
+      "id": "etsy-image-helper-guide-etsy-shop-icon-design-rules",
+      "type": "guide",
+      "slug": "etsy-shop-icon-design-rules",
+      "href": "/guides/etsy-shop-icon-design-rules/",
+      "title": "Etsy shop icon design rules for logos that survive small screens",
+      "description": "Shop icons are tiny trust markers. Clear shapes, high contrast, and centered artwork outperform detailed illustrations every time.",
+      "heroKicker": "Guide",
+      "heroTitle": "Etsy shop icon design rules for logos that survive small screens",
+      "heroIntro": "Shop icons are tiny trust markers. Clear shapes, high contrast, and centered artwork outperform detailed illustrations every time.",
+      "metaTitle": "Etsy shop icon design rules for logos that survive small screens | Etsy Image Helper",
+      "metaDescription": "Shop icons are tiny trust markers. Clear shapes, high contrast, and centered artwork outperform detailed illustrations every time.",
+      "sections": [
+        {
+          "id": "key-takeaway",
+          "heading": "Key takeaway",
+          "paragraphs": [
+            "Strip the icon down to one recognizable mark and let negative space do the work."
+          ]
+        },
+        {
+          "id": "practical-detail",
+          "heading": "Practical detail",
+          "paragraphs": [
+            "Small avatars fail when the design relies on fine text or thin decorative elements that disappear on mobile."
+          ]
+        },
+        {
+          "id": "next-action",
+          "heading": "Next action",
+          "paragraphs": [
+            "Use the icon preset and confirm your export size before you rebuild the brand mark."
+          ]
+        }
+      ],
+      "cta": {
+        "label": "Open the Etsy image helper",
+        "href": "/tool/",
+        "variant": "primary"
+      },
+      "relatedLinks": [
+        {
+          "href": "/tool/",
+          "label": "Open the Etsy image helper",
+          "description": "Recommended Etsy dimensions, crop guidance, quality warning, and a copyable prep summary.",
+          "eyebrow": "Primary"
+        },
+        {
+          "href": "/guides/etsy-listing-photo-size-guide/",
+          "label": "Etsy listing photo size guide for square-first product shots",
+          "description": "Build listing photos around a square master so one export can handle gallery views, thumbnails, and zoom states without surprise crops.",
+          "eyebrow": "Guide"
+        },
+        {
+          "href": "/comparisons/etsy-big-banner-vs-mini-banner/",
+          "label": "Etsy big banner vs mini banner for handmade shops",
+          "description": "Both banner types can work, but they solve different jobs. One is a statement piece and the other is a lightweight identifier.",
+          "eyebrow": "Compare"
+        },
+        {
+          "href": "/resources/etsy-image-prep-checklist/",
+          "label": "Download prep checklist",
+          "description": "Download a plain-English prep checklist before your next listing update or shop rebrand.",
+          "eyebrow": "Resource"
+        }
+      ]
+    },
+    {
+      "id": "etsy-image-helper-guide-etsy-profile-photo-sizing-workflow",
+      "type": "guide",
+      "slug": "etsy-profile-photo-sizing-workflow",
+      "href": "/guides/etsy-profile-photo-sizing-workflow/",
+      "title": "Etsy profile photo sizing workflow for founder shots and studio portraits",
+      "description": "Profile photos should feel warm, legible, and tightly composed. Start with a square crop and make sure the face or subject stays centered.",
+      "heroKicker": "Guide",
+      "heroTitle": "Etsy profile photo sizing workflow for founder shots and studio portraits",
+      "heroIntro": "Profile photos should feel warm, legible, and tightly composed. Start with a square crop and make sure the face or subject stays centered.",
+      "metaTitle": "Etsy profile photo sizing workflow for founder shots and studio portraits | Etsy Image Helper",
+      "metaDescription": "Profile photos should feel warm, legible, and tightly composed. Start with a square crop and make sure the face or subject stays centered.",
+      "sections": [
+        {
+          "id": "key-takeaway",
+          "heading": "Key takeaway",
+          "paragraphs": [
+            "Keep eyes and facial features away from the edges so compression does not cut them off."
+          ]
+        },
+        {
+          "id": "practical-detail",
+          "heading": "Practical detail",
+          "paragraphs": [
+            "Even a simple square portrait looks stronger when the subject is framed with a small margin instead of filling the whole image."
+          ]
+        },
+        {
+          "id": "next-action",
+          "heading": "Next action",
+          "paragraphs": [
+            "Check the profile preset in the tool and match the recommended square size before exporting."
+          ]
+        }
+      ],
+      "cta": {
+        "label": "Open the Etsy image helper",
+        "href": "/tool/",
+        "variant": "primary"
+      },
+      "relatedLinks": [
+        {
+          "href": "/tool/",
+          "label": "Open the Etsy image helper",
+          "description": "Recommended Etsy dimensions, crop guidance, quality warning, and a copyable prep summary.",
+          "eyebrow": "Primary"
+        },
+        {
+          "href": "/guides/etsy-listing-photo-size-guide/",
+          "label": "Etsy listing photo size guide for square-first product shots",
+          "description": "Build listing photos around a square master so one export can handle gallery views, thumbnails, and zoom states without surprise crops.",
+          "eyebrow": "Guide"
+        },
+        {
+          "href": "/comparisons/etsy-big-banner-vs-mini-banner/",
+          "label": "Etsy big banner vs mini banner for handmade shops",
+          "description": "Both banner types can work, but they solve different jobs. One is a statement piece and the other is a lightweight identifier.",
+          "eyebrow": "Compare"
+        },
+        {
+          "href": "/resources/etsy-image-prep-checklist/",
+          "label": "Download prep checklist",
+          "description": "Download a plain-English prep checklist before your next listing update or shop rebrand.",
+          "eyebrow": "Resource"
+        }
+      ]
+    },
+    {
+      "id": "etsy-image-helper-guide-etsy-order-receipt-banner-setup",
+      "type": "guide",
+      "slug": "etsy-order-receipt-banner-setup",
+      "href": "/guides/etsy-order-receipt-banner-setup/",
+      "title": "Etsy order receipt banner setup for clean post-purchase branding",
+      "description": "The order receipt banner is narrow, so it works best with restrained branding and a single message.",
+      "heroKicker": "Guide",
+      "heroTitle": "Etsy order receipt banner setup for clean post-purchase branding",
+      "heroIntro": "The order receipt banner is narrow, so it works best with restrained branding and a single message.",
+      "metaTitle": "Etsy order receipt banner setup for clean post-purchase branding | Etsy Image Helper",
+      "metaDescription": "The order receipt banner is narrow, so it works best with restrained branding and a single message.",
+      "sections": [
+        {
+          "id": "key-takeaway",
+          "heading": "Key takeaway",
+          "paragraphs": [
+            "Use bold text, simple contrast, and one focal element instead of a busy collage."
+          ]
+        },
+        {
+          "id": "practical-detail",
+          "heading": "Practical detail",
+          "paragraphs": [
+            "Narrow receipt banners collapse fast when they try to carry the full shop identity. Think confirmation strip, not homepage hero."
+          ]
+        },
+        {
+          "id": "next-action",
+          "heading": "Next action",
+          "paragraphs": [
+            "Use the receipt banner preset and export a lean layout built for the 760 by 100 shape."
+          ]
+        }
+      ],
+      "cta": {
+        "label": "Open the Etsy image helper",
+        "href": "/tool/",
+        "variant": "primary"
+      },
+      "relatedLinks": [
+        {
+          "href": "/tool/",
+          "label": "Open the Etsy image helper",
+          "description": "Recommended Etsy dimensions, crop guidance, quality warning, and a copyable prep summary.",
+          "eyebrow": "Primary"
+        },
+        {
+          "href": "/guides/etsy-listing-photo-size-guide/",
+          "label": "Etsy listing photo size guide for square-first product shots",
+          "description": "Build listing photos around a square master so one export can handle gallery views, thumbnails, and zoom states without surprise crops.",
+          "eyebrow": "Guide"
+        },
+        {
+          "href": "/comparisons/etsy-big-banner-vs-mini-banner/",
+          "label": "Etsy big banner vs mini banner for handmade shops",
+          "description": "Both banner types can work, but they solve different jobs. One is a statement piece and the other is a lightweight identifier.",
+          "eyebrow": "Compare"
+        },
+        {
+          "href": "/resources/etsy-image-prep-checklist/",
+          "label": "Download prep checklist",
+          "description": "Download a plain-English prep checklist before your next listing update or shop rebrand.",
+          "eyebrow": "Resource"
+        }
+      ]
+    },
+    {
+      "id": "etsy-image-helper-comparison-etsy-big-banner-vs-mini-banner",
+      "type": "comparison",
+      "slug": "etsy-big-banner-vs-mini-banner",
+      "href": "/comparisons/etsy-big-banner-vs-mini-banner/",
+      "title": "Etsy big banner vs mini banner for handmade shops",
+      "description": "Both banner types can work, but they solve different jobs. One is a statement piece and the other is a lightweight identifier.",
+      "heroKicker": "Comparison",
+      "heroTitle": "Etsy big banner vs mini banner for handmade shops",
+      "heroIntro": "Both banner types can work, but they solve different jobs. One is a statement piece and the other is a lightweight identifier.",
+      "metaTitle": "Etsy big banner vs mini banner for handmade shops | Etsy Image Helper",
+      "metaDescription": "Both banner types can work, but they solve different jobs. One is a statement piece and the other is a lightweight identifier.",
+      "sections": [
+        {
+          "id": "when-big-banner-wins",
+          "heading": "When big banner wins",
+          "paragraphs": [
+            "Choose the big banner when the header needs to feel cinematic or when you want to show product context, a tagline, or seasonal art."
+          ]
+        },
+        {
+          "id": "when-mini-banner-wins",
+          "heading": "When mini banner wins",
+          "paragraphs": [
+            "Choose the mini banner when the shop header just needs a fast brand strip that stays out of the way of listings and categories."
+          ]
+        },
+        {
+          "id": "decision-shortcut",
+          "heading": "Decision shortcut",
+          "paragraphs": [
+            "If the banner must communicate more than a logo, pick the big banner. If it only needs to reinforce branding, pick the mini banner."
+          ]
+        }
+      ],
+      "cta": {
+        "label": "Open the Etsy image helper",
+        "href": "/tool/",
+        "variant": "primary"
+      },
+      "relatedLinks": [
+        {
+          "href": "/tool/",
+          "label": "Open the Etsy image helper",
+          "description": "Recommended Etsy dimensions, crop guidance, quality warning, and a copyable prep summary.",
+          "eyebrow": "Primary"
+        },
+        {
+          "href": "/guides/etsy-listing-photo-size-guide/",
+          "label": "Etsy listing photo size guide for square-first product shots",
+          "description": "Build listing photos around a square master so one export can handle gallery views, thumbnails, and zoom states without surprise crops.",
+          "eyebrow": "Guide"
+        },
+        {
+          "href": "/resources/etsy-image-prep-checklist/",
+          "label": "Download prep checklist",
+          "description": "Download a plain-English prep checklist before your next listing update or shop rebrand.",
+          "eyebrow": "Resource"
+        }
+      ]
+    },
+    {
+      "id": "etsy-image-helper-comparison-etsy-shop-icon-vs-profile-photo",
+      "type": "comparison",
+      "slug": "etsy-shop-icon-vs-profile-photo",
+      "href": "/comparisons/etsy-shop-icon-vs-profile-photo/",
+      "title": "Etsy shop icon vs profile photo and when each matters",
+      "description": "The icon sells the brand mark while the profile photo sells the person behind the shop. Treat them as separate trust layers, not duplicates.",
+      "heroKicker": "Comparison",
+      "heroTitle": "Etsy shop icon vs profile photo and when each matters",
+      "heroIntro": "The icon sells the brand mark while the profile photo sells the person behind the shop. Treat them as separate trust layers, not duplicates.",
+      "metaTitle": "Etsy shop icon vs profile photo and when each matters | Etsy Image Helper",
+      "metaDescription": "The icon sells the brand mark while the profile photo sells the person behind the shop. Treat them as separate trust layers, not duplicates.",
+      "sections": [
+        {
+          "id": "when-shop-icon-wins",
+          "heading": "When shop icon wins",
+          "paragraphs": [
+            "Use the icon for logos, monograms, or simple illustrations that need to look consistent across every Etsy surface."
+          ]
+        },
+        {
+          "id": "when-profile-photo-wins",
+          "heading": "When profile photo wins",
+          "paragraphs": [
+            "Use the profile photo when your shop story matters and you want buyers to connect with the maker behind the products."
+          ]
+        },
+        {
+          "id": "decision-shortcut",
+          "heading": "Decision shortcut",
+          "paragraphs": [
+            "If the surface needs brand recognition, prioritize the icon. If it needs warmth or founder credibility, prioritize the profile photo."
+          ]
+        }
+      ],
+      "cta": {
+        "label": "Open the Etsy image helper",
+        "href": "/tool/",
+        "variant": "primary"
+      },
+      "relatedLinks": [
+        {
+          "href": "/tool/",
+          "label": "Open the Etsy image helper",
+          "description": "Recommended Etsy dimensions, crop guidance, quality warning, and a copyable prep summary.",
+          "eyebrow": "Primary"
+        },
+        {
+          "href": "/guides/etsy-listing-photo-size-guide/",
+          "label": "Etsy listing photo size guide for square-first product shots",
+          "description": "Build listing photos around a square master so one export can handle gallery views, thumbnails, and zoom states without surprise crops.",
+          "eyebrow": "Guide"
+        },
+        {
+          "href": "/comparisons/etsy-big-banner-vs-mini-banner/",
+          "label": "Etsy big banner vs mini banner for handmade shops",
+          "description": "Both banner types can work, but they solve different jobs. One is a statement piece and the other is a lightweight identifier.",
+          "eyebrow": "Compare"
+        },
+        {
+          "href": "/resources/etsy-image-prep-checklist/",
+          "label": "Download prep checklist",
+          "description": "Download a plain-English prep checklist before your next listing update or shop rebrand.",
+          "eyebrow": "Resource"
+        }
+      ]
+    },
+    {
+      "id": "etsy-image-helper-comparison-etsy-square-photos-vs-vertical-photos",
+      "type": "comparison",
+      "slug": "etsy-square-photos-vs-vertical-photos",
+      "href": "/comparisons/etsy-square-photos-vs-vertical-photos/",
+      "title": "Etsy square photos vs vertical photos for catalog consistency",
+      "description": "Square photos are easier to manage at scale, while vertical photos can feel more editorial when the product demands height.",
+      "heroKicker": "Comparison",
+      "heroTitle": "Etsy square photos vs vertical photos for catalog consistency",
+      "heroIntro": "Square photos are easier to manage at scale, while vertical photos can feel more editorial when the product demands height.",
+      "metaTitle": "Etsy square photos vs vertical photos for catalog consistency | Etsy Image Helper",
+      "metaDescription": "Square photos are easier to manage at scale, while vertical photos can feel more editorial when the product demands height.",
+      "sections": [
+        {
+          "id": "when-square-photos-wins",
+          "heading": "When square photos wins",
+          "paragraphs": [
+            "Use square exports when you want consistent thumbnails, faster batch editing, and less unpredictable cropping in category views."
+          ]
+        },
+        {
+          "id": "when-vertical-photos-wins",
+          "heading": "When vertical photos wins",
+          "paragraphs": [
+            "Use vertical compositions when the product needs height, but protect the center area so the image still survives square previews."
+          ]
+        },
+        {
+          "id": "decision-shortcut",
+          "heading": "Decision shortcut",
+          "paragraphs": [
+            "Default to square for repeatable storefront systems and switch to vertical only when the product story clearly improves."
+          ]
+        }
+      ],
+      "cta": {
+        "label": "Open the Etsy image helper",
+        "href": "/tool/",
+        "variant": "primary"
+      },
+      "relatedLinks": [
+        {
+          "href": "/tool/",
+          "label": "Open the Etsy image helper",
+          "description": "Recommended Etsy dimensions, crop guidance, quality warning, and a copyable prep summary.",
+          "eyebrow": "Primary"
+        },
+        {
+          "href": "/guides/etsy-listing-photo-size-guide/",
+          "label": "Etsy listing photo size guide for square-first product shots",
+          "description": "Build listing photos around a square master so one export can handle gallery views, thumbnails, and zoom states without surprise crops.",
+          "eyebrow": "Guide"
+        },
+        {
+          "href": "/comparisons/etsy-big-banner-vs-mini-banner/",
+          "label": "Etsy big banner vs mini banner for handmade shops",
+          "description": "Both banner types can work, but they solve different jobs. One is a statement piece and the other is a lightweight identifier.",
+          "eyebrow": "Compare"
+        },
+        {
+          "href": "/resources/etsy-image-prep-checklist/",
+          "label": "Download prep checklist",
+          "description": "Download a plain-English prep checklist before your next listing update or shop rebrand.",
+          "eyebrow": "Resource"
+        }
+      ]
+    },
+    {
+      "id": "etsy-image-helper-resource-etsy-image-prep-checklist",
+      "type": "resource",
+      "slug": "etsy-image-prep-checklist",
+      "href": "/resources/etsy-image-prep-checklist/",
+      "navLabel": "Checklist",
+      "title": "Etsy image prep checklist",
+      "description": "Download a plain-English prep checklist before your next listing update or shop rebrand.",
+      "heroKicker": "Downloadable resource",
+      "heroTitle": "Etsy image prep checklist",
+      "heroIntro": "Download a plain-English prep checklist before your next listing update or shop rebrand.",
+      "metaTitle": "Etsy image prep checklist | Etsy Image Helper",
+      "metaDescription": "Download a plain-English prep checklist before your next listing update or shop rebrand.",
+      "sections": [
+        {
+          "id": "what-is-inside",
+          "heading": "What is inside",
+          "paragraphs": [
+            "A surface-by-surface export checklist covering listing photos, banners, icons, profile photos, and receipt branding."
+          ]
+        },
+        {
+          "id": "how-to-use-it",
+          "heading": "How to use it",
+          "paragraphs": [
+            "Review the target surface, export from the largest source available, confirm the ratio in the tool, and keep focal content inside the safe area."
+          ]
+        },
+        {
+          "id": "best-follow-up",
+          "heading": "Best follow-up",
+          "paragraphs": [
+            "Pair the checklist with the helper tool so you catch weak source files before you upload."
+          ]
+        },
+        {
+          "id": "download-cta",
+          "heading": "Download it now",
+          "paragraphs": [
+            "The resource is delivered as a plain-text checklist so it stays portable across notes apps, CRMs, project trackers, and print workflows."
+          ],
+          "links": [
+            {
+              "href": "/downloads/etsy-image-prep-checklist.txt",
+              "label": "Download prep checklist",
+              "description": "Download etsy image prep checklist.",
+              "eyebrow": "Download"
+            }
+          ]
+        }
+      ],
+      "cta": {
+        "label": "Download prep checklist",
+        "href": "/downloads/etsy-image-prep-checklist.txt",
+        "variant": "primary"
+      },
+      "relatedLinks": [
+        {
+          "href": "/tool/",
+          "label": "Open the Etsy image helper",
+          "description": "Recommended Etsy dimensions, crop guidance, quality warning, and a copyable prep summary.",
+          "eyebrow": "Primary"
+        },
+        {
+          "href": "/guides/etsy-listing-photo-size-guide/",
+          "label": "Etsy listing photo size guide for square-first product shots",
+          "description": "Build listing photos around a square master so one export can handle gallery views, thumbnails, and zoom states without surprise crops.",
+          "eyebrow": "Guide"
+        },
+        {
+          "href": "/comparisons/etsy-big-banner-vs-mini-banner/",
+          "label": "Etsy big banner vs mini banner for handmade shops",
+          "description": "Both banner types can work, but they solve different jobs. One is a statement piece and the other is a lightweight identifier.",
+          "eyebrow": "Compare"
+        }
+      ]
+    },
+    {
+      "id": "etsy-image-helper-feedback",
+      "type": "feedback",
+      "slug": "feedback",
+      "href": "/feedback/",
+      "title": "What Etsy image workflow should come next?",
+      "description": "This release stays static-first, so the feedback route is a notes page that defines the best next signals to collect once the site earns a lightweight intake flow.",
+      "heroKicker": "Next build",
+      "heroTitle": "What Etsy image workflow should come next?",
+      "heroIntro": "This release stays static-first, so the feedback route is a notes page that defines the best next signals to collect once the site earns a lightweight intake flow.",
+      "metaTitle": "What Etsy image workflow should come next? | Etsy Image Helper",
+      "metaDescription": "This release stays static-first, so the feedback route is a notes page that defines the best next signals to collect once the site earns a lightweight intake flow.",
+      "sections": [
+        {
+          "id": "feedback-prompts",
+          "heading": "Best prompts to collect later",
+          "paragraphs": [
+            "This route stays static-first in the initial release, but it still defines the exact prompts worth collecting once the winning asset earns a lightweight form integration.",
+            "The real job of this page is operator clarity: if the site starts attracting repeat tool use or resource downloads, these prompts tell the next build exactly what friction is still slowing the user down."
+          ],
+          "bullets": [
+            "Which Etsy surface still causes the most resize churn?",
+            "Would a crop simulator or a template pack help more next?",
+            "Which part of the upload workflow still feels fragile after using the helper?"
+          ],
+          "callout": "Keep this page honest until a real winner earns a live form integration.",
+          "links": [
+            {
+              "href": "/tool/",
+              "label": "listing image crop simulator",
+              "description": "Possible next expansion: listing image crop simulator.",
+              "eyebrow": "Expansion"
+            },
+            {
+              "href": "/tool/",
+              "label": "shop branding pack builder",
+              "description": "Possible next expansion: shop branding pack builder.",
+              "eyebrow": "Expansion"
+            },
+            {
+              "href": "/tool/",
+              "label": "seasonal banner planner",
+              "description": "Possible next expansion: seasonal banner planner.",
+              "eyebrow": "Expansion"
+            }
+          ]
+        },
+        {
+          "id": "launch-gating",
+          "heading": "What earns the next feature",
+          "paragraphs": [
+            "A new feature only ships when the current tool shows repeat usage, the supporting pages keep pulling visitors toward the utility, and the next build clearly reduces quoting or preparation friction instead of adding decorative complexity."
+          ],
+          "bullets": [
+            "strong tool engagement",
+            "repeat visits before listing refreshes",
+            "resource download clicks"
+          ]
+        }
+      ],
+      "cta": {
+        "label": "Open the Etsy image helper",
+        "href": "/tool/",
+        "variant": "secondary"
+      },
+      "relatedLinks": [
+        {
+          "href": "/tool/",
+          "label": "Open the Etsy image helper",
+          "description": "Recommended Etsy dimensions, crop guidance, quality warning, and a copyable prep summary.",
+          "eyebrow": "Primary"
+        },
+        {
+          "href": "/guides/etsy-listing-photo-size-guide/",
+          "label": "Etsy listing photo size guide for square-first product shots",
+          "description": "Build listing photos around a square master so one export can handle gallery views, thumbnails, and zoom states without surprise crops.",
+          "eyebrow": "Guide"
+        },
+        {
+          "href": "/comparisons/etsy-big-banner-vs-mini-banner/",
+          "label": "Etsy big banner vs mini banner for handmade shops",
+          "description": "Both banner types can work, but they solve different jobs. One is a statement piece and the other is a lightweight identifier.",
+          "eyebrow": "Compare"
+        },
+        {
+          "href": "/resources/etsy-image-prep-checklist/",
+          "label": "Download prep checklist",
+          "description": "Download a plain-English prep checklist before your next listing update or shop rebrand.",
+          "eyebrow": "Resource"
+        }
+      ]
+    }
+  ],
+  "routes": [
+    {
+      "path": "/",
+      "outputPath": "index.html",
+      "pageId": "etsy-image-helper-home",
+      "layout": "default"
+    },
+    {
+      "path": "/tool/",
+      "outputPath": "tool/index.html",
+      "pageId": "etsy-image-helper-tool",
+      "layout": "tool"
+    },
+    {
+      "path": "/about/why-this-tool-matters/",
+      "outputPath": "about/why-this-tool-matters/index.html",
+      "pageId": "etsy-image-helper-about",
+      "layout": "default"
+    },
+    {
+      "path": "/faq/what-size-should-etsy-listing-photos-be/",
+      "outputPath": "faq/what-size-should-etsy-listing-photos-be/index.html",
+      "pageId": "etsy-image-helper-faq-what-size-should-etsy-listing-photos-be",
+      "layout": "default"
+    },
+    {
+      "path": "/faq/what-size-is-an-etsy-shop-icon/",
+      "outputPath": "faq/what-size-is-an-etsy-shop-icon/index.html",
+      "pageId": "etsy-image-helper-faq-what-size-is-an-etsy-shop-icon",
+      "layout": "default"
+    },
+    {
+      "path": "/faq/how-wide-is-an-etsy-big-banner/",
+      "outputPath": "faq/how-wide-is-an-etsy-big-banner/index.html",
+      "pageId": "etsy-image-helper-faq-how-wide-is-an-etsy-big-banner",
+      "layout": "default"
+    },
+    {
+      "path": "/faq/should-i-use-mini-or-big-banner-on-etsy/",
+      "outputPath": "faq/should-i-use-mini-or-big-banner-on-etsy/index.html",
+      "pageId": "etsy-image-helper-faq-should-i-use-mini-or-big-banner-on-etsy",
+      "layout": "default"
+    },
+    {
+      "path": "/faq/why-do-my-etsy-thumbnails-crop-weirdly/",
+      "outputPath": "faq/why-do-my-etsy-thumbnails-crop-weirdly/index.html",
+      "pageId": "etsy-image-helper-faq-why-do-my-etsy-thumbnails-crop-weirdly",
+      "layout": "default"
+    },
+    {
+      "path": "/faq/can-i-fix-a-small-etsy-image-with-upscaling/",
+      "outputPath": "faq/can-i-fix-a-small-etsy-image-with-upscaling/index.html",
+      "pageId": "etsy-image-helper-faq-can-i-fix-a-small-etsy-image-with-upscaling",
+      "layout": "default"
+    },
+    {
+      "path": "/guides/etsy-listing-photo-size-guide/",
+      "outputPath": "guides/etsy-listing-photo-size-guide/index.html",
+      "pageId": "etsy-image-helper-guide-etsy-listing-photo-size-guide",
+      "layout": "default"
+    },
+    {
+      "path": "/guides/etsy-banner-safe-area-guide/",
+      "outputPath": "guides/etsy-banner-safe-area-guide/index.html",
+      "pageId": "etsy-image-helper-guide-etsy-banner-safe-area-guide",
+      "layout": "default"
+    },
+    {
+      "path": "/guides/etsy-thumbnail-crop-tips/",
+      "outputPath": "guides/etsy-thumbnail-crop-tips/index.html",
+      "pageId": "etsy-image-helper-guide-etsy-thumbnail-crop-tips",
+      "layout": "default"
+    },
+    {
+      "path": "/guides/etsy-shop-icon-design-rules/",
+      "outputPath": "guides/etsy-shop-icon-design-rules/index.html",
+      "pageId": "etsy-image-helper-guide-etsy-shop-icon-design-rules",
+      "layout": "default"
+    },
+    {
+      "path": "/guides/etsy-profile-photo-sizing-workflow/",
+      "outputPath": "guides/etsy-profile-photo-sizing-workflow/index.html",
+      "pageId": "etsy-image-helper-guide-etsy-profile-photo-sizing-workflow",
+      "layout": "default"
+    },
+    {
+      "path": "/guides/etsy-order-receipt-banner-setup/",
+      "outputPath": "guides/etsy-order-receipt-banner-setup/index.html",
+      "pageId": "etsy-image-helper-guide-etsy-order-receipt-banner-setup",
+      "layout": "default"
+    },
+    {
+      "path": "/comparisons/etsy-big-banner-vs-mini-banner/",
+      "outputPath": "comparisons/etsy-big-banner-vs-mini-banner/index.html",
+      "pageId": "etsy-image-helper-comparison-etsy-big-banner-vs-mini-banner",
+      "layout": "default"
+    },
+    {
+      "path": "/comparisons/etsy-shop-icon-vs-profile-photo/",
+      "outputPath": "comparisons/etsy-shop-icon-vs-profile-photo/index.html",
+      "pageId": "etsy-image-helper-comparison-etsy-shop-icon-vs-profile-photo",
+      "layout": "default"
+    },
+    {
+      "path": "/comparisons/etsy-square-photos-vs-vertical-photos/",
+      "outputPath": "comparisons/etsy-square-photos-vs-vertical-photos/index.html",
+      "pageId": "etsy-image-helper-comparison-etsy-square-photos-vs-vertical-photos",
+      "layout": "default"
+    },
+    {
+      "path": "/resources/etsy-image-prep-checklist/",
+      "outputPath": "resources/etsy-image-prep-checklist/index.html",
+      "pageId": "etsy-image-helper-resource-etsy-image-prep-checklist",
+      "layout": "default"
+    },
+    {
+      "path": "/feedback/",
+      "outputPath": "feedback/index.html",
+      "pageId": "etsy-image-helper-feedback",
+      "layout": "default"
+    }
+  ],
+  "tool": {
+    "id": "etsy-image-helper-etsy-image-helper",
+    "name": "Etsy image helper tool",
+    "description": "Recommended Etsy dimensions, crop guidance, quality warning, and a copyable prep summary.",
+    "component": "etsy-image-helper",
+    "default_values": {
+      "presetId": "listing-photo",
+      "width": 2000,
+      "height": 2000,
+      "cropPreference": "center"
+    },
+    "fields": [
+      {
+        "id": "primary",
+        "label": "Surface preset",
+        "inputType": "number",
+        "required": true
+      },
+      {
+        "id": "secondary",
+        "label": "Source width and height",
+        "inputType": "number",
+        "required": true
+      },
+      {
+        "id": "tertiary",
+        "label": "Crop preference",
+        "inputType": "radio",
+        "required": true
+      }
+    ]
+  },
+  "resourceDownloadHref": "/downloads/etsy-image-prep-checklist.txt",
+  "runtime": {
+    "analytics": {
+      "provider": "cloudflare",
+      "webAnalyticsMode": "pages"
+    },
+    "lastBuildAt": "2026-03-07T19:09:44.136Z",
+    "cloudflareProjectName": "lump-zero-etsy-image-helper",
+    "theme": {
+      "accent": "#0e7c86",
+      "accent_strong": "#074d54",
+      "accent_warm": "#d87935",
+      "accent_rose": "#9f5d5c",
+      "background_start": "#fcf6ee",
+      "background_mid": "#f2e7d6",
+      "background_end": "#ebdcc8",
+      "glow_one": "rgba(216, 121, 53, 0.28)",
+      "glow_two": "rgba(14, 124, 134, 0.2)"
+    }
+  }
+}

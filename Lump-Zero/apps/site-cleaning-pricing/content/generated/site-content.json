@@ -1,0 +1,1989 @@
+{
+  "brief": {
+    "id": "cleaning-pricing",
+    "name": "Cleaning Pricing Calculator",
+    "slug": "cleaning-pricing",
+    "target_user": "Independent house cleaners and small cleaning teams who need a faster way to quote jobs without underpricing labor.",
+    "core_problem": "Cleaners lose time and margin when every estimate starts from scratch, especially when service type, frequency, and add-ons change the scope.",
+    "primary_intent": [
+      "cleaning pricing calculator",
+      "house cleaning estimate calculator",
+      "how much should I charge for house cleaning"
+    ],
+    "secondary_intent": [
+      "deep cleaning price guide",
+      "recurring cleaning pricing",
+      "move-out cleaning estimate"
+    ],
+    "tool_type": "calculator",
+    "tool_output": "Working estimate range, average quote anchor, pricing notes, and a printable summary.",
+    "content_clusters": [
+      "estimate math",
+      "service scope comparisons",
+      "recurring pricing",
+      "add-on pricing",
+      "quote templates"
+    ],
+    "monetization_path": [
+      "premium estimate template pack",
+      "waitlist for advanced quoting tool"
+    ],
+    "expansion_paths": [
+      "recurring route planner",
+      "walkthrough checklist generator",
+      "quote follow-up template pack"
+    ],
+    "constraints": [
+      "static only",
+      "no backend",
+      "no auth",
+      "no paid APIs"
+    ],
+    "success_signals": [
+      "strong tool engagement",
+      "repeat visits before quote sends",
+      "checklist downloads"
+    ],
+    "risk_notes": [
+      "frame outputs as planning support, not guaranteed market pricing",
+      "avoid legal or tax advice"
+    ],
+    "site_config": {
+      "navigation_labels": {
+        "home": "Home",
+        "tool": "Estimator",
+        "guides": "Guides",
+        "resource": "Checklist",
+        "feedback": "Next Build"
+      },
+      "cta_labels": {
+        "primary": "Open the pricing estimator",
+        "resource": "Download the pricing checklist"
+      },
+      "resource_label": "Download pricing checklist",
+      "homepage": {
+        "hero_kicker": "Fast quote support",
+        "hero_title": "Cleaning pricing calculator for independent cleaners",
+        "hero_intro": "Build a working estimate fast, explain your number clearly, and stop rebuilding every quote from scratch.",
+        "lede": "This site pairs a practical estimator with scope guides, pricing comparisons, and a plain-English checklist for cleaning teams that need speed without sloppy math.",
+        "value_intro": "The goal is not fake precision. The goal is a faster quoting workflow that still respects labor, frequency, and add-on scope.",
+        "value_points": [
+          "Get a fast range before you write or text a quote.",
+          "Use repeatable pricing notes instead of rethinking the whole job every time.",
+          "Move from quick math to a cleaner estimate workflow with one checklist."
+        ],
+        "next_step": "Start with the estimator, then use the recurring pricing and service-type guides to tighten the quote before you send it.",
+        "workflow_steps": [
+          "Enter the square footage and room count.",
+          "Choose service type, frequency, and add-ons.",
+          "Copy or print the result before sending the quote."
+        ],
+        "who_for_title": "Who this is for",
+        "who_for_body": "Use this when you are a solo cleaner or a small team that needs a fast working estimate before walking the job, texting a client back, or packaging recurring service.",
+        "tool_preview_title": "What the estimator gives you",
+        "tool_preview_body": "The calculator returns a working range, an average quoting anchor, and scope notes you can keep in your head while you refine the final number.",
+        "faq_preview_title": "Common pricing questions",
+        "faq_preview_intro": "These are the practical pricing questions that usually slow cleaners down in the middle of quoting.",
+        "comparison_preview_title": "Scope comparisons worth checking",
+        "comparison_preview_intro": "Deep clean, move-out, recurring, and standard work should not all be quoted the same way.",
+        "resource_preview_title": "Keep the workflow portable",
+        "resource_preview_intro": "Use the checklist when you want the same quoting rhythm across texts, calls, and walkthrough notes."
+      },
+      "tool_page": {
+        "hero_kicker": "Live estimator",
+        "title": "Cleaning pricing estimator",
+        "intro": "Choose the job shape, add the room count, and get a working price range before you commit to the final quote.",
+        "inputs_intro": "Keep the first pass lean so you can quote quickly and refine only where the job actually changes.",
+        "input_labels": [
+          "Square footage",
+          "Bedrooms and bathrooms",
+          "Service type and frequency"
+        ],
+        "result_intro": "The result is a working range, not a fake guarantee.",
+        "result_detail": "Use the average target as your anchor, then adjust for travel, condition, pet hair, lockouts, stairs, or client-specific requests.",
+        "trust_title": "How to use the result",
+        "trust_paragraphs": [
+          "The estimator is designed to speed up the first pricing pass, not replace judgment about condition, travel, or unusual labor.",
+          "If the job includes heavy buildup, clutter, or access friction, move upward from the range instead of pretending the baseline math covers everything."
+        ],
+        "trust_callout": "Static-first rule: the estimator runs fully in the browser, so you can use it on a phone between walkthroughs or while replying to a quote request.",
+        "next_steps": [
+          "Use the average target as your quoting anchor.",
+          "Adjust upward for difficult access or heavy condition.",
+          "Copy or print the summary before you send the quote."
+        ]
+      },
+      "about_page": {
+        "title": "Why cleaning estimates break when the workflow is too loose",
+        "lede": "A quote process feels slow when every inquiry forces you to recalculate the same scope decisions from memory.",
+        "takeaway": "Standardize the first pass and you protect both your time and your margin.",
+        "detail": "Once you separate standard, deep, and move-out work, then layer in frequency and add-ons, pricing becomes easier to explain and easier to repeat.",
+        "next_action": "Run the estimator first, then use the guides to tighten the number before you send the final quote."
+      },
+      "feedback_page": {
+        "hero_kicker": "Next build",
+        "title": "What should the next cleaning tool solve?",
+        "intro": "This release stays static-first, so the feedback route is a notes page that defines the best next signals to collect once the niche earns a lightweight intake flow.",
+        "prompts_title": "Best prompts to collect later",
+        "prompts": [
+          "Which part of quoting still feels slow after using the estimator?",
+          "Do you need a walkthrough checklist, a route planner, or a quote follow-up template next?",
+          "Which service type creates the most pricing uncertainty in your market?"
+        ],
+        "callout": "Keep this page honest until a real winner earns a form integration."
+      },
+      "tool": {
+        "component": "cleaning-pricing-estimator",
+        "default_values": {
+          "squareFootage": 1400,
+          "bedrooms": 3,
+          "bathrooms": 2,
+          "serviceType": "standard",
+          "frequency": "one-time"
+        }
+      },
+      "theme": {
+        "accent": "#2b7a53",
+        "accent_strong": "#165536",
+        "accent_warm": "#d08a2f",
+        "accent_rose": "#8b5f50",
+        "background_start": "#f6f2e8",
+        "background_mid": "#ebe6d5",
+        "background_end": "#dfd7c1",
+        "glow_one": "rgba(208, 138, 47, 0.24)",
+        "glow_two": "rgba(43, 122, 83, 0.2)"
+      }
+    },
+    "content_plan": {
+      "faq_topics": [
+        {
+          "slug": "how-much-should-i-charge-for-house-cleaning",
+          "question": "How much should I charge for house cleaning?",
+          "short_answer": "Start with a repeatable baseline tied to square footage, room count, service type, and frequency, then adjust for condition and access instead of guessing from memory.",
+          "reason": "A fast baseline keeps you from underpricing busy weeks and overthinking easy jobs.",
+          "next_step": "Run the estimator with the current job details before you text back a quote."
+        },
+        {
+          "slug": "should-deep-cleaning-cost-more-than-standard-cleaning",
+          "question": "Should deep cleaning cost more than standard cleaning?",
+          "short_answer": "Yes. Deep cleaning takes longer, includes more detail work, and usually needs a larger first-visit buffer than standard recurring service.",
+          "reason": "Treating deep cleans like standard maintenance work compresses your margin fast.",
+          "next_step": "Compare standard and deep-clean guidance before bundling both into one price."
+        },
+        {
+          "slug": "should-i-discount-recurring-cleaning",
+          "question": "Should I discount recurring cleaning?",
+          "short_answer": "Usually yes, but only because recurring homes are easier to maintain over time, not because the work is magically cheap.",
+          "reason": "A small recurring discount can improve retention while still protecting your labor rate.",
+          "next_step": "Use the frequency selector in the estimator to see how the quote range changes."
+        },
+        {
+          "slug": "do-add-ons-need-separate-pricing",
+          "question": "Do add-ons need separate pricing?",
+          "short_answer": "They should. Fridge, oven, interior windows, and laundry-style extras create extra labor that should not disappear inside the base price.",
+          "reason": "Clear add-on pricing keeps the quote cleaner for both you and the client.",
+          "next_step": "Toggle the add-ons in the estimator before packaging the final number."
+        },
+        {
+          "slug": "should-small-homes-have-a-minimum-price",
+          "question": "Should small homes have a minimum price?",
+          "short_answer": "Usually yes. Very small jobs still carry travel time, setup time, and communication overhead.",
+          "reason": "Pure square-foot math can underprice short visits unless you respect the minimum effort required to show up.",
+          "next_step": "Use the estimator, then compare the result to your minimum visit target."
+        },
+        {
+          "slug": "how-do-i-price-move-out-cleaning",
+          "question": "How do I price move-out cleaning?",
+          "short_answer": "Price move-out work higher than a standard clean because empty homes expose more detail work and clients often expect a near-reset condition.",
+          "reason": "Move-out cleaning carries tighter expectations and less margin for missed details.",
+          "next_step": "Use the move-out setting in the estimator and then review the comparison guide."
+        }
+      ],
+      "guides": [
+        {
+          "slug": "cleaning-pricing-baseline-guide",
+          "title": "Cleaning pricing baseline guide for solo cleaners",
+          "lede": "Build a fast baseline first so every quote starts from the same logic instead of the mood of the moment.",
+          "takeaway": "Stable quote math protects both your speed and your margin.",
+          "detail": "Separate square footage, room count, service type, and extras before you touch final judgment calls like travel or condition.",
+          "next_action": "Open the estimator and check your next job against the baseline before you adjust the final number."
+        },
+        {
+          "slug": "deep-cleaning-price-guide",
+          "title": "Deep cleaning price guide for first-visit jobs",
+          "lede": "Deep cleaning is not just more time. It is a different scope with more detail work and more room for underpricing.",
+          "takeaway": "Quote deep cleans as a scope tier, not a small add-on.",
+          "detail": "First visits often include buildup, reset work, and client expectations that do not belong inside a maintenance rate.",
+          "next_action": "Compare the deep-clean result to the standard-clean result before you send the quote."
+        },
+        {
+          "slug": "recurring-cleaning-pricing-workflow",
+          "title": "Recurring cleaning pricing workflow that protects your margin",
+          "lede": "Recurring work can justify a discount, but only when the scope really becomes easier to maintain over time.",
+          "takeaway": "Discount the rhythm, not the labor value.",
+          "detail": "Weekly and biweekly service usually reduce reset time, while monthly work can still feel closer to a light deep clean.",
+          "next_action": "Use the frequency selector to see how the working range changes before you offer the recurring rate."
+        },
+        {
+          "slug": "add-on-pricing-guide-for-cleaners",
+          "title": "Add-on pricing guide for fridge, oven, windows, and extras",
+          "lede": "Add-ons should stay visible in the quote so the client understands the price and you understand the margin.",
+          "takeaway": "Clear extras are easier to sell and easier to protect.",
+          "detail": "Fridge interiors, oven degreasing, inside windows, and laundry extras all carry time that disappears when buried in the base rate.",
+          "next_action": "Toggle the add-ons in the estimator and copy the result before sending the quote."
+        },
+        {
+          "slug": "move-out-cleaning-estimate-workflow",
+          "title": "Move-out cleaning estimate workflow for higher-expectation jobs",
+          "lede": "Empty homes often look simple, but they expose every missed detail and tend to carry tighter client expectations.",
+          "takeaway": "Move-out pricing needs a bigger labor buffer than maintenance cleaning.",
+          "detail": "The lack of furniture does not automatically make the work easier when the condition is rough or the turnover deadline is tight.",
+          "next_action": "Use the move-out option in the estimator and check the range against your condition notes."
+        },
+        {
+          "slug": "cleaning-quote-text-template-workflow",
+          "title": "Cleaning quote text template workflow after the estimate is ready",
+          "lede": "The quote itself should be short, clear, and tied to the scope decisions you already made in the estimator.",
+          "takeaway": "A cleaner quote message reduces back-and-forth and protects the agreed scope.",
+          "detail": "Restate the service type, frequency, extras, and final number so the estimate does not get fuzzy once the client replies.",
+          "next_action": "Copy the estimate summary and pair it with your normal quote template."
+        }
+      ],
+      "comparisons": [
+        {
+          "slug": "standard-vs-deep-cleaning-pricing",
+          "title": "Standard vs deep cleaning pricing and when each should cost more",
+          "lede": "Standard and deep cleaning are different jobs. Mixing them into one loose quote usually punishes the cleaner.",
+          "option_one": "standard cleaning",
+          "option_one_body": "Use a standard-cleaning rate when the home is already maintained and the visit mainly protects the current condition.",
+          "option_two": "deep cleaning",
+          "option_two_body": "Use a higher deep-cleaning rate when the home needs reset work, heavier detail attention, or buildup removal.",
+          "decision_shortcut": "If the home needs reset labor before maintenance can begin, price it as a deep clean."
+        },
+        {
+          "slug": "one-time-vs-recurring-cleaning-pricing",
+          "title": "One-time vs recurring cleaning pricing and where the discount belongs",
+          "lede": "One-time work and recurring work create different labor patterns, so the quote should reflect the rhythm instead of flattening everything.",
+          "option_one": "one-time cleaning",
+          "option_one_body": "Use a higher one-time rate when each visit starts cold and the home may need more reset work.",
+          "option_two": "recurring cleaning",
+          "option_two_body": "Use a recurring rate when consistent service lowers setup time and makes the home easier to maintain over time.",
+          "decision_shortcut": "If repeated visits genuinely reduce effort, discount the recurring service slightly instead of discounting the one-time job."
+        },
+        {
+          "slug": "flat-rate-vs-hourly-cleaning-pricing",
+          "title": "Flat-rate vs hourly cleaning pricing for small teams",
+          "lede": "Both pricing models can work, but flat-rate quoting usually scales better once your scope math is consistent.",
+          "option_one": "flat-rate pricing",
+          "option_one_body": "Use flat-rate pricing when you know the scope well enough to package the work cleanly and avoid constant time math during the quote.",
+          "option_two": "hourly pricing",
+          "option_two_body": "Use hourly pricing when the scope is uncertain, access is messy, or the client keeps changing the work list.",
+          "decision_shortcut": "Default to flat-rate when the scope is stable and switch to hourly when uncertainty is still too high."
+        }
+      ],
+      "resource": {
+        "slug": "cleaning-pricing-checklist",
+        "title": "Cleaning pricing checklist",
+        "lede": "Download a portable quoting checklist before your next estimate call or walkthrough.",
+        "resource_contents": "A plain-English checklist covering baseline math, service type, frequency, add-ons, minimum pricing, and quote follow-up.",
+        "usage_steps": "Start with the estimator, check the scope decisions, confirm add-ons, and copy the summary before sending the quote.",
+        "next_action": "Pair the checklist with the estimator so your quote rhythm stays consistent across inquiries."
+      }
+    }
+  },
+  "navigation": [
+    {
+      "href": "/",
+      "label": "Home",
+      "description": "Return to the Cleaning Pricing Calculator homepage.",
+      "eyebrow": "Base"
+    },
+    {
+      "href": "/tool/",
+      "label": "Estimator",
+      "description": "Working estimate range, average quote anchor, pricing notes, and a printable summary.",
+      "eyebrow": "Tool"
+    },
+    {
+      "href": "/guides/cleaning-pricing-baseline-guide/",
+      "label": "Guides",
+      "description": "Build a fast baseline first so every quote starts from the same logic instead of the mood of the moment.",
+      "eyebrow": "Guides"
+    },
+    {
+      "href": "/resources/cleaning-pricing-checklist/",
+      "label": "Checklist",
+      "description": "Download a portable quoting checklist before your next estimate call or walkthrough.",
+      "eyebrow": "Resource"
+    },
+    {
+      "href": "/feedback/",
+      "label": "Next Build",
+      "description": "This release stays static-first, so the feedback route is a notes page that defines the best next signals to collect once the niche earns a lightweight intake flow.",
+      "eyebrow": "Feedback"
+    }
+  ],
+  "pages": [
+    {
+      "id": "cleaning-pricing-home",
+      "type": "home",
+      "slug": "",
+      "href": "/",
+      "navLabel": "Home",
+      "title": "Cleaning Pricing Calculator",
+      "description": "Cleaners lose time and margin when every estimate starts from scratch, especially when service type, frequency, and add-ons change the scope.",
+      "heroKicker": "Fast quote support",
+      "heroTitle": "Cleaning pricing calculator for independent cleaners",
+      "heroIntro": "Build a working estimate fast, explain your number clearly, and stop rebuilding every quote from scratch.",
+      "metaTitle": "Cleaning Pricing Calculator | cleaning pricing calculator",
+      "metaDescription": "Build a working estimate fast, explain your number clearly, and stop rebuilding every quote from scratch.",
+      "sections": [
+        {
+          "id": "what-you-get",
+          "heading": "What you get",
+          "paragraphs": [
+            "The goal is not fake precision. The goal is a faster quoting workflow that still respects labor, frequency, and add-on scope."
+          ],
+          "bullets": [
+            "Get a fast range before you write or text a quote.",
+            "Use repeatable pricing notes instead of rethinking the whole job every time.",
+            "Move from quick math to a cleaner estimate workflow with one checklist."
+          ]
+        },
+        {
+          "id": "best-next-step",
+          "heading": "Best next step",
+          "paragraphs": [
+            "Start with the estimator, then use the recurring pricing and service-type guides to tighten the quote before you send it."
+          ]
+        },
+        {
+          "id": "who-this-is-for",
+          "heading": "Who this is for",
+          "paragraphs": [
+            "Use this when you are a solo cleaner or a small team that needs a fast working estimate before walking the job, texting a client back, or packaging recurring service.",
+            "Core problem: Cleaners lose time and margin when every estimate starts from scratch, especially when service type, frequency, and add-ons change the scope."
+          ],
+          "bullets": [
+            "estimate math",
+            "service scope comparisons",
+            "recurring pricing",
+            "add-on pricing"
+          ]
+        },
+        {
+          "id": "tool-preview",
+          "heading": "What the estimator gives you",
+          "paragraphs": [
+            "The calculator returns a working range, an average quoting anchor, and scope notes you can keep in your head while you refine the final number."
+          ],
+          "bullets": [
+            "Square footage",
+            "Bedrooms and bathrooms",
+            "Service type and frequency"
+          ],
+          "links": [
+            {
+              "href": "/tool/",
+              "label": "Open the pricing estimator",
+              "description": "Working estimate range, average quote anchor, pricing notes, and a printable summary.",
+              "eyebrow": "Primary"
+            },
+            {
+              "href": "/guides/cleaning-pricing-baseline-guide/",
+              "label": "Cleaning pricing baseline guide for solo cleaners",
+              "description": "Build a fast baseline first so every quote starts from the same logic instead of the mood of the moment.",
+              "eyebrow": "Guide"
+            }
+          ]
+        },
+        {
+          "id": "workflow",
+          "heading": "Three-step workflow",
+          "paragraphs": [
+            "The factory standard is speed to value in one visit: inputs first, result second, next action third."
+          ],
+          "bullets": [
+            "Enter the square footage and room count.",
+            "Choose service type, frequency, and add-ons.",
+            "Copy or print the result before sending the quote."
+          ]
+        },
+        {
+          "id": "faq-preview",
+          "heading": "Common pricing questions",
+          "paragraphs": [
+            "These are the practical pricing questions that usually slow cleaners down in the middle of quoting."
+          ],
+          "links": [
+            {
+              "href": "/faq/how-much-should-i-charge-for-house-cleaning/",
+              "label": "How much should I charge for house cleaning?",
+              "description": "Start with a repeatable baseline tied to square footage, room count, service type, and frequency, then adjust for condition and access instead of guessing from memory.",
+              "eyebrow": "FAQ"
+            },
+            {
+              "href": "/faq/should-deep-cleaning-cost-more-than-standard-cleaning/",
+              "label": "Should deep cleaning cost more than standard cleaning?",
+              "description": "Yes. Deep cleaning takes longer, includes more detail work, and usually needs a larger first-visit buffer than standard recurring service.",
+              "eyebrow": "FAQ"
+            },
+            {
+              "href": "/faq/should-i-discount-recurring-cleaning/",
+              "label": "Should I discount recurring cleaning?",
+              "description": "Usually yes, but only because recurring homes are easier to maintain over time, not because the work is magically cheap.",
+              "eyebrow": "FAQ"
+            }
+          ]
+        },
+        {
+          "id": "comparison-preview",
+          "heading": "Scope comparisons worth checking",
+          "paragraphs": [
+            "Deep clean, move-out, recurring, and standard work should not all be quoted the same way."
+          ],
+          "links": [
+            {
+              "href": "/comparisons/standard-vs-deep-cleaning-pricing/",
+              "label": "Standard vs deep cleaning pricing and when each should cost more",
+              "description": "Standard and deep cleaning are different jobs. Mixing them into one loose quote usually punishes the cleaner.",
+              "eyebrow": "Compare"
+            },
+            {
+              "href": "/comparisons/one-time-vs-recurring-cleaning-pricing/",
+              "label": "One-time vs recurring cleaning pricing and where the discount belongs",
+              "description": "One-time work and recurring work create different labor patterns, so the quote should reflect the rhythm instead of flattening everything.",
+              "eyebrow": "Compare"
+            }
+          ]
+        },
+        {
+          "id": "resource-preview",
+          "heading": "Keep the workflow portable",
+          "paragraphs": [
+            "Use the checklist when you want the same quoting rhythm across texts, calls, and walkthrough notes."
+          ],
+          "links": [
+            {
+              "href": "/resources/cleaning-pricing-checklist/",
+              "label": "Download pricing checklist",
+              "description": "Download a portable quoting checklist before your next estimate call or walkthrough.",
+              "eyebrow": "Resource"
+            }
+          ]
+        }
+      ],
+      "cta": {
+        "label": "Open the pricing estimator",
+        "href": "/tool/",
+        "variant": "primary"
+      },
+      "relatedLinks": [
+        {
+          "href": "/tool/",
+          "label": "Open the pricing estimator",
+          "description": "Working estimate range, average quote anchor, pricing notes, and a printable summary.",
+          "eyebrow": "Primary"
+        },
+        {
+          "href": "/guides/cleaning-pricing-baseline-guide/",
+          "label": "Cleaning pricing baseline guide for solo cleaners",
+          "description": "Build a fast baseline first so every quote starts from the same logic instead of the mood of the moment.",
+          "eyebrow": "Guide"
+        },
+        {
+          "href": "/comparisons/standard-vs-deep-cleaning-pricing/",
+          "label": "Standard vs deep cleaning pricing and when each should cost more",
+          "description": "Standard and deep cleaning are different jobs. Mixing them into one loose quote usually punishes the cleaner.",
+          "eyebrow": "Compare"
+        },
+        {
+          "href": "/resources/cleaning-pricing-checklist/",
+          "label": "Download pricing checklist",
+          "description": "Download a portable quoting checklist before your next estimate call or walkthrough.",
+          "eyebrow": "Resource"
+        }
+      ]
+    },
+    {
+      "id": "cleaning-pricing-tool",
+      "type": "tool",
+      "slug": "tool",
+      "href": "/tool/",
+      "navLabel": "Estimator",
+      "title": "Cleaning pricing estimator",
+      "description": "Working estimate range, average quote anchor, pricing notes, and a printable summary.",
+      "heroKicker": "Live estimator",
+      "heroTitle": "Cleaning pricing estimator",
+      "heroIntro": "Choose the job shape, add the room count, and get a working price range before you commit to the final quote.",
+      "metaTitle": "Cleaning pricing estimator | Cleaning Pricing Calculator",
+      "metaDescription": "Working estimate range, average quote anchor, pricing notes, and a printable summary.",
+      "sections": [
+        {
+          "id": "inputs-to-gather",
+          "heading": "Inputs to gather",
+          "paragraphs": [
+            "Keep the first pass lean so you can quote quickly and refine only where the job actually changes."
+          ],
+          "bullets": [
+            "Square footage",
+            "Bedrooms and bathrooms",
+            "Service type and frequency"
+          ]
+        },
+        {
+          "id": "result-to-expect",
+          "heading": "Result to expect",
+          "paragraphs": [
+            "The result is a working range, not a fake guarantee.",
+            "Use the average target as your anchor, then adjust for travel, condition, pet hair, lockouts, stairs, or client-specific requests."
+          ]
+        },
+        {
+          "id": "tool-trust",
+          "heading": "How to use the result",
+          "paragraphs": [
+            "The estimator is designed to speed up the first pricing pass, not replace judgment about condition, travel, or unusual labor.",
+            "If the job includes heavy buildup, clutter, or access friction, move upward from the range instead of pretending the baseline math covers everything."
+          ],
+          "bullets": [
+            "Use the average target as your quoting anchor.",
+            "Adjust upward for difficult access or heavy condition.",
+            "Copy or print the summary before you send the quote."
+          ],
+          "callout": "Static-first rule: the estimator runs fully in the browser, so you can use it on a phone between walkthroughs or while replying to a quote request."
+        }
+      ],
+      "cta": {
+        "label": "Download the pricing checklist",
+        "href": "/resources/cleaning-pricing-checklist/",
+        "variant": "secondary"
+      },
+      "toolMountId": "calculator",
+      "relatedLinks": [
+        {
+          "href": "/guides/cleaning-pricing-baseline-guide/",
+          "label": "Cleaning pricing baseline guide for solo cleaners",
+          "description": "Build a fast baseline first so every quote starts from the same logic instead of the mood of the moment.",
+          "eyebrow": "Guide"
+        },
+        {
+          "href": "/comparisons/standard-vs-deep-cleaning-pricing/",
+          "label": "Standard vs deep cleaning pricing and when each should cost more",
+          "description": "Standard and deep cleaning are different jobs. Mixing them into one loose quote usually punishes the cleaner.",
+          "eyebrow": "Compare"
+        },
+        {
+          "href": "/resources/cleaning-pricing-checklist/",
+          "label": "Download pricing checklist",
+          "description": "Download a portable quoting checklist before your next estimate call or walkthrough.",
+          "eyebrow": "Resource"
+        }
+      ]
+    },
+    {
+      "id": "cleaning-pricing-about",
+      "type": "about",
+      "slug": "why-this-tool-matters",
+      "href": "/about/why-this-tool-matters/",
+      "title": "Why cleaning estimates break when the workflow is too loose",
+      "description": "Cleaners lose time and margin when every estimate starts from scratch, especially when service type, frequency, and add-ons change the scope.",
+      "heroKicker": "Problem explainer",
+      "heroTitle": "Why cleaning estimates break when the workflow is too loose",
+      "heroIntro": "A quote process feels slow when every inquiry forces you to recalculate the same scope decisions from memory.",
+      "metaTitle": "Why cleaning estimates break when the workflow is too loose | Cleaning Pricing Calculator",
+      "metaDescription": "A quote process feels slow when every inquiry forces you to recalculate the same scope decisions from memory.",
+      "sections": [
+        {
+          "id": "key-takeaway",
+          "heading": "Key takeaway",
+          "paragraphs": [
+            "Standardize the first pass and you protect both your time and your margin."
+          ]
+        },
+        {
+          "id": "practical-detail",
+          "heading": "Practical detail",
+          "paragraphs": [
+            "Once you separate standard, deep, and move-out work, then layer in frequency and add-ons, pricing becomes easier to explain and easier to repeat."
+          ]
+        },
+        {
+          "id": "next-action",
+          "heading": "Next action",
+          "paragraphs": [
+            "Run the estimator first, then use the guides to tighten the number before you send the final quote."
+          ]
+        }
+      ],
+      "cta": {
+        "label": "Open the pricing estimator",
+        "href": "/tool/",
+        "variant": "primary"
+      },
+      "relatedLinks": [
+        {
+          "href": "/tool/",
+          "label": "Open the pricing estimator",
+          "description": "Working estimate range, average quote anchor, pricing notes, and a printable summary.",
+          "eyebrow": "Primary"
+        },
+        {
+          "href": "/guides/cleaning-pricing-baseline-guide/",
+          "label": "Cleaning pricing baseline guide for solo cleaners",
+          "description": "Build a fast baseline first so every quote starts from the same logic instead of the mood of the moment.",
+          "eyebrow": "Guide"
+        },
+        {
+          "href": "/comparisons/standard-vs-deep-cleaning-pricing/",
+          "label": "Standard vs deep cleaning pricing and when each should cost more",
+          "description": "Standard and deep cleaning are different jobs. Mixing them into one loose quote usually punishes the cleaner.",
+          "eyebrow": "Compare"
+        },
+        {
+          "href": "/resources/cleaning-pricing-checklist/",
+          "label": "Download pricing checklist",
+          "description": "Download a portable quoting checklist before your next estimate call or walkthrough.",
+          "eyebrow": "Resource"
+        }
+      ]
+    },
+    {
+      "id": "cleaning-pricing-faq-how-much-should-i-charge-for-house-cleaning",
+      "type": "faq",
+      "slug": "how-much-should-i-charge-for-house-cleaning",
+      "href": "/faq/how-much-should-i-charge-for-house-cleaning/",
+      "title": "How much should I charge for house cleaning?",
+      "description": "Start with a repeatable baseline tied to square footage, room count, service type, and frequency, then adjust for condition and access instead of guessing from memory.",
+      "heroKicker": "FAQ",
+      "heroTitle": "How much should I charge for house cleaning?",
+      "heroIntro": "A short answer is useful, but the real leverage comes from understanding the decision behind it.",
+      "metaTitle": "How much should I charge for house cleaning? | Cleaning Pricing Calculator",
+      "metaDescription": "Start with a repeatable baseline tied to square footage, room count, service type, and frequency, then adjust for condition and access instead of guessing from memory.",
+      "sections": [
+        {
+          "id": "direct-answer",
+          "heading": "Direct answer",
+          "paragraphs": [
+            "Start with a repeatable baseline tied to square footage, room count, service type, and frequency, then adjust for condition and access instead of guessing from memory."
+          ]
+        },
+        {
+          "id": "why-it-matters",
+          "heading": "Why it matters",
+          "paragraphs": [
+            "A fast baseline keeps you from underpricing busy weeks and overthinking easy jobs."
+          ]
+        },
+        {
+          "id": "next-step",
+          "heading": "Next step",
+          "paragraphs": [
+            "Run the estimator with the current job details before you text back a quote."
+          ]
+        }
+      ],
+      "cta": {
+        "label": "Open the pricing estimator",
+        "href": "/tool/",
+        "variant": "primary"
+      },
+      "relatedLinks": [
+        {
+          "href": "/tool/",
+          "label": "Open the pricing estimator",
+          "description": "Working estimate range, average quote anchor, pricing notes, and a printable summary.",
+          "eyebrow": "Primary"
+        },
+        {
+          "href": "/guides/cleaning-pricing-baseline-guide/",
+          "label": "Cleaning pricing baseline guide for solo cleaners",
+          "description": "Build a fast baseline first so every quote starts from the same logic instead of the mood of the moment.",
+          "eyebrow": "Guide"
+        },
+        {
+          "href": "/comparisons/standard-vs-deep-cleaning-pricing/",
+          "label": "Standard vs deep cleaning pricing and when each should cost more",
+          "description": "Standard and deep cleaning are different jobs. Mixing them into one loose quote usually punishes the cleaner.",
+          "eyebrow": "Compare"
+        },
+        {
+          "href": "/resources/cleaning-pricing-checklist/",
+          "label": "Download pricing checklist",
+          "description": "Download a portable quoting checklist before your next estimate call or walkthrough.",
+          "eyebrow": "Resource"
+        }
+      ]
+    },
+    {
+      "id": "cleaning-pricing-faq-should-deep-cleaning-cost-more-than-standard-cleaning",
+      "type": "faq",
+      "slug": "should-deep-cleaning-cost-more-than-standard-cleaning",
+      "href": "/faq/should-deep-cleaning-cost-more-than-standard-cleaning/",
+      "title": "Should deep cleaning cost more than standard cleaning?",
+      "description": "Yes. Deep cleaning takes longer, includes more detail work, and usually needs a larger first-visit buffer than standard recurring service.",
+      "heroKicker": "FAQ",
+      "heroTitle": "Should deep cleaning cost more than standard cleaning?",
+      "heroIntro": "A short answer is useful, but the real leverage comes from understanding the decision behind it.",
+      "metaTitle": "Should deep cleaning cost more than standard cleaning? | Cleaning Pricing Calculator",
+      "metaDescription": "Yes. Deep cleaning takes longer, includes more detail work, and usually needs a larger first-visit buffer than standard recurring service.",
+      "sections": [
+        {
+          "id": "direct-answer",
+          "heading": "Direct answer",
+          "paragraphs": [
+            "Yes. Deep cleaning takes longer, includes more detail work, and usually needs a larger first-visit buffer than standard recurring service."
+          ]
+        },
+        {
+          "id": "why-it-matters",
+          "heading": "Why it matters",
+          "paragraphs": [
+            "Treating deep cleans like standard maintenance work compresses your margin fast."
+          ]
+        },
+        {
+          "id": "next-step",
+          "heading": "Next step",
+          "paragraphs": [
+            "Compare standard and deep-clean guidance before bundling both into one price."
+          ]
+        }
+      ],
+      "cta": {
+        "label": "Open the pricing estimator",
+        "href": "/tool/",
+        "variant": "primary"
+      },
+      "relatedLinks": [
+        {
+          "href": "/tool/",
+          "label": "Open the pricing estimator",
+          "description": "Working estimate range, average quote anchor, pricing notes, and a printable summary.",
+          "eyebrow": "Primary"
+        },
+        {
+          "href": "/guides/cleaning-pricing-baseline-guide/",
+          "label": "Cleaning pricing baseline guide for solo cleaners",
+          "description": "Build a fast baseline first so every quote starts from the same logic instead of the mood of the moment.",
+          "eyebrow": "Guide"
+        },
+        {
+          "href": "/comparisons/standard-vs-deep-cleaning-pricing/",
+          "label": "Standard vs deep cleaning pricing and when each should cost more",
+          "description": "Standard and deep cleaning are different jobs. Mixing them into one loose quote usually punishes the cleaner.",
+          "eyebrow": "Compare"
+        },
+        {
+          "href": "/resources/cleaning-pricing-checklist/",
+          "label": "Download pricing checklist",
+          "description": "Download a portable quoting checklist before your next estimate call or walkthrough.",
+          "eyebrow": "Resource"
+        }
+      ]
+    },
+    {
+      "id": "cleaning-pricing-faq-should-i-discount-recurring-cleaning",
+      "type": "faq",
+      "slug": "should-i-discount-recurring-cleaning",
+      "href": "/faq/should-i-discount-recurring-cleaning/",
+      "title": "Should I discount recurring cleaning?",
+      "description": "Usually yes, but only because recurring homes are easier to maintain over time, not because the work is magically cheap.",
+      "heroKicker": "FAQ",
+      "heroTitle": "Should I discount recurring cleaning?",
+      "heroIntro": "A short answer is useful, but the real leverage comes from understanding the decision behind it.",
+      "metaTitle": "Should I discount recurring cleaning? | Cleaning Pricing Calculator",
+      "metaDescription": "Usually yes, but only because recurring homes are easier to maintain over time, not because the work is magically cheap.",
+      "sections": [
+        {
+          "id": "direct-answer",
+          "heading": "Direct answer",
+          "paragraphs": [
+            "Usually yes, but only because recurring homes are easier to maintain over time, not because the work is magically cheap."
+          ]
+        },
+        {
+          "id": "why-it-matters",
+          "heading": "Why it matters",
+          "paragraphs": [
+            "A small recurring discount can improve retention while still protecting your labor rate."
+          ]
+        },
+        {
+          "id": "next-step",
+          "heading": "Next step",
+          "paragraphs": [
+            "Use the frequency selector in the estimator to see how the quote range changes."
+          ]
+        }
+      ],
+      "cta": {
+        "label": "Open the pricing estimator",
+        "href": "/tool/",
+        "variant": "primary"
+      },
+      "relatedLinks": [
+        {
+          "href": "/tool/",
+          "label": "Open the pricing estimator",
+          "description": "Working estimate range, average quote anchor, pricing notes, and a printable summary.",
+          "eyebrow": "Primary"
+        },
+        {
+          "href": "/guides/cleaning-pricing-baseline-guide/",
+          "label": "Cleaning pricing baseline guide for solo cleaners",
+          "description": "Build a fast baseline first so every quote starts from the same logic instead of the mood of the moment.",
+          "eyebrow": "Guide"
+        },
+        {
+          "href": "/comparisons/standard-vs-deep-cleaning-pricing/",
+          "label": "Standard vs deep cleaning pricing and when each should cost more",
+          "description": "Standard and deep cleaning are different jobs. Mixing them into one loose quote usually punishes the cleaner.",
+          "eyebrow": "Compare"
+        },
+        {
+          "href": "/resources/cleaning-pricing-checklist/",
+          "label": "Download pricing checklist",
+          "description": "Download a portable quoting checklist before your next estimate call or walkthrough.",
+          "eyebrow": "Resource"
+        }
+      ]
+    },
+    {
+      "id": "cleaning-pricing-faq-do-add-ons-need-separate-pricing",
+      "type": "faq",
+      "slug": "do-add-ons-need-separate-pricing",
+      "href": "/faq/do-add-ons-need-separate-pricing/",
+      "title": "Do add-ons need separate pricing?",
+      "description": "They should. Fridge, oven, interior windows, and laundry-style extras create extra labor that should not disappear inside the base price.",
+      "heroKicker": "FAQ",
+      "heroTitle": "Do add-ons need separate pricing?",
+      "heroIntro": "A short answer is useful, but the real leverage comes from understanding the decision behind it.",
+      "metaTitle": "Do add-ons need separate pricing? | Cleaning Pricing Calculator",
+      "metaDescription": "They should. Fridge, oven, interior windows, and laundry-style extras create extra labor that should not disappear inside the base price.",
+      "sections": [
+        {
+          "id": "direct-answer",
+          "heading": "Direct answer",
+          "paragraphs": [
+            "They should. Fridge, oven, interior windows, and laundry-style extras create extra labor that should not disappear inside the base price."
+          ]
+        },
+        {
+          "id": "why-it-matters",
+          "heading": "Why it matters",
+          "paragraphs": [
+            "Clear add-on pricing keeps the quote cleaner for both you and the client."
+          ]
+        },
+        {
+          "id": "next-step",
+          "heading": "Next step",
+          "paragraphs": [
+            "Toggle the add-ons in the estimator before packaging the final number."
+          ]
+        }
+      ],
+      "cta": {
+        "label": "Open the pricing estimator",
+        "href": "/tool/",
+        "variant": "primary"
+      },
+      "relatedLinks": [
+        {
+          "href": "/tool/",
+          "label": "Open the pricing estimator",
+          "description": "Working estimate range, average quote anchor, pricing notes, and a printable summary.",
+          "eyebrow": "Primary"
+        },
+        {
+          "href": "/guides/cleaning-pricing-baseline-guide/",
+          "label": "Cleaning pricing baseline guide for solo cleaners",
+          "description": "Build a fast baseline first so every quote starts from the same logic instead of the mood of the moment.",
+          "eyebrow": "Guide"
+        },
+        {
+          "href": "/comparisons/standard-vs-deep-cleaning-pricing/",
+          "label": "Standard vs deep cleaning pricing and when each should cost more",
+          "description": "Standard and deep cleaning are different jobs. Mixing them into one loose quote usually punishes the cleaner.",
+          "eyebrow": "Compare"
+        },
+        {
+          "href": "/resources/cleaning-pricing-checklist/",
+          "label": "Download pricing checklist",
+          "description": "Download a portable quoting checklist before your next estimate call or walkthrough.",
+          "eyebrow": "Resource"
+        }
+      ]
+    },
+    {
+      "id": "cleaning-pricing-faq-should-small-homes-have-a-minimum-price",
+      "type": "faq",
+      "slug": "should-small-homes-have-a-minimum-price",
+      "href": "/faq/should-small-homes-have-a-minimum-price/",
+      "title": "Should small homes have a minimum price?",
+      "description": "Usually yes. Very small jobs still carry travel time, setup time, and communication overhead.",
+      "heroKicker": "FAQ",
+      "heroTitle": "Should small homes have a minimum price?",
+      "heroIntro": "A short answer is useful, but the real leverage comes from understanding the decision behind it.",
+      "metaTitle": "Should small homes have a minimum price? | Cleaning Pricing Calculator",
+      "metaDescription": "Usually yes. Very small jobs still carry travel time, setup time, and communication overhead.",
+      "sections": [
+        {
+          "id": "direct-answer",
+          "heading": "Direct answer",
+          "paragraphs": [
+            "Usually yes. Very small jobs still carry travel time, setup time, and communication overhead."
+          ]
+        },
+        {
+          "id": "why-it-matters",
+          "heading": "Why it matters",
+          "paragraphs": [
+            "Pure square-foot math can underprice short visits unless you respect the minimum effort required to show up."
+          ]
+        },
+        {
+          "id": "next-step",
+          "heading": "Next step",
+          "paragraphs": [
+            "Use the estimator, then compare the result to your minimum visit target."
+          ]
+        }
+      ],
+      "cta": {
+        "label": "Open the pricing estimator",
+        "href": "/tool/",
+        "variant": "primary"
+      },
+      "relatedLinks": [
+        {
+          "href": "/tool/",
+          "label": "Open the pricing estimator",
+          "description": "Working estimate range, average quote anchor, pricing notes, and a printable summary.",
+          "eyebrow": "Primary"
+        },
+        {
+          "href": "/guides/cleaning-pricing-baseline-guide/",
+          "label": "Cleaning pricing baseline guide for solo cleaners",
+          "description": "Build a fast baseline first so every quote starts from the same logic instead of the mood of the moment.",
+          "eyebrow": "Guide"
+        },
+        {
+          "href": "/comparisons/standard-vs-deep-cleaning-pricing/",
+          "label": "Standard vs deep cleaning pricing and when each should cost more",
+          "description": "Standard and deep cleaning are different jobs. Mixing them into one loose quote usually punishes the cleaner.",
+          "eyebrow": "Compare"
+        },
+        {
+          "href": "/resources/cleaning-pricing-checklist/",
+          "label": "Download pricing checklist",
+          "description": "Download a portable quoting checklist before your next estimate call or walkthrough.",
+          "eyebrow": "Resource"
+        }
+      ]
+    },
+    {
+      "id": "cleaning-pricing-faq-how-do-i-price-move-out-cleaning",
+      "type": "faq",
+      "slug": "how-do-i-price-move-out-cleaning",
+      "href": "/faq/how-do-i-price-move-out-cleaning/",
+      "title": "How do I price move-out cleaning?",
+      "description": "Price move-out work higher than a standard clean because empty homes expose more detail work and clients often expect a near-reset condition.",
+      "heroKicker": "FAQ",
+      "heroTitle": "How do I price move-out cleaning?",
+      "heroIntro": "A short answer is useful, but the real leverage comes from understanding the decision behind it.",
+      "metaTitle": "How do I price move-out cleaning? | Cleaning Pricing Calculator",
+      "metaDescription": "Price move-out work higher than a standard clean because empty homes expose more detail work and clients often expect a near-reset condition.",
+      "sections": [
+        {
+          "id": "direct-answer",
+          "heading": "Direct answer",
+          "paragraphs": [
+            "Price move-out work higher than a standard clean because empty homes expose more detail work and clients often expect a near-reset condition."
+          ]
+        },
+        {
+          "id": "why-it-matters",
+          "heading": "Why it matters",
+          "paragraphs": [
+            "Move-out cleaning carries tighter expectations and less margin for missed details."
+          ]
+        },
+        {
+          "id": "next-step",
+          "heading": "Next step",
+          "paragraphs": [
+            "Use the move-out setting in the estimator and then review the comparison guide."
+          ]
+        }
+      ],
+      "cta": {
+        "label": "Open the pricing estimator",
+        "href": "/tool/",
+        "variant": "primary"
+      },
+      "relatedLinks": [
+        {
+          "href": "/tool/",
+          "label": "Open the pricing estimator",
+          "description": "Working estimate range, average quote anchor, pricing notes, and a printable summary.",
+          "eyebrow": "Primary"
+        },
+        {
+          "href": "/guides/cleaning-pricing-baseline-guide/",
+          "label": "Cleaning pricing baseline guide for solo cleaners",
+          "description": "Build a fast baseline first so every quote starts from the same logic instead of the mood of the moment.",
+          "eyebrow": "Guide"
+        },
+        {
+          "href": "/comparisons/standard-vs-deep-cleaning-pricing/",
+          "label": "Standard vs deep cleaning pricing and when each should cost more",
+          "description": "Standard and deep cleaning are different jobs. Mixing them into one loose quote usually punishes the cleaner.",
+          "eyebrow": "Compare"
+        },
+        {
+          "href": "/resources/cleaning-pricing-checklist/",
+          "label": "Download pricing checklist",
+          "description": "Download a portable quoting checklist before your next estimate call or walkthrough.",
+          "eyebrow": "Resource"
+        }
+      ]
+    },
+    {
+      "id": "cleaning-pricing-guide-cleaning-pricing-baseline-guide",
+      "type": "guide",
+      "slug": "cleaning-pricing-baseline-guide",
+      "href": "/guides/cleaning-pricing-baseline-guide/",
+      "title": "Cleaning pricing baseline guide for solo cleaners",
+      "description": "Build a fast baseline first so every quote starts from the same logic instead of the mood of the moment.",
+      "heroKicker": "Guide",
+      "heroTitle": "Cleaning pricing baseline guide for solo cleaners",
+      "heroIntro": "Build a fast baseline first so every quote starts from the same logic instead of the mood of the moment.",
+      "metaTitle": "Cleaning pricing baseline guide for solo cleaners | Cleaning Pricing Calculator",
+      "metaDescription": "Build a fast baseline first so every quote starts from the same logic instead of the mood of the moment.",
+      "sections": [
+        {
+          "id": "key-takeaway",
+          "heading": "Key takeaway",
+          "paragraphs": [
+            "Stable quote math protects both your speed and your margin."
+          ]
+        },
+        {
+          "id": "practical-detail",
+          "heading": "Practical detail",
+          "paragraphs": [
+            "Separate square footage, room count, service type, and extras before you touch final judgment calls like travel or condition."
+          ]
+        },
+        {
+          "id": "next-action",
+          "heading": "Next action",
+          "paragraphs": [
+            "Open the estimator and check your next job against the baseline before you adjust the final number."
+          ]
+        }
+      ],
+      "cta": {
+        "label": "Open the pricing estimator",
+        "href": "/tool/",
+        "variant": "primary"
+      },
+      "relatedLinks": [
+        {
+          "href": "/tool/",
+          "label": "Open the pricing estimator",
+          "description": "Working estimate range, average quote anchor, pricing notes, and a printable summary.",
+          "eyebrow": "Primary"
+        },
+        {
+          "href": "/comparisons/standard-vs-deep-cleaning-pricing/",
+          "label": "Standard vs deep cleaning pricing and when each should cost more",
+          "description": "Standard and deep cleaning are different jobs. Mixing them into one loose quote usually punishes the cleaner.",
+          "eyebrow": "Compare"
+        },
+        {
+          "href": "/resources/cleaning-pricing-checklist/",
+          "label": "Download pricing checklist",
+          "description": "Download a portable quoting checklist before your next estimate call or walkthrough.",
+          "eyebrow": "Resource"
+        }
+      ]
+    },
+    {
+      "id": "cleaning-pricing-guide-deep-cleaning-price-guide",
+      "type": "guide",
+      "slug": "deep-cleaning-price-guide",
+      "href": "/guides/deep-cleaning-price-guide/",
+      "title": "Deep cleaning price guide for first-visit jobs",
+      "description": "Deep cleaning is not just more time. It is a different scope with more detail work and more room for underpricing.",
+      "heroKicker": "Guide",
+      "heroTitle": "Deep cleaning price guide for first-visit jobs",
+      "heroIntro": "Deep cleaning is not just more time. It is a different scope with more detail work and more room for underpricing.",
+      "metaTitle": "Deep cleaning price guide for first-visit jobs | Cleaning Pricing Calculator",
+      "metaDescription": "Deep cleaning is not just more time. It is a different scope with more detail work and more room for underpricing.",
+      "sections": [
+        {
+          "id": "key-takeaway",
+          "heading": "Key takeaway",
+          "paragraphs": [
+            "Quote deep cleans as a scope tier, not a small add-on."
+          ]
+        },
+        {
+          "id": "practical-detail",
+          "heading": "Practical detail",
+          "paragraphs": [
+            "First visits often include buildup, reset work, and client expectations that do not belong inside a maintenance rate."
+          ]
+        },
+        {
+          "id": "next-action",
+          "heading": "Next action",
+          "paragraphs": [
+            "Compare the deep-clean result to the standard-clean result before you send the quote."
+          ]
+        }
+      ],
+      "cta": {
+        "label": "Open the pricing estimator",
+        "href": "/tool/",
+        "variant": "primary"
+      },
+      "relatedLinks": [
+        {
+          "href": "/tool/",
+          "label": "Open the pricing estimator",
+          "description": "Working estimate range, average quote anchor, pricing notes, and a printable summary.",
+          "eyebrow": "Primary"
+        },
+        {
+          "href": "/guides/cleaning-pricing-baseline-guide/",
+          "label": "Cleaning pricing baseline guide for solo cleaners",
+          "description": "Build a fast baseline first so every quote starts from the same logic instead of the mood of the moment.",
+          "eyebrow": "Guide"
+        },
+        {
+          "href": "/comparisons/standard-vs-deep-cleaning-pricing/",
+          "label": "Standard vs deep cleaning pricing and when each should cost more",
+          "description": "Standard and deep cleaning are different jobs. Mixing them into one loose quote usually punishes the cleaner.",
+          "eyebrow": "Compare"
+        },
+        {
+          "href": "/resources/cleaning-pricing-checklist/",
+          "label": "Download pricing checklist",
+          "description": "Download a portable quoting checklist before your next estimate call or walkthrough.",
+          "eyebrow": "Resource"
+        }
+      ]
+    },
+    {
+      "id": "cleaning-pricing-guide-recurring-cleaning-pricing-workflow",
+      "type": "guide",
+      "slug": "recurring-cleaning-pricing-workflow",
+      "href": "/guides/recurring-cleaning-pricing-workflow/",
+      "title": "Recurring cleaning pricing workflow that protects your margin",
+      "description": "Recurring work can justify a discount, but only when the scope really becomes easier to maintain over time.",
+      "heroKicker": "Guide",
+      "heroTitle": "Recurring cleaning pricing workflow that protects your margin",
+      "heroIntro": "Recurring work can justify a discount, but only when the scope really becomes easier to maintain over time.",
+      "metaTitle": "Recurring cleaning pricing workflow that protects your margin | Cleaning Pricing Calculator",
+      "metaDescription": "Recurring work can justify a discount, but only when the scope really becomes easier to maintain over time.",
+      "sections": [
+        {
+          "id": "key-takeaway",
+          "heading": "Key takeaway",
+          "paragraphs": [
+            "Discount the rhythm, not the labor value."
+          ]
+        },
+        {
+          "id": "practical-detail",
+          "heading": "Practical detail",
+          "paragraphs": [
+            "Weekly and biweekly service usually reduce reset time, while monthly work can still feel closer to a light deep clean."
+          ]
+        },
+        {
+          "id": "next-action",
+          "heading": "Next action",
+          "paragraphs": [
+            "Use the frequency selector to see how the working range changes before you offer the recurring rate."
+          ]
+        }
+      ],
+      "cta": {
+        "label": "Open the pricing estimator",
+        "href": "/tool/",
+        "variant": "primary"
+      },
+      "relatedLinks": [
+        {
+          "href": "/tool/",
+          "label": "Open the pricing estimator",
+          "description": "Working estimate range, average quote anchor, pricing notes, and a printable summary.",
+          "eyebrow": "Primary"
+        },
+        {
+          "href": "/guides/cleaning-pricing-baseline-guide/",
+          "label": "Cleaning pricing baseline guide for solo cleaners",
+          "description": "Build a fast baseline first so every quote starts from the same logic instead of the mood of the moment.",
+          "eyebrow": "Guide"
+        },
+        {
+          "href": "/comparisons/standard-vs-deep-cleaning-pricing/",
+          "label": "Standard vs deep cleaning pricing and when each should cost more",
+          "description": "Standard and deep cleaning are different jobs. Mixing them into one loose quote usually punishes the cleaner.",
+          "eyebrow": "Compare"
+        },
+        {
+          "href": "/resources/cleaning-pricing-checklist/",
+          "label": "Download pricing checklist",
+          "description": "Download a portable quoting checklist before your next estimate call or walkthrough.",
+          "eyebrow": "Resource"
+        }
+      ]
+    },
+    {
+      "id": "cleaning-pricing-guide-add-on-pricing-guide-for-cleaners",
+      "type": "guide",
+      "slug": "add-on-pricing-guide-for-cleaners",
+      "href": "/guides/add-on-pricing-guide-for-cleaners/",
+      "title": "Add-on pricing guide for fridge, oven, windows, and extras",
+      "description": "Add-ons should stay visible in the quote so the client understands the price and you understand the margin.",
+      "heroKicker": "Guide",
+      "heroTitle": "Add-on pricing guide for fridge, oven, windows, and extras",
+      "heroIntro": "Add-ons should stay visible in the quote so the client understands the price and you understand the margin.",
+      "metaTitle": "Add-on pricing guide for fridge, oven, windows, and extras | Cleaning Pricing Calculator",
+      "metaDescription": "Add-ons should stay visible in the quote so the client understands the price and you understand the margin.",
+      "sections": [
+        {
+          "id": "key-takeaway",
+          "heading": "Key takeaway",
+          "paragraphs": [
+            "Clear extras are easier to sell and easier to protect."
+          ]
+        },
+        {
+          "id": "practical-detail",
+          "heading": "Practical detail",
+          "paragraphs": [
+            "Fridge interiors, oven degreasing, inside windows, and laundry extras all carry time that disappears when buried in the base rate."
+          ]
+        },
+        {
+          "id": "next-action",
+          "heading": "Next action",
+          "paragraphs": [
+            "Toggle the add-ons in the estimator and copy the result before sending the quote."
+          ]
+        }
+      ],
+      "cta": {
+        "label": "Open the pricing estimator",
+        "href": "/tool/",
+        "variant": "primary"
+      },
+      "relatedLinks": [
+        {
+          "href": "/tool/",
+          "label": "Open the pricing estimator",
+          "description": "Working estimate range, average quote anchor, pricing notes, and a printable summary.",
+          "eyebrow": "Primary"
+        },
+        {
+          "href": "/guides/cleaning-pricing-baseline-guide/",
+          "label": "Cleaning pricing baseline guide for solo cleaners",
+          "description": "Build a fast baseline first so every quote starts from the same logic instead of the mood of the moment.",
+          "eyebrow": "Guide"
+        },
+        {
+          "href": "/comparisons/standard-vs-deep-cleaning-pricing/",
+          "label": "Standard vs deep cleaning pricing and when each should cost more",
+          "description": "Standard and deep cleaning are different jobs. Mixing them into one loose quote usually punishes the cleaner.",
+          "eyebrow": "Compare"
+        },
+        {
+          "href": "/resources/cleaning-pricing-checklist/",
+          "label": "Download pricing checklist",
+          "description": "Download a portable quoting checklist before your next estimate call or walkthrough.",
+          "eyebrow": "Resource"
+        }
+      ]
+    },
+    {
+      "id": "cleaning-pricing-guide-move-out-cleaning-estimate-workflow",
+      "type": "guide",
+      "slug": "move-out-cleaning-estimate-workflow",
+      "href": "/guides/move-out-cleaning-estimate-workflow/",
+      "title": "Move-out cleaning estimate workflow for higher-expectation jobs",
+      "description": "Empty homes often look simple, but they expose every missed detail and tend to carry tighter client expectations.",
+      "heroKicker": "Guide",
+      "heroTitle": "Move-out cleaning estimate workflow for higher-expectation jobs",
+      "heroIntro": "Empty homes often look simple, but they expose every missed detail and tend to carry tighter client expectations.",
+      "metaTitle": "Move-out cleaning estimate workflow for higher-expectation jobs | Cleaning Pricing Calculator",
+      "metaDescription": "Empty homes often look simple, but they expose every missed detail and tend to carry tighter client expectations.",
+      "sections": [
+        {
+          "id": "key-takeaway",
+          "heading": "Key takeaway",
+          "paragraphs": [
+            "Move-out pricing needs a bigger labor buffer than maintenance cleaning."
+          ]
+        },
+        {
+          "id": "practical-detail",
+          "heading": "Practical detail",
+          "paragraphs": [
+            "The lack of furniture does not automatically make the work easier when the condition is rough or the turnover deadline is tight."
+          ]
+        },
+        {
+          "id": "next-action",
+          "heading": "Next action",
+          "paragraphs": [
+            "Use the move-out option in the estimator and check the range against your condition notes."
+          ]
+        }
+      ],
+      "cta": {
+        "label": "Open the pricing estimator",
+        "href": "/tool/",
+        "variant": "primary"
+      },
+      "relatedLinks": [
+        {
+          "href": "/tool/",
+          "label": "Open the pricing estimator",
+          "description": "Working estimate range, average quote anchor, pricing notes, and a printable summary.",
+          "eyebrow": "Primary"
+        },
+        {
+          "href": "/guides/cleaning-pricing-baseline-guide/",
+          "label": "Cleaning pricing baseline guide for solo cleaners",
+          "description": "Build a fast baseline first so every quote starts from the same logic instead of the mood of the moment.",
+          "eyebrow": "Guide"
+        },
+        {
+          "href": "/comparisons/standard-vs-deep-cleaning-pricing/",
+          "label": "Standard vs deep cleaning pricing and when each should cost more",
+          "description": "Standard and deep cleaning are different jobs. Mixing them into one loose quote usually punishes the cleaner.",
+          "eyebrow": "Compare"
+        },
+        {
+          "href": "/resources/cleaning-pricing-checklist/",
+          "label": "Download pricing checklist",
+          "description": "Download a portable quoting checklist before your next estimate call or walkthrough.",
+          "eyebrow": "Resource"
+        }
+      ]
+    },
+    {
+      "id": "cleaning-pricing-guide-cleaning-quote-text-template-workflow",
+      "type": "guide",
+      "slug": "cleaning-quote-text-template-workflow",
+      "href": "/guides/cleaning-quote-text-template-workflow/",
+      "title": "Cleaning quote text template workflow after the estimate is ready",
+      "description": "The quote itself should be short, clear, and tied to the scope decisions you already made in the estimator.",
+      "heroKicker": "Guide",
+      "heroTitle": "Cleaning quote text template workflow after the estimate is ready",
+      "heroIntro": "The quote itself should be short, clear, and tied to the scope decisions you already made in the estimator.",
+      "metaTitle": "Cleaning quote text template workflow after the estimate is ready | Cleaning Pricing Calculator",
+      "metaDescription": "The quote itself should be short, clear, and tied to the scope decisions you already made in the estimator.",
+      "sections": [
+        {
+          "id": "key-takeaway",
+          "heading": "Key takeaway",
+          "paragraphs": [
+            "A cleaner quote message reduces back-and-forth and protects the agreed scope."
+          ]
+        },
+        {
+          "id": "practical-detail",
+          "heading": "Practical detail",
+          "paragraphs": [
+            "Restate the service type, frequency, extras, and final number so the estimate does not get fuzzy once the client replies."
+          ]
+        },
+        {
+          "id": "next-action",
+          "heading": "Next action",
+          "paragraphs": [
+            "Copy the estimate summary and pair it with your normal quote template."
+          ]
+        }
+      ],
+      "cta": {
+        "label": "Open the pricing estimator",
+        "href": "/tool/",
+        "variant": "primary"
+      },
+      "relatedLinks": [
+        {
+          "href": "/tool/",
+          "label": "Open the pricing estimator",
+          "description": "Working estimate range, average quote anchor, pricing notes, and a printable summary.",
+          "eyebrow": "Primary"
+        },
+        {
+          "href": "/guides/cleaning-pricing-baseline-guide/",
+          "label": "Cleaning pricing baseline guide for solo cleaners",
+          "description": "Build a fast baseline first so every quote starts from the same logic instead of the mood of the moment.",
+          "eyebrow": "Guide"
+        },
+        {
+          "href": "/comparisons/standard-vs-deep-cleaning-pricing/",
+          "label": "Standard vs deep cleaning pricing and when each should cost more",
+          "description": "Standard and deep cleaning are different jobs. Mixing them into one loose quote usually punishes the cleaner.",
+          "eyebrow": "Compare"
+        },
+        {
+          "href": "/resources/cleaning-pricing-checklist/",
+          "label": "Download pricing checklist",
+          "description": "Download a portable quoting checklist before your next estimate call or walkthrough.",
+          "eyebrow": "Resource"
+        }
+      ]
+    },
+    {
+      "id": "cleaning-pricing-comparison-standard-vs-deep-cleaning-pricing",
+      "type": "comparison",
+      "slug": "standard-vs-deep-cleaning-pricing",
+      "href": "/comparisons/standard-vs-deep-cleaning-pricing/",
+      "title": "Standard vs deep cleaning pricing and when each should cost more",
+      "description": "Standard and deep cleaning are different jobs. Mixing them into one loose quote usually punishes the cleaner.",
+      "heroKicker": "Comparison",
+      "heroTitle": "Standard vs deep cleaning pricing and when each should cost more",
+      "heroIntro": "Standard and deep cleaning are different jobs. Mixing them into one loose quote usually punishes the cleaner.",
+      "metaTitle": "Standard vs deep cleaning pricing and when each should cost more | Cleaning Pricing Calculator",
+      "metaDescription": "Standard and deep cleaning are different jobs. Mixing them into one loose quote usually punishes the cleaner.",
+      "sections": [
+        {
+          "id": "when-standard-cleaning-wins",
+          "heading": "When standard cleaning wins",
+          "paragraphs": [
+            "Use a standard-cleaning rate when the home is already maintained and the visit mainly protects the current condition."
+          ]
+        },
+        {
+          "id": "when-deep-cleaning-wins",
+          "heading": "When deep cleaning wins",
+          "paragraphs": [
+            "Use a higher deep-cleaning rate when the home needs reset work, heavier detail attention, or buildup removal."
+          ]
+        },
+        {
+          "id": "decision-shortcut",
+          "heading": "Decision shortcut",
+          "paragraphs": [
+            "If the home needs reset labor before maintenance can begin, price it as a deep clean."
+          ]
+        }
+      ],
+      "cta": {
+        "label": "Open the pricing estimator",
+        "href": "/tool/",
+        "variant": "primary"
+      },
+      "relatedLinks": [
+        {
+          "href": "/tool/",
+          "label": "Open the pricing estimator",
+          "description": "Working estimate range, average quote anchor, pricing notes, and a printable summary.",
+          "eyebrow": "Primary"
+        },
+        {
+          "href": "/guides/cleaning-pricing-baseline-guide/",
+          "label": "Cleaning pricing baseline guide for solo cleaners",
+          "description": "Build a fast baseline first so every quote starts from the same logic instead of the mood of the moment.",
+          "eyebrow": "Guide"
+        },
+        {
+          "href": "/resources/cleaning-pricing-checklist/",
+          "label": "Download pricing checklist",
+          "description": "Download a portable quoting checklist before your next estimate call or walkthrough.",
+          "eyebrow": "Resource"
+        }
+      ]
+    },
+    {
+      "id": "cleaning-pricing-comparison-one-time-vs-recurring-cleaning-pricing",
+      "type": "comparison",
+      "slug": "one-time-vs-recurring-cleaning-pricing",
+      "href": "/comparisons/one-time-vs-recurring-cleaning-pricing/",
+      "title": "One-time vs recurring cleaning pricing and where the discount belongs",
+      "description": "One-time work and recurring work create different labor patterns, so the quote should reflect the rhythm instead of flattening everything.",
+      "heroKicker": "Comparison",
+      "heroTitle": "One-time vs recurring cleaning pricing and where the discount belongs",
+      "heroIntro": "One-time work and recurring work create different labor patterns, so the quote should reflect the rhythm instead of flattening everything.",
+      "metaTitle": "One-time vs recurring cleaning pricing and where the discount belongs | Cleaning Pricing Calculator",
+      "metaDescription": "One-time work and recurring work create different labor patterns, so the quote should reflect the rhythm instead of flattening everything.",
+      "sections": [
+        {
+          "id": "when-one-time-cleaning-wins",
+          "heading": "When one-time cleaning wins",
+          "paragraphs": [
+            "Use a higher one-time rate when each visit starts cold and the home may need more reset work."
+          ]
+        },
+        {
+          "id": "when-recurring-cleaning-wins",
+          "heading": "When recurring cleaning wins",
+          "paragraphs": [
+            "Use a recurring rate when consistent service lowers setup time and makes the home easier to maintain over time."
+          ]
+        },
+        {
+          "id": "decision-shortcut",
+          "heading": "Decision shortcut",
+          "paragraphs": [
+            "If repeated visits genuinely reduce effort, discount the recurring service slightly instead of discounting the one-time job."
+          ]
+        }
+      ],
+      "cta": {
+        "label": "Open the pricing estimator",
+        "href": "/tool/",
+        "variant": "primary"
+      },
+      "relatedLinks": [
+        {
+          "href": "/tool/",
+          "label": "Open the pricing estimator",
+          "description": "Working estimate range, average quote anchor, pricing notes, and a printable summary.",
+          "eyebrow": "Primary"
+        },
+        {
+          "href": "/guides/cleaning-pricing-baseline-guide/",
+          "label": "Cleaning pricing baseline guide for solo cleaners",
+          "description": "Build a fast baseline first so every quote starts from the same logic instead of the mood of the moment.",
+          "eyebrow": "Guide"
+        },
+        {
+          "href": "/comparisons/standard-vs-deep-cleaning-pricing/",
+          "label": "Standard vs deep cleaning pricing and when each should cost more",
+          "description": "Standard and deep cleaning are different jobs. Mixing them into one loose quote usually punishes the cleaner.",
+          "eyebrow": "Compare"
+        },
+        {
+          "href": "/resources/cleaning-pricing-checklist/",
+          "label": "Download pricing checklist",
+          "description": "Download a portable quoting checklist before your next estimate call or walkthrough.",
+          "eyebrow": "Resource"
+        }
+      ]
+    },
+    {
+      "id": "cleaning-pricing-comparison-flat-rate-vs-hourly-cleaning-pricing",
+      "type": "comparison",
+      "slug": "flat-rate-vs-hourly-cleaning-pricing",
+      "href": "/comparisons/flat-rate-vs-hourly-cleaning-pricing/",
+      "title": "Flat-rate vs hourly cleaning pricing for small teams",
+      "description": "Both pricing models can work, but flat-rate quoting usually scales better once your scope math is consistent.",
+      "heroKicker": "Comparison",
+      "heroTitle": "Flat-rate vs hourly cleaning pricing for small teams",
+      "heroIntro": "Both pricing models can work, but flat-rate quoting usually scales better once your scope math is consistent.",
+      "metaTitle": "Flat-rate vs hourly cleaning pricing for small teams | Cleaning Pricing Calculator",
+      "metaDescription": "Both pricing models can work, but flat-rate quoting usually scales better once your scope math is consistent.",
+      "sections": [
+        {
+          "id": "when-flat-rate-pricing-wins",
+          "heading": "When flat-rate pricing wins",
+          "paragraphs": [
+            "Use flat-rate pricing when you know the scope well enough to package the work cleanly and avoid constant time math during the quote."
+          ]
+        },
+        {
+          "id": "when-hourly-pricing-wins",
+          "heading": "When hourly pricing wins",
+          "paragraphs": [
+            "Use hourly pricing when the scope is uncertain, access is messy, or the client keeps changing the work list."
+          ]
+        },
+        {
+          "id": "decision-shortcut",
+          "heading": "Decision shortcut",
+          "paragraphs": [
+            "Default to flat-rate when the scope is stable and switch to hourly when uncertainty is still too high."
+          ]
+        }
+      ],
+      "cta": {
+        "label": "Open the pricing estimator",
+        "href": "/tool/",
+        "variant": "primary"
+      },
+      "relatedLinks": [
+        {
+          "href": "/tool/",
+          "label": "Open the pricing estimator",
+          "description": "Working estimate range, average quote anchor, pricing notes, and a printable summary.",
+          "eyebrow": "Primary"
+        },
+        {
+          "href": "/guides/cleaning-pricing-baseline-guide/",
+          "label": "Cleaning pricing baseline guide for solo cleaners",
+          "description": "Build a fast baseline first so every quote starts from the same logic instead of the mood of the moment.",
+          "eyebrow": "Guide"
+        },
+        {
+          "href": "/comparisons/standard-vs-deep-cleaning-pricing/",
+          "label": "Standard vs deep cleaning pricing and when each should cost more",
+          "description": "Standard and deep cleaning are different jobs. Mixing them into one loose quote usually punishes the cleaner.",
+          "eyebrow": "Compare"
+        },
+        {
+          "href": "/resources/cleaning-pricing-checklist/",
+          "label": "Download pricing checklist",
+          "description": "Download a portable quoting checklist before your next estimate call or walkthrough.",
+          "eyebrow": "Resource"
+        }
+      ]
+    },
+    {
+      "id": "cleaning-pricing-resource-cleaning-pricing-checklist",
+      "type": "resource",
+      "slug": "cleaning-pricing-checklist",
+      "href": "/resources/cleaning-pricing-checklist/",
+      "navLabel": "Checklist",
+      "title": "Cleaning pricing checklist",
+      "description": "Download a portable quoting checklist before your next estimate call or walkthrough.",
+      "heroKicker": "Downloadable resource",
+      "heroTitle": "Cleaning pricing checklist",
+      "heroIntro": "Download a portable quoting checklist before your next estimate call or walkthrough.",
+      "metaTitle": "Cleaning pricing checklist | Cleaning Pricing Calculator",
+      "metaDescription": "Download a portable quoting checklist before your next estimate call or walkthrough.",
+      "sections": [
+        {
+          "id": "what-is-inside",
+          "heading": "What is inside",
+          "paragraphs": [
+            "A plain-English checklist covering baseline math, service type, frequency, add-ons, minimum pricing, and quote follow-up."
+          ]
+        },
+        {
+          "id": "how-to-use-it",
+          "heading": "How to use it",
+          "paragraphs": [
+            "Start with the estimator, check the scope decisions, confirm add-ons, and copy the summary before sending the quote."
+          ]
+        },
+        {
+          "id": "best-follow-up",
+          "heading": "Best follow-up",
+          "paragraphs": [
+            "Pair the checklist with the estimator so your quote rhythm stays consistent across inquiries."
+          ]
+        },
+        {
+          "id": "download-cta",
+          "heading": "Download it now",
+          "paragraphs": [
+            "The resource is delivered as a plain-text checklist so it stays portable across notes apps, CRMs, project trackers, and print workflows."
+          ],
+          "links": [
+            {
+              "href": "/downloads/cleaning-pricing-checklist.txt",
+              "label": "Download pricing checklist",
+              "description": "Download cleaning pricing checklist.",
+              "eyebrow": "Download"
+            }
+          ]
+        }
+      ],
+      "cta": {
+        "label": "Download pricing checklist",
+        "href": "/downloads/cleaning-pricing-checklist.txt",
+        "variant": "primary"
+      },
+      "relatedLinks": [
+        {
+          "href": "/tool/",
+          "label": "Open the pricing estimator",
+          "description": "Working estimate range, average quote anchor, pricing notes, and a printable summary.",
+          "eyebrow": "Primary"
+        },
+        {
+          "href": "/guides/cleaning-pricing-baseline-guide/",
+          "label": "Cleaning pricing baseline guide for solo cleaners",
+          "description": "Build a fast baseline first so every quote starts from the same logic instead of the mood of the moment.",
+          "eyebrow": "Guide"
+        },
+        {
+          "href": "/comparisons/standard-vs-deep-cleaning-pricing/",
+          "label": "Standard vs deep cleaning pricing and when each should cost more",
+          "description": "Standard and deep cleaning are different jobs. Mixing them into one loose quote usually punishes the cleaner.",
+          "eyebrow": "Compare"
+        }
+      ]
+    },
+    {
+      "id": "cleaning-pricing-feedback",
+      "type": "feedback",
+      "slug": "feedback",
+      "href": "/feedback/",
+      "title": "What should the next cleaning tool solve?",
+      "description": "This release stays static-first, so the feedback route is a notes page that defines the best next signals to collect once the niche earns a lightweight intake flow.",
+      "heroKicker": "Next build",
+      "heroTitle": "What should the next cleaning tool solve?",
+      "heroIntro": "This release stays static-first, so the feedback route is a notes page that defines the best next signals to collect once the niche earns a lightweight intake flow.",
+      "metaTitle": "What should the next cleaning tool solve? | Cleaning Pricing Calculator",
+      "metaDescription": "This release stays static-first, so the feedback route is a notes page that defines the best next signals to collect once the niche earns a lightweight intake flow.",
+      "sections": [
+        {
+          "id": "feedback-prompts",
+          "heading": "Best prompts to collect later",
+          "paragraphs": [
+            "This route stays static-first in the initial release, but it still defines the exact prompts worth collecting once the winning asset earns a lightweight form integration.",
+            "The real job of this page is operator clarity: if the site starts attracting repeat tool use or resource downloads, these prompts tell the next build exactly what friction is still slowing the user down."
+          ],
+          "bullets": [
+            "Which part of quoting still feels slow after using the estimator?",
+            "Do you need a walkthrough checklist, a route planner, or a quote follow-up template next?",
+            "Which service type creates the most pricing uncertainty in your market?"
+          ],
+          "callout": "Keep this page honest until a real winner earns a form integration.",
+          "links": [
+            {
+              "href": "/tool/",
+              "label": "recurring route planner",
+              "description": "Possible next expansion: recurring route planner.",
+              "eyebrow": "Expansion"
+            },
+            {
+              "href": "/tool/",
+              "label": "walkthrough checklist generator",
+              "description": "Possible next expansion: walkthrough checklist generator.",
+              "eyebrow": "Expansion"
+            },
+            {
+              "href": "/tool/",
+              "label": "quote follow-up template pack",
+              "description": "Possible next expansion: quote follow-up template pack.",
+              "eyebrow": "Expansion"
+            }
+          ]
+        },
+        {
+          "id": "launch-gating",
+          "heading": "What earns the next feature",
+          "paragraphs": [
+            "A new feature only ships when the current tool shows repeat usage, the supporting pages keep pulling visitors toward the utility, and the next build clearly reduces quoting or preparation friction instead of adding decorative complexity."
+          ],
+          "bullets": [
+            "strong tool engagement",
+            "repeat visits before quote sends",
+            "checklist downloads"
+          ]
+        }
+      ],
+      "cta": {
+        "label": "Open the pricing estimator",
+        "href": "/tool/",
+        "variant": "secondary"
+      },
+      "relatedLinks": [
+        {
+          "href": "/tool/",
+          "label": "Open the pricing estimator",
+          "description": "Working estimate range, average quote anchor, pricing notes, and a printable summary.",
+          "eyebrow": "Primary"
+        },
+        {
+          "href": "/guides/cleaning-pricing-baseline-guide/",
+          "label": "Cleaning pricing baseline guide for solo cleaners",
+          "description": "Build a fast baseline first so every quote starts from the same logic instead of the mood of the moment.",
+          "eyebrow": "Guide"
+        },
+        {
+          "href": "/comparisons/standard-vs-deep-cleaning-pricing/",
+          "label": "Standard vs deep cleaning pricing and when each should cost more",
+          "description": "Standard and deep cleaning are different jobs. Mixing them into one loose quote usually punishes the cleaner.",
+          "eyebrow": "Compare"
+        },
+        {
+          "href": "/resources/cleaning-pricing-checklist/",
+          "label": "Download pricing checklist",
+          "description": "Download a portable quoting checklist before your next estimate call or walkthrough.",
+          "eyebrow": "Resource"
+        }
+      ]
+    }
+  ],
+  "routes": [
+    {
+      "path": "/",
+      "outputPath": "index.html",
+      "pageId": "cleaning-pricing-home",
+      "layout": "default"
+    },
+    {
+      "path": "/tool/",
+      "outputPath": "tool/index.html",
+      "pageId": "cleaning-pricing-tool",
+      "layout": "tool"
+    },
+    {
+      "path": "/about/why-this-tool-matters/",
+      "outputPath": "about/why-this-tool-matters/index.html",
+      "pageId": "cleaning-pricing-about",
+      "layout": "default"
+    },
+    {
+      "path": "/faq/how-much-should-i-charge-for-house-cleaning/",
+      "outputPath": "faq/how-much-should-i-charge-for-house-cleaning/index.html",
+      "pageId": "cleaning-pricing-faq-how-much-should-i-charge-for-house-cleaning",
+      "layout": "default"
+    },
+    {
+      "path": "/faq/should-deep-cleaning-cost-more-than-standard-cleaning/",
+      "outputPath": "faq/should-deep-cleaning-cost-more-than-standard-cleaning/index.html",
+      "pageId": "cleaning-pricing-faq-should-deep-cleaning-cost-more-than-standard-cleaning",
+      "layout": "default"
+    },
+    {
+      "path": "/faq/should-i-discount-recurring-cleaning/",
+      "outputPath": "faq/should-i-discount-recurring-cleaning/index.html",
+      "pageId": "cleaning-pricing-faq-should-i-discount-recurring-cleaning",
+      "layout": "default"
+    },
+    {
+      "path": "/faq/do-add-ons-need-separate-pricing/",
+      "outputPath": "faq/do-add-ons-need-separate-pricing/index.html",
+      "pageId": "cleaning-pricing-faq-do-add-ons-need-separate-pricing",
+      "layout": "default"
+    },
+    {
+      "path": "/faq/should-small-homes-have-a-minimum-price/",
+      "outputPath": "faq/should-small-homes-have-a-minimum-price/index.html",
+      "pageId": "cleaning-pricing-faq-should-small-homes-have-a-minimum-price",
+      "layout": "default"
+    },
+    {
+      "path": "/faq/how-do-i-price-move-out-cleaning/",
+      "outputPath": "faq/how-do-i-price-move-out-cleaning/index.html",
+      "pageId": "cleaning-pricing-faq-how-do-i-price-move-out-cleaning",
+      "layout": "default"
+    },
+    {
+      "path": "/guides/cleaning-pricing-baseline-guide/",
+      "outputPath": "guides/cleaning-pricing-baseline-guide/index.html",
+      "pageId": "cleaning-pricing-guide-cleaning-pricing-baseline-guide",
+      "layout": "default"
+    },
+    {
+      "path": "/guides/deep-cleaning-price-guide/",
+      "outputPath": "guides/deep-cleaning-price-guide/index.html",
+      "pageId": "cleaning-pricing-guide-deep-cleaning-price-guide",
+      "layout": "default"
+    },
+    {
+      "path": "/guides/recurring-cleaning-pricing-workflow/",
+      "outputPath": "guides/recurring-cleaning-pricing-workflow/index.html",
+      "pageId": "cleaning-pricing-guide-recurring-cleaning-pricing-workflow",
+      "layout": "default"
+    },
+    {
+      "path": "/guides/add-on-pricing-guide-for-cleaners/",
+      "outputPath": "guides/add-on-pricing-guide-for-cleaners/index.html",
+      "pageId": "cleaning-pricing-guide-add-on-pricing-guide-for-cleaners",
+      "layout": "default"
+    },
+    {
+      "path": "/guides/move-out-cleaning-estimate-workflow/",
+      "outputPath": "guides/move-out-cleaning-estimate-workflow/index.html",
+      "pageId": "cleaning-pricing-guide-move-out-cleaning-estimate-workflow",
+      "layout": "default"
+    },
+    {
+      "path": "/guides/cleaning-quote-text-template-workflow/",
+      "outputPath": "guides/cleaning-quote-text-template-workflow/index.html",
+      "pageId": "cleaning-pricing-guide-cleaning-quote-text-template-workflow",
+      "layout": "default"
+    },
+    {
+      "path": "/comparisons/standard-vs-deep-cleaning-pricing/",
+      "outputPath": "comparisons/standard-vs-deep-cleaning-pricing/index.html",
+      "pageId": "cleaning-pricing-comparison-standard-vs-deep-cleaning-pricing",
+      "layout": "default"
+    },
+    {
+      "path": "/comparisons/one-time-vs-recurring-cleaning-pricing/",
+      "outputPath": "comparisons/one-time-vs-recurring-cleaning-pricing/index.html",
+      "pageId": "cleaning-pricing-comparison-one-time-vs-recurring-cleaning-pricing",
+      "layout": "default"
+    },
+    {
+      "path": "/comparisons/flat-rate-vs-hourly-cleaning-pricing/",
+      "outputPath": "comparisons/flat-rate-vs-hourly-cleaning-pricing/index.html",
+      "pageId": "cleaning-pricing-comparison-flat-rate-vs-hourly-cleaning-pricing",
+      "layout": "default"
+    },
+    {
+      "path": "/resources/cleaning-pricing-checklist/",
+      "outputPath": "resources/cleaning-pricing-checklist/index.html",
+      "pageId": "cleaning-pricing-resource-cleaning-pricing-checklist",
+      "layout": "default"
+    },
+    {
+      "path": "/feedback/",
+      "outputPath": "feedback/index.html",
+      "pageId": "cleaning-pricing-feedback",
+      "layout": "default"
+    }
+  ],
+  "tool": {
+    "id": "cleaning-pricing-cleaning-pricing-estimator",
+    "name": "Cleaning pricing estimator",
+    "description": "Working estimate range, average quote anchor, pricing notes, and a printable summary.",
+    "component": "cleaning-pricing-estimator",
+    "default_values": {
+      "squareFootage": 1400,
+      "bedrooms": 3,
+      "bathrooms": 2,
+      "serviceType": "standard",
+      "frequency": "one-time"
+    },
+    "fields": [
+      {
+        "id": "primary",
+        "label": "Square footage",
+        "inputType": "number",
+        "required": true
+      },
+      {
+        "id": "secondary",
+        "label": "Bedrooms and bathrooms",
+        "inputType": "number",
+        "required": true
+      },
+      {
+        "id": "tertiary",
+        "label": "Service type and frequency",
+        "inputType": "radio",
+        "required": true
+      }
+    ]
+  },
+  "resourceDownloadHref": "/downloads/cleaning-pricing-checklist.txt",
+  "runtime": {
+    "analytics": {
+      "provider": "cloudflare",
+      "webAnalyticsMode": "pages"
+    },
+    "lastBuildAt": "2026-03-07T19:09:45.365Z",
+    "cloudflareProjectName": "lump-zero-cleaning-pricing",
+    "theme": {
+      "accent": "#2b7a53",
+      "accent_strong": "#165536",
+      "accent_warm": "#d08a2f",
+      "accent_rose": "#8b5f50",
+      "background_start": "#f6f2e8",
+      "background_mid": "#ebe6d5",
+      "background_end": "#dfd7c1",
+      "glow_one": "rgba(208, 138, 47, 0.24)",
+      "glow_two": "rgba(43, 122, 83, 0.2)"
+    }
+  }
+}
